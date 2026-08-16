@@ -7,7 +7,7 @@
 - 사업자등록번호 계속·휴업·폐업 상태 일괄조회
 - 상태별 필터와 CSV 다운로드
 - 광주 동구 상가업소 지도와 업종·행정동 필터
-- VWorld 주요상권 경계와 상권 내부 점포·업종 분석
+- VWorld 및 수동 등록 주요상권 경계와 상권 내부 점포·업종 분석
 
 ## 환경변수
 
@@ -30,7 +30,7 @@ npm run update-stores
 npm run update-zones
 ```
 
-상가 데이터는 `data/stores_donggu.json`, 주요상권 경계는 `data/mainbiz_zones_donggu.geojson`에 저장됩니다. GitHub Actions는 매월 5일 전체 데이터를 다시 수집하며 `SDSC_SERVICE_KEY`와 `VWORLD_KEY` 저장소 Secret이 필요합니다.
+상가 데이터는 `data/stores_donggu.json`, VWorld 주요상권 경계는 `data/mainbiz_zones_donggu.geojson`, 수동 등록 경계는 `data/manual_mainbiz_zones_donggu.geojson`에 저장됩니다. GitHub Actions는 매월 5일 API 기반 데이터를 다시 수집하며 수동 등록 경계는 별도 파일에 보존됩니다. `SDSC_SERVICE_KEY`와 `VWORLD_KEY` 저장소 Secret이 필요합니다.
 
 ## 로컬 실행
 

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   compactStore,
   filterStores,
@@ -9,7 +10,7 @@ import {
   toLegacyPnu
 } from "../lib/market.js";
 import { assertSnapshotHealthy } from "../lib/store-update.js";
-import { assertZoneSnapshotHealthy } from "../lib/zone-update.js";
+import { assertZoneSnapshotHealthy, mergeZoneFeatures } from "../lib/zone-update.js";
 
 const stores = [
   { name: "동명카페", branch: "", address: "동명로", lotAddress: "동명동", buildingName: "", adminDong: "동명동", largeCode: "I2", largeName: "음식", middleCode: "I212", smallCode: "I21201", smallName: "카페", longitude: 126.92, latitude: 35.15 },
@@ -75,4 +76,19 @@ test("rejects invalid or sharply reduced zone snapshots", () => {
   assert.throws(() => assertZoneSnapshotHealthy({ features: [1, 2, 3, 4, 5].map(() => feature("1")) }), /중복/);
   assert.throws(() => assertZoneSnapshotHealthy({ features: ["1", "2", "3", "4", "5"].map(feature), previousCount: 7 }), /20% 이상 감소/);
   assert.doesNotThrow(() => assertZoneSnapshotHealthy({ features: ["1", "2", "3", "4", "5", "6", "7"].map(feature), previousCount: 7 }));
+});
+
+test("loads the manually registered Sansu Market boundary", async () => {
+  const payload = JSON.parse(await readFile(new URL("../data/manual_mainbiz_zones_donggu.geojson", import.meta.url), "utf8"));
+  assertZoneSnapshotHealthy({ features: payload.features, minimumCount: 1 });
+  const [feature] = payload.features;
+  assert.equal(feature.properties.name, "산수시장");
+  assert.equal(pointInGeometry(126.930954807232, 35.1537139906824, feature.geometry), true);
+  assert.ok(Math.abs(geometryAreaSqm(feature.geometry) - feature.properties.areaSqm) < 1);
+});
+
+test("merges VWorld and manual zones while rejecting duplicate numbers", () => {
+  const feature = (no) => ({ properties: { no } });
+  assert.deepEqual(mergeZoneFeatures({ features: [feature("1")] }, { features: [feature("manual-1")] }).map((item) => item.properties.no), ["1", "manual-1"]);
+  assert.throws(() => mergeZoneFeatures({ features: [feature("1")] }, { features: [feature("1")] }), /중복/);
 });

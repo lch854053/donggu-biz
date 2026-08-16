@@ -4,6 +4,7 @@ import {
   pointInGeometry,
   summarizeStores
 } from "./lib/market.js";
+import { mergeZoneFeatures } from "./lib/zone-update.js";
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({
@@ -290,9 +291,10 @@ async function initializeMarket() {
   }
   marketInitialized = true;
   try {
-    const [response, zoneResponse] = await Promise.all([
+    const [response, zoneResponse, manualZoneResponse] = await Promise.all([
       fetch("data/stores_donggu.json"),
-      fetch("data/mainbiz_zones_donggu.geojson").catch(() => null)
+      fetch("data/mainbiz_zones_donggu.geojson").catch(() => null),
+      fetch("data/manual_mainbiz_zones_donggu.geojson").catch(() => null)
     ]);
     if (!response.ok) throw new Error(`상가정보 파일을 불러오지 못했습니다. HTTP ${response.status}`);
     const payload = await response.json();
@@ -304,10 +306,19 @@ async function initializeMarket() {
         console.error("[mainbiz-zones] invalid JSON", error);
       }
     }
+    let manualZonePayload = { features: [] };
+    if (manualZoneResponse?.ok) {
+      try {
+        manualZonePayload = await manualZoneResponse.json();
+      } catch (error) {
+        console.error("[manual-mainbiz-zones] invalid JSON", error);
+      }
+    }
     allStores = Array.isArray(payload.stores) ? payload.stores : [];
     marketMeta = payload.meta || {};
-    mainBizZones = Array.isArray(zonePayload.features) ? zonePayload.features : [];
-    zoneMeta = zonePayload.meta || {};
+    const manualZones = Array.isArray(manualZonePayload.features) ? manualZonePayload.features : [];
+    mainBizZones = mergeZoneFeatures(zonePayload, manualZonePayload);
+    zoneMeta = { ...(zonePayload.meta || {}), manualZoneCount: manualZones.length };
     if (!allStores.length) throw new Error("상가정보 파일에 표시할 업소가 없습니다.");
     initializeMap();
     populateMarketFilters();
