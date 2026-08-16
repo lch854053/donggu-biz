@@ -105,8 +105,7 @@ button { color: inherit; }
 .result-toolbar h2,
 .business-guide h2,
 .rail-heading h3,
-.data-note p,
-.radius-empty p { margin: 0; }
+.data-note p { margin: 0; }
 
 .brand-copy h1 { font-size: 24px; line-height: 1.25; }
 .brand-copy p { margin-top: 2px; color: var(--text-secondary); font-size: 15px; }
@@ -264,8 +263,7 @@ textarea:focus { box-shadow: inset 0 0 0 2px var(--accent); }
 .toolbar-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 .filter-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
 
-.filter-chip,
-.radius-options button {
+.filter-chip {
   min-height: 36px;
   padding: 7px 11px;
   border: 1px solid var(--line);
@@ -276,10 +274,8 @@ textarea:focus { box-shadow: inset 0 0 0 2px var(--accent); }
   font-size: 15px;
 }
 
-.filter-chip:hover,
-.radius-options button:hover { border-color: var(--line-strong); color: var(--text); }
-.filter-chip.is-active,
-.radius-options button.is-active { border-color: var(--accent); background: var(--accent-dark); color: var(--text); }
+.filter-chip:hover { border-color: var(--line-strong); color: var(--text); }
+.filter-chip.is-active { border-color: var(--accent); background: var(--accent-dark); color: var(--text); }
 
 .table-wrap { overflow: auto; padding: 8px; border: 1px solid var(--line); border-radius: 8px; }
 table { width: 100%; border-collapse: collapse; font-size: 15px; }
@@ -388,41 +384,6 @@ tbody tr:hover td { background: #191f2d; }
 
 .map-stage { position: relative; min-width: 0; background: #171b24; }
 #marketMap { width: 100%; height: 100%; min-height: 650px; }
-.map-instruction {
-  position: absolute;
-  z-index: 500;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
-  max-width: calc(100% - 32px);
-  padding: 8px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: rgba(13, 16, 23, .92);
-  color: var(--text-secondary);
-  font-size: 12px;
-  text-align: center;
-  pointer-events: none;
-}
-
-.map-center-action {
-  position: absolute;
-  z-index: 500;
-  top: 12px;
-  left: 52px;
-  min-height: 40px;
-  padding: 8px 12px;
-  border: 1px solid var(--line-strong);
-  border-radius: 6px;
-  background: rgba(20, 25, 37, .94);
-  color: var(--text);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.map-center-action:hover { border-color: var(--accent); background: #20283a; }
-
 .leaflet-container { background: #151a23; font-family: var(--sans); }
 .leaflet-control-zoom a { background: var(--surface-raised) !important; color: var(--text) !important; border-color: var(--line) !important; }
 .leaflet-control-attribution { background: rgba(13, 16, 23, .82) !important; color: var(--text-secondary) !important; }
@@ -441,23 +402,8 @@ tbody tr:hover td { background: #191f2d; }
 .marker-cluster-medium div,
 .marker-cluster-large div { background: var(--accent-dark); color: var(--text); font-family: var(--mono); }
 
-.radius-options { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-.radius-options button { min-width: 0; padding: 7px 4px; font-family: var(--mono); font-size: 12px; }
-
-.radius-empty { min-height: 220px; display: grid; place-content: center; justify-items: center; color: var(--text-secondary); text-align: center; }
-.radius-empty svg { width: 44px; margin-bottom: 10px; fill: none; stroke: var(--line-strong); stroke-width: 2; }
-.radius-empty p { font-size: 15px; }
-.radius-total { margin: 18px 0; padding: 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); }
-.radius-total strong { display: block; font: 600 28px/1 var(--mono); }
-.radius-total span { margin-top: 5px; display: block; color: var(--text-secondary); font-size: 12px; }
-.radius-list { margin-bottom: 20px; }
-.analysis-rail h4 { margin: 0 0 8px; font-size: 15px; }
-.nearby-list { margin: 0; padding: 0; list-style: none; }
-.nearby-list li { padding: 9px 0; border-top: 1px solid var(--line); }
-.nearby-list strong { display: block; overflow: hidden; font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
-.nearby-list span { margin-top: 2px; display: block; color: var(--text-secondary); font: 12px/1.4 var(--mono); }
-
-.zone-analysis { margin-bottom: 20px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.summary-empty { margin: 0; color: var(--text-secondary); font-size: 12px; }
+.zone-analysis { margin-bottom: 20px; }
 .zone-overview p { margin: 0; color: var(--text-secondary); font-size: 12px; }
 .zone-overview dl { margin: 0; }
 .zone-overview dl div { padding: 7px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 12px; }
@@ -494,11 +440,9 @@ tbody tr:hover td { background: #191f2d; }
 @media (max-width: 1120px) {
   .market-workspace { grid-template-columns: 230px minmax(400px, 1fr); }
   .analysis-rail { grid-column: 1 / -1; border-top: 1px solid var(--line); border-left: 0; }
-  .analysis-rail { display: grid; grid-template-columns: 210px minmax(0, 1fr) minmax(220px, .7fr); gap: 18px; align-items: start; }
-  .zone-analysis { grid-column: 1; grid-row: 1 / span 3; margin: 0; padding: 0; border: 0; }
-  .analysis-rail > .rail-heading, .analysis-rail .radius-options { grid-column: 2; }
-  .radius-empty, #radiusResult { grid-column: 2; grid-row: 3; }
-  .data-note { grid-column: 3; grid-row: 1 / span 3; margin-top: 0; padding: 0; border: 0; }
+  .analysis-rail { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, .7fr); gap: 24px; align-items: start; }
+  .zone-analysis { margin: 0; }
+  .data-note { margin-top: 0; padding-top: 0; border-top: 0; }
 }
 
 @media (max-width: 780px) {
@@ -523,7 +467,8 @@ tbody tr:hover td { background: #191f2d; }
   .map-stage { min-height: 56vh; }
   #marketMap { min-height: 56vh; }
   .analysis-rail { display: block; border-top: 1px solid var(--line); }
-  .radius-empty { min-height: 150px; }
+  .zone-analysis { margin-bottom: 20px; }
+  .data-note { padding-top: 14px; border-top: 1px solid var(--line); }
 }
 
 @media (max-width: 520px) {

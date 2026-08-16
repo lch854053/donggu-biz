@@ -2,7 +2,6 @@ import {
   countBy,
   filterStores,
   pointInGeometry,
-  storesInRadius,
   summarizeStores
 } from "./lib/market.js";
 
@@ -282,9 +281,6 @@ let zoneLayer;
 let zoneCoveredIds = new Set();
 let selectedZoneNo = "";
 const zoneLeafletByNo = new Map();
-let radiusCenter = null;
-let radiusMeters = 500;
-let radiusCircle;
 let queryTimer;
 
 async function initializeMarket() {
@@ -360,7 +356,6 @@ function initializeMap() {
     maxClusterRadius: 46,
     showCoverageOnHover: false
   }).addTo(marketMap);
-  marketMap.on("click", (event) => setRadiusCenter(event.latlng));
 }
 
 function selectedZone() {
@@ -467,7 +462,6 @@ function buildStoreMarkers() {
     const marker = L.marker([store.latitude, store.longitude], { icon, title: store.name });
     marker.store = store;
     marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(store.name)}${store.branch ? ` ${escapeHtml(store.branch)}` : ""}</strong><span>${escapeHtml(store.smallName || store.largeName)}</span><span>${escapeHtml(store.address)}</span></div>`);
-    marker.on("click", () => setRadiusCenter(marker.getLatLng(), store));
     return marker;
   });
 }
@@ -480,7 +474,6 @@ function applyMarketFilters() {
   renderMarketMetrics();
   renderCategorySummary();
   renderZoneOverview();
-  if (radiusCenter) renderRadiusAnalysis();
 }
 
 function renderMarketMetrics() {
@@ -496,7 +489,7 @@ function renderMarketMetrics() {
 }
 
 function summaryRows(counts, total, limit = 6) {
-  if (!counts.length) return '<p class="radius-empty">조건에 맞는 업소가 없습니다.</p>';
+  if (!counts.length) return '<p class="summary-empty">조건에 맞는 업소가 없습니다.</p>';
   const max = counts[0].count || 1;
   return counts.slice(0, limit).map(({ name, count }) => `<div class="summary-row">
     <div class="summary-label"><span>${escapeHtml(name)}</span><strong>${count.toLocaleString("ko-KR")}</strong></div>
@@ -512,7 +505,7 @@ function renderZoneOverview() {
   const zone = selectedZone();
   $("zoneCountBadge").textContent = `${mainBizZones.length}개 경계`;
   if (!mainBizZones.length) {
-    $("zoneOverview").innerHTML = "<p>주요상권 데이터가 없어 점포·반경 분석만 제공합니다.</p>";
+    $("zoneOverview").innerHTML = "<p>주요상권 데이터가 없어 점포·업종 필터만 제공합니다.</p>";
     return;
   }
   const generated = zoneMeta.generatedAt
@@ -548,32 +541,6 @@ function selectZone(number, fitBounds) {
   if (fitBounds && layer) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
 }
 
-function setRadiusCenter(latlng, store = null) {
-  radiusCenter = { latitude: latlng.lat, longitude: latlng.lng };
-  if (radiusCircle) radiusCircle.remove();
-  radiusCircle = L.circle(latlng, {
-    radius: radiusMeters,
-    color: "#75aaff",
-    weight: 2,
-    fillColor: "#3978cf",
-    fillOpacity: .12
-  }).addTo(marketMap);
-  $("radiusPosition").textContent = store ? store.name : `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
-  $("mapInstruction").textContent = `${radiusMeters >= 1000 ? `${radiusMeters / 1000}km` : `${radiusMeters}m`} 반경 · 현재 필터 기준`;
-  renderRadiusAnalysis();
-}
-
-function renderRadiusAnalysis() {
-  const nearby = storesInRadius(visibleStores, radiusCenter, radiusMeters);
-  $("radiusEmpty").hidden = true;
-  $("radiusResult").hidden = false;
-  $("radiusTotal").textContent = nearby.length.toLocaleString("ko-KR");
-  $("radiusCategories").innerHTML = summaryRows(countBy(nearby.map((entry) => entry.store), "smallName"), nearby.length, 5);
-  $("nearbyList").innerHTML = nearby.length
-    ? nearby.slice(0, 7).map(({ store, distance }) => `<li><strong>${escapeHtml(store.name)}</strong><span>${Math.round(distance).toLocaleString("ko-KR")}m · ${escapeHtml(store.smallName || store.largeName)}</span></li>`).join("")
-    : "<li><span>현재 조건과 반경에 해당하는 업소가 없습니다.</span></li>";
-}
-
 $("largeFilter").addEventListener("change", () => { updateMiddleOptions(); applyMarketFilters(); });
 $("middleFilter").addEventListener("change", () => { updateSmallOptions(); applyMarketFilters(); });
 $("smallFilter").addEventListener("change", applyMarketFilters);
@@ -588,18 +555,6 @@ $("marketQuery").addEventListener("input", () => {
   clearTimeout(queryTimer);
   queryTimer = setTimeout(applyMarketFilters, 180);
 });
-$("radiusOptions").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-radius]");
-  if (!button) return;
-  radiusMeters = Number(button.dataset.radius);
-  document.querySelectorAll("#radiusOptions button").forEach((item) => {
-    const active = item === button;
-    item.classList.toggle("is-active", active);
-    item.setAttribute("aria-pressed", String(active));
-  });
-  if (radiusCenter) setRadiusCenter({ lat: radiusCenter.latitude, lng: radiusCenter.longitude });
-});
-$("useMapCenterBtn").addEventListener("click", () => setRadiusCenter(marketMap.getCenter()));
 $("resetMarketBtn").addEventListener("click", () => {
   $("marketQuery").value = "";
   $("dongFilter").value = "";
