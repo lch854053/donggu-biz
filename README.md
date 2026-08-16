@@ -8,6 +8,7 @@
 - 상태별 필터와 CSV 다운로드
 - 광주 동구 상가업소 지도와 업종·행정동 필터
 - 선택 지점 기준 250m~2km 반경 업종 분석
+- VWorld 주요상권 경계와 상권 내부 점포·업종 분석
 
 ## 환경변수
 
@@ -16,6 +17,8 @@
 ```text
 NTS_API_KEY=국세청_사업자상태조회_서비스키
 SDSC_SERVICE_KEY=소상공인시장진흥공단_상가정보_서비스키
+VWORLD_KEY=VWorld_2D데이터_API키
+VWORLD_DOMAIN=https://biz-lookup.vercel.app
 ```
 
 API 키는 브라우저 코드나 정적 JSON에 포함하지 않습니다.
@@ -25,9 +28,10 @@ API 키는 브라우저 코드나 정적 JSON에 포함하지 않습니다.
 ```bash
 npm install
 npm run update-stores
+npm run update-zones
 ```
 
-상가 데이터는 `data/stores_donggu.json`에 저장됩니다. GitHub Actions는 매월 5일 전체 데이터를 다시 수집하며 `SDSC_SERVICE_KEY` 저장소 Secret이 필요합니다.
+상가 데이터는 `data/stores_donggu.json`, 주요상권 경계는 `data/mainbiz_zones_donggu.geojson`에 저장됩니다. GitHub Actions는 매월 5일 전체 데이터를 다시 수집하며 `SDSC_SERVICE_KEY`와 `VWORLD_KEY` 저장소 Secret이 필요합니다.
 
 ## 로컬 실행
 

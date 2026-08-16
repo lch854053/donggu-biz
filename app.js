@@ -1,6 +1,7 @@
 import {
   countBy,
   filterStores,
+  pointInGeometry,
   storesInRadius,
   summarizeStores
 } from "./lib/market.js";
@@ -275,6 +276,12 @@ let marketMeta = null;
 let marketMap;
 let markerCluster;
 let storeMarkers = [];
+let mainBizZones = [];
+let zoneMeta = {};
+let zoneLayer;
+let zoneCoveredIds = new Set();
+let selectedZoneNo = "";
+const zoneLeafletByNo = new Map();
 let radiusCenter = null;
 let radiusMeters = 500;
 let radiusCircle;
@@ -287,14 +294,39 @@ async function initializeMarket() {
   }
   marketInitialized = true;
   try {
-    const response = await fetch("data/stores_donggu.json");
+    const [response, zoneResponse] = await Promise.all([
+      fetch("data/stores_donggu.json"),
+      fetch("data/mainbiz_zones_donggu.geojson").catch(() => null)
+    ]);
     if (!response.ok) throw new Error(`상가정보 파일을 불러오지 못했습니다. HTTP ${response.status}`);
     const payload = await response.json();
+    let zonePayload = { features: [], meta: {} };
+    if (zoneResponse?.ok) {
+      try {
+        zonePayload = await zoneResponse.json();
+      } catch (error) {
+        console.error("[mainbiz-zones] invalid JSON", error);
+      }
+    }
     allStores = Array.isArray(payload.stores) ? payload.stores : [];
     marketMeta = payload.meta || {};
+    mainBizZones = Array.isArray(zonePayload.features) ? zonePayload.features : [];
+    zoneMeta = zonePayload.meta || {};
     if (!allStores.length) throw new Error("상가정보 파일에 표시할 업소가 없습니다.");
     initializeMap();
     populateMarketFilters();
+    try {
+      buildZoneLayer();
+    } catch (error) {
+      console.error("[mainbiz-zones] layer unavailable", error);
+      mainBizZones = [];
+      zoneMeta = {};
+      zoneLayer = null;
+      zoneCoveredIds = new Set();
+      populateMarketFilters();
+      $("zoneLayerToggle").checked = false;
+      $("zoneLayerToggle").disabled = true;
+    }
     buildStoreMarkers();
     applyMarketFilters();
     renderMarketMeta();
@@ -331,6 +363,48 @@ function initializeMap() {
   marketMap.on("click", (event) => setRadiusCenter(event.latlng));
 }
 
+function selectedZone() {
+  return mainBizZones.find((feature) => feature.properties.no === selectedZoneNo) || null;
+}
+
+function zoneStyle(feature) {
+  const selected = feature.properties.no === selectedZoneNo;
+  return {
+    color: selected ? "#83b3ff" : "#f2ce68",
+    weight: selected ? 3 : 2,
+    opacity: selected ? 1 : .82,
+    fillColor: selected ? "#5b98ff" : "#f2ce68",
+    fillOpacity: selected ? .18 : .06
+  };
+}
+
+function buildZoneLayer() {
+  zoneCoveredIds = new Set();
+  mainBizZones.forEach((feature) => {
+    allStores.forEach((store) => {
+      if (pointInGeometry(store.longitude, store.latitude, feature.geometry)) zoneCoveredIds.add(store.id);
+    });
+  });
+  zoneLayer = L.geoJSON({ type: "FeatureCollection", features: mainBizZones }, {
+    style: zoneStyle,
+    onEachFeature(feature, layer) {
+      const properties = feature.properties;
+      zoneLeafletByNo.set(properties.no, layer);
+      layer.bindTooltip(properties.name, { sticky: true, direction: "top" });
+      layer.on({
+        click(event) {
+          L.DomEvent.stopPropagation(event.originalEvent);
+          selectZone(properties.no, true);
+        },
+        mouseover() { if (properties.no !== selectedZoneNo) layer.setStyle({ weight: 3, fillOpacity: .12 }); },
+        mouseout() { zoneLayer.resetStyle(layer); }
+      });
+    }
+  }).addTo(marketMap);
+  $("zoneLayerToggle").checked = true;
+  $("zoneLayerToggle").disabled = !mainBizZones.length;
+}
+
 function createOption(value, label) {
   return new Option(label, value);
 }
@@ -353,6 +427,11 @@ function populateMarketFilters() {
   replaceOptions($("dongFilter"), [...new Set(allStores.map((store) => store.adminDong).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "ko")).map((name) => ({ value: name, label: name })), "전체 행정동");
   replaceOptions($("largeFilter"), uniqueCategories(allStores, "largeCode", "largeName"), "전체 대분류");
+  replaceOptions($("zoneFilter"), mainBizZones.map((feature) => ({
+    value: feature.properties.no,
+    label: feature.properties.name
+  })), "전체 지역");
+  $("zoneFilter").disabled = !mainBizZones.length;
 }
 
 function updateMiddleOptions() {
@@ -371,12 +450,14 @@ function updateSmallOptions() {
 }
 
 function currentMarketFilters() {
+  const zone = selectedZone();
   return {
     query: $("marketQuery").value,
     adminDong: $("dongFilter").value,
     largeCode: $("largeFilter").value,
     middleCode: $("middleFilter").value,
-    smallCode: $("smallFilter").value
+    smallCode: $("smallFilter").value,
+    zoneGeometry: zone?.geometry || null
   };
 }
 
@@ -398,6 +479,7 @@ function applyMarketFilters() {
   markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
   renderMarketMetrics();
   renderCategorySummary();
+  renderZoneOverview();
   if (radiusCenter) renderRadiusAnalysis();
 }
 
@@ -408,6 +490,8 @@ function renderMarketMetrics() {
   $("metricFiltered").textContent = visibleSummary.total.toLocaleString("ko-KR");
   $("metricDongs").textContent = `${visibleSummary.dongCount}개`;
   $("metricTop").textContent = visibleSummary.topLarge?.name || "-";
+  const coverage = allStores.length ? Math.round(zoneCoveredIds.size / allStores.length * 100) : 0;
+  $("metricZones").textContent = mainBizZones.length ? `${zoneCoveredIds.size.toLocaleString("ko-KR")} · ${coverage}%` : "미제공";
   $("filterCount").textContent = `${visibleSummary.total.toLocaleString("ko-KR")}건`;
 }
 
@@ -422,6 +506,46 @@ function summaryRows(counts, total, limit = 6) {
 
 function renderCategorySummary() {
   $("categorySummary").innerHTML = summaryRows(countBy(visibleStores, "largeName"), visibleStores.length);
+}
+
+function renderZoneOverview() {
+  const zone = selectedZone();
+  $("zoneCountBadge").textContent = `${mainBizZones.length}개 경계`;
+  if (!mainBizZones.length) {
+    $("zoneOverview").innerHTML = "<p>주요상권 데이터가 없어 점포·반경 분석만 제공합니다.</p>";
+    return;
+  }
+  const generated = zoneMeta.generatedAt
+    ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(zoneMeta.generatedAt))
+    : "미확인";
+  if (!zone) {
+    const outside = allStores.length - zoneCoveredIds.size;
+    $("zoneOverview").innerHTML = `<dl>
+      <div><dt>등록 경계</dt><dd>${mainBizZones.length}개</dd></div>
+      <div><dt>경계 내부</dt><dd>${zoneCoveredIds.size.toLocaleString("ko-KR")}개</dd></div>
+      <div><dt>경계 외부</dt><dd>${outside.toLocaleString("ko-KR")}개</dd></div>
+      <div><dt>경계 갱신일</dt><dd>${escapeHtml(generated)}</dd></div>
+    </dl>`;
+    return;
+  }
+  const zoneStores = filterStores(allStores, { zoneGeometry: zone.geometry });
+  const area = Number(zone.properties.areaSqm || 0) / 1e6;
+  $("zoneOverview").innerHTML = `<p class="zone-name">${escapeHtml(zone.properties.name)}</p>
+    <dl>
+      <div><dt>경계 면적</dt><dd>${area.toFixed(3)}㎢</dd></div>
+      <div><dt>전체 점포</dt><dd>${zoneStores.length.toLocaleString("ko-KR")}개</dd></div>
+      <div><dt>현재 조건</dt><dd>${visibleStores.length.toLocaleString("ko-KR")}개</dd></div>
+    </dl>
+    <div class="zone-categories">${summaryRows(countBy(visibleStores, "largeName"), visibleStores.length, 3)}</div>`;
+}
+
+function selectZone(number, fitBounds) {
+  selectedZoneNo = String(number || "");
+  $("zoneFilter").value = selectedZoneNo;
+  zoneLayer?.setStyle(zoneStyle);
+  applyMarketFilters();
+  const layer = zoneLeafletByNo.get(selectedZoneNo);
+  if (fitBounds && layer) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
 }
 
 function setRadiusCenter(latlng, store = null) {
@@ -454,6 +578,12 @@ $("largeFilter").addEventListener("change", () => { updateMiddleOptions(); apply
 $("middleFilter").addEventListener("change", () => { updateSmallOptions(); applyMarketFilters(); });
 $("smallFilter").addEventListener("change", applyMarketFilters);
 $("dongFilter").addEventListener("change", applyMarketFilters);
+$("zoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
+$("zoneLayerToggle").addEventListener("change", (event) => {
+  if (!zoneLayer) return;
+  if (event.target.checked) zoneLayer.addTo(marketMap);
+  else zoneLayer.remove();
+});
 $("marketQuery").addEventListener("input", () => {
   clearTimeout(queryTimer);
   queryTimer = setTimeout(applyMarketFilters, 180);
@@ -475,7 +605,7 @@ $("resetMarketBtn").addEventListener("click", () => {
   $("dongFilter").value = "";
   $("largeFilter").value = "";
   updateMiddleOptions();
-  applyMarketFilters();
+  selectZone("", false);
   marketMap?.setView(DONGGU_CENTER, 14);
 });
 

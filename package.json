@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "node --test",
-    "update-stores": "node scripts/update-stores.mjs"
+    "update-stores": "node scripts/update-stores.mjs",
+    "update-zones": "node scripts/update-mainbiz-zones.mjs"
   },
   "engines": {
     "node": ">=20"
