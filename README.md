@@ -1,0 +1,44 @@
+# 동구 사업자·상권 조회
+
+광주 동구 행정·실무자를 위한 사업자 상태 일괄조회와 상가 업종 분석 서비스입니다.
+
+## 기능
+
+- 사업자등록번호 계속·휴업·폐업 상태 일괄조회
+- 상태별 필터와 CSV 다운로드
+- 광주 동구 상가업소 지도와 업종·행정동 필터
+- 선택 지점 기준 250m~2km 반경 업종 분석
+
+## 환경변수
+
+`.env.example`을 참고해 다음 키를 설정합니다.
+
+```text
+NTS_API_KEY=국세청_사업자상태조회_서비스키
+SDSC_SERVICE_KEY=소상공인시장진흥공단_상가정보_서비스키
+```
+
+API 키는 브라우저 코드나 정적 JSON에 포함하지 않습니다.
+
+## 데이터 갱신
+
+```bash
+npm install
+npm run update-stores
+```
+
+상가 데이터는 `data/stores_donggu.json`에 저장됩니다. GitHub Actions는 매월 5일 전체 데이터를 다시 수집하며 `SDSC_SERVICE_KEY` 저장소 Secret이 필요합니다.
+
+## 로컬 실행
+
+Vercel CLI를 설치한 뒤 실행합니다.
+
+```bash
+vercel dev
+```
+
+## 테스트
+
+```bash
+npm test
+```

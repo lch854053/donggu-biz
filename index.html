@@ -1,376 +1,197 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>사업자 일괄조회</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117; --bg2: #171923; --bg3: #1e2130;
-    --border: #2a2f45; --border2: #363d58;
-    --accent: #4f8ef7; --accent2: #7eb8ff;
-    --text: #e8ecf5; --text2: #9aa3bf; --text3: #5c6480;
-    --green: #3dd68c; --green-bg: #0d2b1f;
-    --red: #f56565;   --red-bg: #2b0d0d;
-    --yellow: #f6c90e; --yellow-bg: #2b250d;
-    --mono: 'JetBrains Mono', monospace;
-    --sans: 'Noto Sans KR', sans-serif;
-    --radius: 8px; --radius-lg: 12px;
-  }
-  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
-
-  /* HEADER */
-  header { border-bottom: 1px solid var(--border); padding: 20px 32px; display: flex; align-items: center; gap: 12px; background: var(--bg2); }
-  .logo-mark { width: 32px; height: 32px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 14px; font-weight: 600; color: #fff; flex-shrink: 0; }
-  header h1 { font-size: 15px; font-weight: 700; color: var(--text); }
-  header span { font-size: 12px; color: var(--text3); margin-left: 8px; }
-
-  /* MAIN */
-  main { max-width: 1100px; margin: 0 auto; padding: 32px 24px 80px; }
-
-  /* SECTION LABEL */
-  .section-label { font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
-
-  /* INPUT */
-  .input-area-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 16px; }
-  .input-toolbar { display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); gap: 8px; background: var(--bg3); flex-wrap: wrap; }
-  .input-toolbar .hint { font-size: 12px; color: var(--text3); flex: 1; }
-  textarea { width: 100%; min-height: 200px; background: var(--bg2); border: none; padding: 16px; font-family: var(--mono); font-size: 13px; color: var(--text); resize: vertical; outline: none; line-height: 1.8; }
-  textarea::placeholder { color: var(--text3); }
-
-  /* BUTTONS */
-  .btn { border: none; border-radius: var(--radius); padding: 8px 16px; cursor: pointer; font-family: var(--sans); font-size: 13px; font-weight: 500; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
-  .btn-primary { background: var(--accent); color: #fff; }
-  .btn-primary:hover { background: #6aa3ff; }
-  .btn-primary:disabled { background: var(--border2); color: var(--text3); cursor: not-allowed; }
-  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
-  .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
-  .btn-success { background: #1a4d34; border: 1px solid #2d7a54; color: var(--green); }
-  .btn-success:hover { background: #1f5c3e; }
-
-  .action-row { display: flex; gap: 10px; align-items: center; margin-bottom: 28px; flex-wrap: wrap; }
-  .count-badge { font-family: var(--mono); font-size: 12px; color: var(--text3); background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; padding: 4px 10px; }
-
-  /* PROGRESS */
-  .progress-wrap { margin-bottom: 20px; display: none; }
-  .progress-wrap.active { display: block; }
-  .progress-bar-bg { background: var(--bg3); border: 1px solid var(--border); border-radius: 4px; height: 6px; overflow: hidden; margin-bottom: 8px; }
-  .progress-bar-fill { height: 100%; background: var(--accent); border-radius: 4px; transition: width .3s ease; width: 0%; }
-  .progress-text { font-size: 12px; color: var(--text3); font-family: var(--mono); }
-
-  /* RESULTS */
-  .result-section { display: none; }
-  .result-section.active { display: block; }
-  .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
-  .result-stats { display: flex; gap: 16px; flex-wrap: wrap; }
-  .stat-chip { display: flex; align-items: center; gap: 6px; font-size: 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; padding: 4px 12px; }
-  .stat-dot { width: 7px; height: 7px; border-radius: 50%; }
-
-  .table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  thead { position: sticky; top: 0; z-index: 1; }
-  th { background: var(--bg3); padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text3); letter-spacing: 0.08em; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
-  td { padding: 11px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: rgba(79,142,247,0.04); }
-
-  .mono { font-family: var(--mono); font-size: 13px; }
-  .seq { color: var(--text3); font-family: var(--mono); font-size: 11px; }
-
-  .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 4px; white-space: nowrap; }
-  .badge-green  { background: var(--green-bg);  color: var(--green);  border: 1px solid #1a5e3a; }
-  .badge-red    { background: var(--red-bg);    color: var(--red);    border: 1px solid #5e1a1a; }
-  .badge-yellow { background: var(--yellow-bg); color: var(--yellow); border: 1px solid #5e4a0d; }
-  .badge-gray   { background: var(--bg3); color: var(--text3); border: 1px solid var(--border); }
-
-  .row-error td { background: rgba(245,101,101,0.04); }
-  .row-pending td { opacity: 0.5; }
-
-  /* FILTER TABS */
-  .filter-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
-  .tab { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 5px 12px; font-size: 12px; color: var(--text2); cursor: pointer; transition: all .15s; }
-  .tab:hover { border-color: var(--border2); color: var(--text); }
-  .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-
-  /* TOAST */
-  #toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius); padding: 10px 20px; font-size: 13px; color: var(--text); transition: transform .25s ease; pointer-events: none; z-index: 999; white-space: nowrap; }
-  #toast.show { transform: translateX(-50%) translateY(0); }
-
-  .empty-row td { text-align: center; padding: 40px; color: var(--text3); font-size: 13px; }
-
-  @media (max-width: 600px) {
-    main { padding: 20px 16px 60px; }
-    header { padding: 16px; }
-    th:nth-child(5), td:nth-child(5) { display: none; }
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="광주 동구 사업자 상태 일괄조회와 상가 업종·입지 분석">
+  <title>동구 사업자·상권 조회</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!--
+  THESIS: 사업자 한 건의 상태와 동구 전체 상가의 맥락을 같은 업무대 위에서 확인한다. 장식적인 대시보드 대신 조회와 판단이 바로 이어지는 관제 화면을 만든다.
+  OWN-WORLD: 청흑색 무광 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 기존 업무 도구 언어를 확장한다.
+  STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 필터·반경 분석 또는 CSV 내보내기로 업무를 끝낸다.
+  FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상권 탭은 좌측 필터·중앙 지도·우측 분석이 한 화면에 놓인다.
+  FORM: 통합 관제형, 구조 후보 5번, seed 859829d4.
+  FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
+  -->
+  <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
 
-<header>
-  <div class="logo-mark">BZ</div>
-  <div>
-    <h1>사업자 일괄조회<span>국세청 Open API 연동</span></h1>
-  </div>
-</header>
-
-<main>
-  <div class="section-label">사업자등록번호 입력</div>
-  <div class="input-area-wrap">
-    <div class="input-toolbar">
-      <span class="hint">한 줄에 하나씩, 또는 쉼표·탭으로 구분. 엑셀 복붙 가능. 하이픈(-) 자동 제거.</span>
-      <button class="btn btn-ghost" style="font-size:12px;" onclick="loadSample()">샘플</button>
-      <button class="btn btn-ghost" style="font-size:12px;" onclick="clearInput()">초기화</button>
+  <header class="site-header">
+    <div class="brand-mark" aria-hidden="true">DG</div>
+    <div class="brand-copy">
+      <h1>동구 사업자·상권 조회</h1>
+      <p>사업자 상태와 지역 상가정보를 한곳에서 확인합니다.</p>
     </div>
-    <textarea id="inputArea" placeholder="예시)&#10;1234567890&#10;123-45-67890&#10;9876543210"></textarea>
-  </div>
+    <div class="source-status" aria-label="연계 데이터 출처">
+      <span>국세청</span>
+      <span>소상공인시장진흥공단</span>
+    </div>
+  </header>
 
-  <div class="action-row">
-    <button class="btn btn-primary" id="runBtn" onclick="runLookup()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      조회 시작
+  <nav class="primary-tabs" aria-label="조회 서비스" role="tablist">
+    <button class="primary-tab is-active" id="tab-business" role="tab" aria-selected="true" aria-controls="panel-business" data-panel="business">
+      사업자 상태조회
     </button>
-    <button class="btn btn-ghost" id="stopBtn" onclick="stopLookup()" style="display:none;">중단</button>
-    <span class="count-badge" id="countBadge">0건 입력</span>
-  </div>
+    <button class="primary-tab" id="tab-market" role="tab" aria-selected="false" aria-controls="panel-market" data-panel="market">
+      동구 상권분석
+    </button>
+  </nav>
 
-  <div class="progress-wrap" id="progressWrap">
-    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
-    <div class="progress-text" id="progressText">대기 중...</div>
-  </div>
+  <main id="main-content">
+    <section class="service-panel" id="panel-business" role="tabpanel" aria-labelledby="tab-business">
+      <div class="business-layout">
+        <section class="input-station" aria-labelledby="business-input-title">
+          <div class="station-heading">
+            <div>
+              <h2 id="business-input-title">사업자등록번호 일괄조회</h2>
+              <p>줄바꿈, 쉼표, 탭으로 구분해 입력할 수 있습니다. 하이픈은 자동으로 제거됩니다.</p>
+            </div>
+            <span class="count-badge" id="countBadge">0건 입력</span>
+          </div>
+          <textarea id="inputArea" aria-label="사업자등록번호 입력" placeholder="1234567890&#10;123-45-67890&#10;9876543210"></textarea>
+          <div class="action-row">
+            <button class="button button-primary" id="runBtn" type="button">조회 시작</button>
+            <button class="button button-secondary" id="stopBtn" type="button" hidden>중단</button>
+            <button class="button button-quiet" id="sampleBtn" type="button">샘플 입력</button>
+            <button class="button button-quiet" id="clearBtn" type="button">초기화</button>
+          </div>
+          <div class="progress-wrap" id="progressWrap" hidden>
+            <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+            <p id="progressText" aria-live="polite">대기 중</p>
+          </div>
+        </section>
 
-  <div class="result-section" id="resultSection">
-    <div class="result-header">
-      <div class="result-stats" id="statsRow"></div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <div class="filter-tabs" id="filterTabs">
-          <button class="tab active" onclick="setFilter('all',this)">전체</button>
-          <button class="tab" onclick="setFilter('active',this)">계속사업자</button>
-          <button class="tab" onclick="setFilter('closed',this)">폐업·휴업</button>
-          <button class="tab" onclick="setFilter('error',this)">오류·미등록</button>
-        </div>
-        <button class="btn btn-success" onclick="downloadCSV()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          CSV 다운로드
-        </button>
+        <aside class="business-guide" aria-labelledby="business-guide-title">
+          <h2 id="business-guide-title">조회 기준</h2>
+          <dl>
+            <div><dt>1회 요청</dt><dd>최대 100건</dd></div>
+            <div><dt>상태 구분</dt><dd>계속·휴업·폐업</dd></div>
+            <div><dt>결과 활용</dt><dd>필터·CSV 저장</dd></div>
+          </dl>
+          <p>조회 결과는 국세청 사업자등록 상태조회 응답을 기준으로 합니다. 상권분석의 상가업소 목록과 자동으로 연결되지 않습니다.</p>
+        </aside>
       </div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>사업자등록번호</th>
-            <th>조회 결과</th>
-            <th>과세 유형</th>
-            <th>사업자 상태</th>
-            <th>폐업일</th>
-          </tr>
-        </thead>
-        <tbody id="resultBody"></tbody>
-      </table>
-    </div>
-  </div>
-</main>
 
-<div id="toast"></div>
+      <section class="result-section" id="resultSection" hidden aria-labelledby="business-result-title">
+        <div class="result-toolbar">
+          <div>
+            <h2 id="business-result-title">조회 결과</h2>
+            <div class="result-stats" id="statsRow"></div>
+          </div>
+          <div class="toolbar-actions">
+            <div class="filter-tabs" id="businessFilterTabs" aria-label="사업자 상태 필터">
+              <button class="filter-chip is-active" type="button" data-filter="all" aria-pressed="true">전체</button>
+              <button class="filter-chip" type="button" data-filter="active" aria-pressed="false">계속사업자</button>
+              <button class="filter-chip" type="button" data-filter="closed" aria-pressed="false">폐업·휴업</button>
+              <button class="filter-chip" type="button" data-filter="error" aria-pressed="false">오류·미등록</button>
+            </div>
+            <button class="button button-export" id="downloadBtn" type="button">CSV 다운로드</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>사업자등록번호</th><th>조회 결과</th><th>과세 유형</th><th>사업자 상태</th><th>폐업일</th></tr></thead>
+            <tbody id="resultBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </section>
 
-<script>
-let allResults = [];
-let currentFilter = 'all';
-let shouldStop = false;
+    <section class="service-panel" id="panel-market" role="tabpanel" aria-labelledby="tab-market" hidden>
+      <div class="market-heading">
+        <div>
+          <h2>동구 상가업소 현황</h2>
+          <p id="marketMeta">상가정보를 불러오는 중입니다.</p>
+        </div>
+        <button class="button button-secondary" id="resetMarketBtn" type="button">필터 초기화</button>
+      </div>
 
-function parseNumbers(raw) {
-  return raw.split(/[\n,\t]+/).map(s => s.replace(/[^0-9]/g,'').trim()).filter(s => s.length > 0);
-}
+      <div class="metric-strip" aria-label="상권 요약">
+        <div class="metric"><span>전체 업소</span><strong id="metricTotal">-</strong></div>
+        <div class="metric"><span>현재 조건</span><strong id="metricFiltered">-</strong></div>
+        <div class="metric"><span>행정동</span><strong id="metricDongs">-</strong></div>
+        <div class="metric"><span>최다 업종</span><strong id="metricTop">-</strong></div>
+      </div>
 
-function validateBizNo(no) {
-  if (no.length !== 10) return false;
-  const w = [1,3,7,1,3,7,1,3,5];
-  let sum = 0;
-  for (let i = 0; i < 9; i++) sum += parseInt(no[i]) * w[i];
-  sum += Math.floor((parseInt(no[8]) * 5) / 10);
-  return (10 - (sum % 10)) % 10 === parseInt(no[9]);
-}
+      <div class="market-state" id="marketState" role="status">상가정보 파일을 읽고 있습니다.</div>
 
-function formatBizNo(no) { return `${no.slice(0,3)}-${no.slice(3,5)}-${no.slice(5)}`; }
-function chunk(arr, size) { const c=[]; for(let i=0;i<arr.length;i+=size) c.push(arr.slice(i,i+size)); return c; }
+      <div class="market-workspace" id="marketWorkspace" hidden>
+        <aside class="filter-rail" aria-labelledby="market-filter-title">
+          <div class="rail-heading">
+            <h3 id="market-filter-title">조회 조건</h3>
+            <span id="filterCount">0건</span>
+          </div>
+          <label class="field">
+            <span>상호·주소 검색</span>
+            <input id="marketQuery" type="search" autocomplete="off" placeholder="상호명 또는 도로명">
+          </label>
+          <label class="field">
+            <span>행정동</span>
+            <select id="dongFilter"><option value="">전체 행정동</option></select>
+          </label>
+          <label class="field">
+            <span>업종 대분류</span>
+            <select id="largeFilter"><option value="">전체 대분류</option></select>
+          </label>
+          <label class="field">
+            <span>업종 중분류</span>
+            <select id="middleFilter" disabled><option value="">전체 중분류</option></select>
+          </label>
+          <label class="field">
+            <span>업종 소분류</span>
+            <select id="smallFilter" disabled><option value="">전체 소분류</option></select>
+          </label>
+          <div class="category-summary" id="categorySummary" aria-label="현재 조건 업종 구성"></div>
+        </aside>
 
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
-}
+        <section class="map-stage" aria-label="상가업소 지도">
+          <div id="marketMap"></div>
+          <button class="map-center-action" id="useMapCenterBtn" type="button">현재 지도 중심 분석</button>
+          <div class="map-instruction" id="mapInstruction">지도를 클릭하면 해당 지점의 반경 업종을 분석합니다.</div>
+        </section>
 
-document.getElementById('inputArea').addEventListener('input', updateCount);
-function updateCount() {
-  const n = parseNumbers(document.getElementById('inputArea').value);
-  document.getElementById('countBadge').textContent = `${n.length}건 입력`;
-}
-function loadSample() { document.getElementById('inputArea').value='1234567890\n2208808965\n1068617609\n2148788166\n1138600998'; updateCount(); }
-function clearInput() { document.getElementById('inputArea').value=''; updateCount(); }
+        <aside class="analysis-rail" aria-labelledby="radius-title">
+          <div class="rail-heading">
+            <h3 id="radius-title">반경 분석</h3>
+            <span id="radiusPosition">지점 미선택</span>
+          </div>
+          <div class="radius-options" id="radiusOptions" aria-label="분석 반경">
+            <button type="button" data-radius="250" aria-pressed="false">250m</button>
+            <button type="button" data-radius="500" class="is-active" aria-pressed="true">500m</button>
+            <button type="button" data-radius="1000" aria-pressed="false">1km</button>
+            <button type="button" data-radius="2000" aria-pressed="false">2km</button>
+          </div>
+          <div class="radius-empty" id="radiusEmpty">
+            <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 43s14-12.3 14-25A14 14 0 1 0 10 18c0 12.7 14 25 14 25Z"/><circle cx="24" cy="18" r="4"/></svg>
+            <p>지도에서 기준 지점을 선택하세요.</p>
+          </div>
+          <div id="radiusResult" hidden>
+            <div class="radius-total"><strong id="radiusTotal">0</strong><span>현재 필터 기준 업소</span></div>
+            <div class="radius-list" id="radiusCategories"></div>
+            <h4>가까운 업소</h4>
+            <ol class="nearby-list" id="nearbyList"></ol>
+          </div>
+          <div class="data-note">
+            <strong>해석 유의사항</strong>
+            <p>상가정보에는 매출·임대료·유동인구·사업자등록번호가 없습니다. 표시 건수는 수익성이나 영업 상태를 의미하지 않습니다.</p>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
 
-function getBadge(type, val, cd) {
-  if (type === 'result') {
-    if (val === 'fmt')  return '<span class="badge badge-red">형식 오류</span>';
-    if (val === 'api')  return '<span class="badge badge-yellow">API 오류</span>';
-    if (!val)           return '<span class="badge badge-gray">미등록</span>';
-    return '<span class="badge badge-green">조회 성공</span>';
-  }
-  if (type === 'tax') {
-    if (!val) return '<span class="badge badge-gray">-</span>';
-    const s = val.replace('부가가치세 ','').replace('과세자','').trim();
-    if (cd==='01') return `<span class="badge badge-green">${s}</span>`;
-    if (cd==='02') return `<span class="badge badge-yellow">${s}</span>`;
-    return `<span class="badge badge-gray">${s}</span>`;
-  }
-  if (type === 'status') {
-    if (!val) return '<span class="badge badge-gray">-</span>';
-    if (cd==='01') return `<span class="badge badge-green">● 계속사업자</span>`;
-    if (cd==='02') return `<span class="badge badge-yellow">◐ 휴업</span>`;
-    if (cd==='03') return `<span class="badge badge-red">✕ 폐업</span>`;
-    return `<span class="badge badge-gray">${val}</span>`;
-  }
-}
+  <div id="toast" role="status" aria-live="polite"></div>
 
-function renderTable() {
-  const body = document.getElementById('resultBody');
-  let f = allResults;
-  if (currentFilter==='active') f = allResults.filter(r => r.b_stt_cd==='01');
-  if (currentFilter==='closed') f = allResults.filter(r => r.b_stt_cd==='02'||r.b_stt_cd==='03');
-  if (currentFilter==='error')  f = allResults.filter(r => r.formatError||r.apiError||(!r.b_stt&&!r.formatError&&!r.apiError));
-  if (!f.length) { body.innerHTML='<tr class="empty-row"><td colspan="6">해당 결과 없음</td></tr>'; return; }
-
-  body.innerHTML = f.map((r,i) => {
-    const cls = r.formatError||r.apiError ? 'row-error' : (r.pending ? 'row-pending' : '');
-    const resKey = r.formatError ? 'fmt' : r.apiError ? 'api' : r.b_stt;
-    const dt = r.end_dt ? r.end_dt.replace(/(\d{4})(\d{2})(\d{2})/,'$1.$2.$3') : '-';
-    return `<tr class="${cls}">
-      <td class="seq">${i+1}</td>
-      <td class="mono">${formatBizNo(r.b_no)}</td>
-      <td>${getBadge('result', resKey)}</td>
-      <td>${getBadge('tax', r.tax_type, r.tax_type_cd)}</td>
-      <td>${getBadge('status', r.b_stt, r.b_stt_cd)}</td>
-      <td class="mono" style="color:var(--text3);font-size:12px;">${dt}</td>
-    </tr>`;
-  }).join('');
-}
-
-function renderStats() {
-  const total  = allResults.length;
-  const active = allResults.filter(r=>r.b_stt_cd==='01').length;
-  const closed = allResults.filter(r=>r.b_stt_cd==='02'||r.b_stt_cd==='03').length;
-  const errors = allResults.filter(r=>r.formatError||r.apiError||(!r.b_stt&&!r.formatError&&!r.apiError)).length;
-  document.getElementById('statsRow').innerHTML = `
-    <div class="stat-chip"><div class="stat-dot" style="background:var(--text3)"></div>전체 ${total}건</div>
-    <div class="stat-chip"><div class="stat-dot" style="background:var(--green)"></div>계속사업자 ${active}건</div>
-    <div class="stat-chip"><div class="stat-dot" style="background:var(--red)"></div>폐업·휴업 ${closed}건</div>
-    <div class="stat-chip"><div class="stat-dot" style="background:var(--yellow)"></div>오류·미등록 ${errors}건</div>`;
-}
-
-function setFilter(f, el) {
-  currentFilter = f;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  renderTable();
-}
-
-async function callProxy(bizNos) {
-  const res = await fetch('/api/lookup', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ b_no: bizNos })
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(()=>({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
-  }
-  const json = await res.json();
-  return json.data || [];
-}
-
-async function runLookup() {
-  const raw = document.getElementById('inputArea').value;
-  const nums = parseNumbers(raw);
-  if (!nums.length) { showToast('❗ 조회할 사업자번호를 입력해주세요.'); return; }
-
-  shouldStop = false;
-  document.getElementById('runBtn').disabled = true;
-  document.getElementById('stopBtn').style.display = 'inline-flex';
-  document.getElementById('progressWrap').classList.add('active');
-  document.getElementById('resultSection').classList.add('active');
-
-  allResults = nums.map(no => ({
-    b_no: no, formatError: !validateBizNo(no),
-    b_stt: null, b_stt_cd: null, tax_type: null, tax_type_cd: null, end_dt: null,
-    apiError: false, pending: true
-  }));
-  renderTable(); renderStats();
-
-  const valid  = allResults.filter(r => !r.formatError);
-  const chunks = chunk(valid, 100);
-  let done = 0;
-
-  for (const ch of chunks) {
-    if (shouldStop) break;
-    try {
-      const data = await callProxy(ch.map(r => r.b_no));
-      data.forEach(d => {
-        const row = allResults.find(r => r.b_no === d.b_no);
-        if (row) {
-          row.b_stt      = d.b_stt      || null;
-          row.b_stt_cd   = d.b_stt_cd   || null;
-          row.tax_type    = d.tax_type    || null;
-          row.tax_type_cd = d.tax_type_cd || null;
-          row.end_dt      = d.end_dt      || null;
-          row.pending     = false;
-        }
-      });
-      ch.forEach(r => { r.pending = false; });
-    } catch(e) {
-      ch.forEach(r => { r.apiError = true; r.pending = false; });
-      showToast(`오류: ${e.message}`);
-    }
-    done += ch.length;
-    const pct = Math.round((done / valid.length) * 100);
-    document.getElementById('progressFill').style.width = pct + '%';
-    document.getElementById('progressText').textContent = `${done} / ${valid.length}건 처리 중... (${pct}%)`;
-    renderTable(); renderStats();
-    await new Promise(r => setTimeout(r, 200));
-  }
-
-  document.getElementById('runBtn').disabled = false;
-  document.getElementById('stopBtn').style.display = 'none';
-  document.getElementById('progressText').textContent = shouldStop ? '중단되었습니다.' : `완료: 총 ${nums.length}건`;
-  document.getElementById('progressFill').style.width = '100%';
-  renderTable(); renderStats();
-  showToast(shouldStop ? '조회 중단' : `✓ 완료 (${nums.length}건)`);
-}
-
-function stopLookup() { shouldStop = true; document.getElementById('stopBtn').style.display = 'none'; }
-
-function downloadCSV() {
-  const headers = ['순번','사업자등록번호','형식오류','사업자상태','상태코드','과세유형','과세유형코드','폐업일'];
-  const rows = allResults.map((r,i) => [
-    i+1, formatBizNo(r.b_no),
-    r.formatError ? '형식오류' : '',
-    r.b_stt || (r.apiError ? 'API오류' : '미등록'),
-    r.b_stt_cd || '', r.tax_type || '', r.tax_type_cd || '',
-    r.end_dt ? r.end_dt.replace(/(\d{4})(\d{2})(\d{2})/,'$1.$2.$3') : ''
-  ]);
-  const bom = '\uFEFF';
-  const csv = bom + [headers,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-  a.download = `사업자조회_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click();
-  showToast('✓ CSV 다운로드 완료');
-}
-
-updateCount();
-</script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
