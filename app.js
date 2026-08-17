@@ -2,9 +2,7 @@ import {
   buildLocationFilter,
   buildLocationSelection,
   countBy,
-  filterStores,
-  pointInGeometry,
-  summarizeStores
+  filterStores
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
 
@@ -280,7 +278,6 @@ let markerCluster;
 let storeMarkers = [];
 let mainBizZones = [];
 let zoneLayer;
-let zoneCoveredIds = new Set();
 let selectedZoneNo = "";
 const zoneLeafletByNo = new Map();
 
@@ -327,7 +324,6 @@ async function initializeMarket() {
       console.error("[mainbiz-zones] layer unavailable", error);
       mainBizZones = [];
       zoneLayer = null;
-      zoneCoveredIds = new Set();
       populateMarketFilters();
     }
     buildStoreMarkers();
@@ -381,12 +377,6 @@ function zoneStyle(feature) {
 }
 
 function buildZoneLayer() {
-  zoneCoveredIds = new Set();
-  mainBizZones.forEach((feature) => {
-    allStores.forEach((store) => {
-      if (pointInGeometry(store.longitude, store.latitude, feature.geometry)) zoneCoveredIds.add(store.id);
-    });
-  });
   zoneLayer = L.geoJSON({ type: "FeatureCollection", features: mainBizZones }, {
     style: zoneStyle,
     onEachFeature(feature, layer) {
@@ -442,22 +432,12 @@ function buildStoreMarkers() {
 
 function applyMarketFilters() {
   visibleStores = filterStores(allStores, currentMarketFilters());
-  const visibleIds = new Set(visibleStores.map((store) => store.id));
   markerCluster.clearLayers();
-  markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
-  renderMarketMetrics();
+  if ($("dongFilter").value || selectedZoneNo) {
+    const visibleIds = new Set(visibleStores.map((store) => store.id));
+    markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
+  }
   renderSelectionOverview();
-}
-
-function renderMarketMetrics() {
-  const totalSummary = summarizeStores(allStores);
-  const visibleSummary = summarizeStores(visibleStores);
-  $("metricTotal").textContent = totalSummary.total.toLocaleString("ko-KR");
-  $("metricFiltered").textContent = visibleSummary.total.toLocaleString("ko-KR");
-  $("metricDongs").textContent = `${visibleSummary.dongCount}개`;
-  $("metricTop").textContent = visibleSummary.topLarge?.name || "-";
-  const coverage = allStores.length ? Math.round(zoneCoveredIds.size / allStores.length * 100) : 0;
-  $("metricZones").textContent = mainBizZones.length ? `${zoneCoveredIds.size.toLocaleString("ko-KR")} · ${coverage}%` : "미제공";
 }
 
 function summaryRows(counts, total, limit = 6) {

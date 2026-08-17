@@ -119,15 +119,6 @@
           <h2>동구 상가업소 현황</h2>
           <p id="marketMeta">상가정보를 불러오는 중입니다.</p>
         </div>
-        <button class="button button-secondary" id="resetMarketBtn" type="button">필터 초기화</button>
-      </div>
-
-      <div class="metric-strip" aria-label="상권 요약">
-        <div class="metric"><span>전체 업소</span><strong id="metricTotal">-</strong></div>
-        <div class="metric"><span>현재 조건</span><strong id="metricFiltered">-</strong></div>
-        <div class="metric"><span>행정동</span><strong id="metricDongs">-</strong></div>
-        <div class="metric"><span>최다 업종</span><strong id="metricTop">-</strong></div>
-        <div class="metric"><span>주요상권 포함</span><strong id="metricZones">-</strong></div>
       </div>
 
       <div class="market-state" id="marketState" role="status">상가정보 파일을 읽고 있습니다.</div>
@@ -136,6 +127,7 @@
         <aside class="filter-rail" aria-labelledby="market-filter-title">
           <div class="rail-heading">
             <h3 id="market-filter-title">조회 조건</h3>
+            <button class="button button-quiet rail-reset" id="resetMarketBtn" type="button">조회 초기화</button>
           </div>
           <label class="field">
             <span>행정동</span>
