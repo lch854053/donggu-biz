@@ -367,12 +367,14 @@ function selectedZone() {
 
 function zoneStyle(feature) {
   const selected = feature.properties.no === selectedZoneNo;
+  const overview = !selectedZoneNo;
+  const boundaryColor = overview ? "#ff9f43" : "#f2ce68";
   return {
-    color: selected ? "#83b3ff" : "#f2ce68",
-    weight: selected ? 3 : 2,
-    opacity: selected ? 1 : .82,
-    fillColor: selected ? "#5b98ff" : "#f2ce68",
-    fillOpacity: selected ? .18 : .06
+    color: selected ? "#83b3ff" : boundaryColor,
+    weight: selected || overview ? 3 : 2,
+    opacity: selected || overview ? 1 : .82,
+    fillColor: selected ? "#5b98ff" : boundaryColor,
+    fillOpacity: selected ? .18 : overview ? .12 : .06
   };
 }
 
@@ -388,7 +390,11 @@ function buildZoneLayer() {
           L.DomEvent.stopPropagation(event.originalEvent);
           selectZone(properties.no, true);
         },
-        mouseover() { if (properties.no !== selectedZoneNo) layer.setStyle({ weight: 3, fillOpacity: .12 }); },
+        mouseover() {
+          if (properties.no !== selectedZoneNo) {
+            layer.setStyle({ weight: selectedZoneNo ? 3 : 4, fillOpacity: selectedZoneNo ? .12 : .2 });
+          }
+        },
         mouseout() { zoneLayer.resetStyle(layer); }
       });
     }
