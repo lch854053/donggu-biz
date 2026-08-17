@@ -95,27 +95,41 @@ test("rejects invalid or sharply reduced zone snapshots", () => {
 });
 
 test("loads the manually registered commercial-zone boundaries", async () => {
-  const [payload, storePayload] = await Promise.all([
+  const [payload, storePayload, vworldPayload] = await Promise.all([
     readFile(new URL("../data/manual_mainbiz_zones_donggu.geojson", import.meta.url), "utf8").then(JSON.parse),
-    readFile(new URL("../data/stores_donggu.json", import.meta.url), "utf8").then(JSON.parse)
+    readFile(new URL("../data/stores_donggu.json", import.meta.url), "utf8").then(JSON.parse),
+    readFile(new URL("../data/mainbiz_zones_donggu.geojson", import.meta.url), "utf8").then(JSON.parse)
   ]);
-  assert.equal(payload.meta.zoneCount, 3);
-  assertZoneSnapshotHealthy({ features: payload.features, minimumCount: 3 });
+  assert.equal(payload.meta.zoneCount, 4);
+  assertZoneSnapshotHealthy({ features: payload.features, minimumCount: 4 });
   const sansu = payload.features.find((feature) => feature.properties.no === "manual-sansu-market");
   const artStreet = payload.features.find((feature) => feature.properties.no === "manual-art-street");
   const electronicsStreet = payload.features.find((feature) => feature.properties.no === "manual-electronics-street");
+  const daeinMarket = payload.features.find((feature) => feature.properties.no === "manual-daein-market");
   assert.equal(pointInGeometry(126.930954807232, 35.1537139906824, sansu.geometry), true);
   assert.equal(pointInGeometry(126.9189161085083, 35.14964229752389, artStreet.geometry), true);
   assert.equal(pointInGeometry(126.91363895181567, 35.15341760540318, electronicsStreet.geometry), true);
+  assert.equal(pointInGeometry(126.91680470501554, 35.153897541407304, daeinMarket.geometry), true);
   assert.ok(Math.abs(geometryAreaSqm(sansu.geometry) - sansu.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(artStreet.geometry) - artStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(electronicsStreet.geometry) - electronicsStreet.properties.areaSqm) < 1);
+  assert.ok(Math.abs(geometryAreaSqm(daeinMarket.geometry) - daeinMarket.properties.areaSqm) < 1);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 96);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 263);
+  const mergedZones = mergeZoneFeatures(vworldPayload, payload);
+  assert.equal(mergedZones.filter((feature) => feature.properties.name === "대인시장").length, 1);
+  assert.equal(mergedZones.find((feature) => feature.properties.name === "대인시장").properties.source, "manual");
+  assert.equal(storePayload.stores.filter((store) => mergedZones
+    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 856);
 });
 
 test("merges VWorld and manual zones while rejecting duplicate numbers", () => {
   const feature = (no) => ({ properties: { no } });
   assert.deepEqual(mergeZoneFeatures({ features: [feature("1")] }, { features: [feature("manual-1")] }).map((item) => item.properties.no), ["1", "manual-1"]);
+  assert.deepEqual(mergeZoneFeatures(
+    { features: [feature("1"), feature("2")] },
+    { features: [{ properties: { no: "manual-1", replacesVworldNo: "1" } }] }
+  ).map((item) => item.properties.no), ["2", "manual-1"]);
   assert.throws(() => mergeZoneFeatures({ features: [feature("1")] }, { features: [feature("1")] }), /중복/);
 });
 
