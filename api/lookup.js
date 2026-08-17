@@ -1,3 +1,9 @@
+const STATUS_API_URL = 'https://api.odcloud.kr/api/nts-businessman/v1/status';
+const MAX_UPSTREAM_ATTEMPTS = 4;
+const UPSTREAM_TIMEOUT_MS = 6000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+export const maxDuration = 30;
+
 export default async function handler(req, res) {
   const origin = req.headers.origin;
   const requestHost = req.headers.host;
@@ -41,28 +47,47 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API 키가 설정되지 않았습니다. Vercel 환경변수를 확인하세요.' });
   }
 
-  try {
-    const response = await fetch(
-      `https://api.odcloud.kr/api/nts-businessman/v1/status?serviceKey=${encodeURIComponent(apiKey)}`,
-      {
+  let lastFailure = null;
+  for (let attempt = 1; attempt <= MAX_UPSTREAM_ATTEMPTS; attempt += 1) {
+    try {
+      const url = `${STATUS_API_URL}?serviceKey=${encodeURIComponent(apiKey)}&returnType=JSON`;
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
         },
         body: JSON.stringify({ b_no }),
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return res.status(200).json(data);
       }
-    );
 
-    if (!response.ok) {
-      const text = await response.text();
-      return res.status(502).json({ error: `국세청 API 오류: HTTP ${response.status}`, detail: text });
+      const detail = await response.text();
+      lastFailure = { status: response.status, detail };
+      if (response.status < 500 && response.status !== 429) break;
+    } catch (error) {
+      lastFailure = { error };
     }
-
-    const data = await response.json();
-    return res.status(200).json(data);
-
-  } catch (err) {
-    return res.status(500).json({ error: `서버 오류: ${err.message}` });
+    if (attempt < MAX_UPSTREAM_ATTEMPTS) await sleep(250 * 2 ** (attempt - 1));
   }
+
+  if (lastFailure?.status) {
+    if (lastFailure.status < 500 && lastFailure.status !== 429) {
+      return res.status(502).json({
+        error: `국세청 API 요청이 거부되었습니다. HTTP ${lastFailure.status}`,
+        detail: lastFailure.detail,
+      });
+    }
+    res.setHeader('Retry-After', '5');
+    return res.status(503).json({
+      error: '국세청 API가 일시적으로 불안정합니다. 잠시 후 다시 조회해 주세요.',
+      detail: lastFailure.detail,
+    });
+  }
+  res.setHeader('Retry-After', '5');
+  return res.status(504).json({ error: '국세청 API 응답 시간이 초과되었습니다. 잠시 후 다시 조회해 주세요.' });
 }
