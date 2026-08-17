@@ -2,7 +2,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { geometryAreaSqm } from "../lib/market.js";
-import { assertZoneSnapshotHealthy } from "../lib/zone-update.js";
+import { assertZoneSnapshotHealthy, filterVworldZones } from "../lib/zone-update.js";
 
 const API_URL = "https://api.vworld.kr/req/data";
 const LAYER = "LT_C_DGMAINBIZ";
@@ -96,15 +96,16 @@ for (let index = 0; index < tiles.length; index += 1) {
   await sleep(80);
 }
 
-const features = [...byNumber.values()].sort((a, b) => a.properties.no.localeCompare(b.properties.no));
+const features = filterVworldZones([...byNumber.values()])
+  .sort((a, b) => a.properties.no.localeCompare(b.properties.no));
 let previousCount = null;
 try {
   const previous = JSON.parse(await readFile(outputPath, "utf8"));
-  previousCount = Number(previous?.meta?.zoneCount);
+  previousCount = filterVworldZones(previous?.features).length;
 } catch (error) {
   if (error?.code !== "ENOENT") throw new Error(`기존 주요상권 파일을 읽을 수 없습니다: ${error.message}`);
 }
-assertZoneSnapshotHealthy({ features, previousCount });
+assertZoneSnapshotHealthy({ features, previousCount, minimumCount: 3 });
 
 const payload = {
   type: "FeatureCollection",

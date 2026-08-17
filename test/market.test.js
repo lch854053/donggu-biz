@@ -10,7 +10,7 @@ import {
   toLegacyPnu
 } from "../lib/market.js";
 import { assertSnapshotHealthy } from "../lib/store-update.js";
-import { assertZoneSnapshotHealthy, mergeZoneFeatures } from "../lib/zone-update.js";
+import { assertZoneSnapshotHealthy, filterVworldZones, mergeZoneFeatures } from "../lib/zone-update.js";
 
 const stores = [
   { name: "동명카페", branch: "", address: "동명로", lotAddress: "동명동", buildingName: "", adminDong: "동명동", largeCode: "I2", largeName: "음식", middleCode: "I212", smallCode: "I21201", smallName: "카페", longitude: 126.92, latitude: 35.15 },
@@ -91,4 +91,17 @@ test("merges VWorld and manual zones while rejecting duplicate numbers", () => {
   const feature = (no) => ({ properties: { no } });
   assert.deepEqual(mergeZoneFeatures({ features: [feature("1")] }, { features: [feature("manual-1")] }).map((item) => item.properties.no), ["1", "manual-1"]);
   assert.throws(() => mergeZoneFeatures({ features: [feature("1")] }, { features: [feature("1")] }), /중복/);
+});
+
+test("excludes the four Geumnam-ro 4-ga Station zones", () => {
+  const feature = (no, name) => ({ properties: { no, name } });
+  const zones = [
+    feature("9730", "금남로4가역_1"),
+    feature("9731", "금남로4가역_2"),
+    feature("9732", "금남로4가역_3"),
+    feature("9733", "금남로4가역_4"),
+    feature("changed-number", "금남로4가역_1"),
+    feature("9734", "문화전당역")
+  ];
+  assert.deepEqual(filterVworldZones(zones).map((zone) => zone.properties.no), ["9734"]);
 });

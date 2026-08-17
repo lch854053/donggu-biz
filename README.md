@@ -32,6 +32,8 @@ npm run update-zones
 
 상가 데이터는 `data/stores_donggu.json`, VWorld 주요상권 경계는 `data/mainbiz_zones_donggu.geojson`, 수동 등록 경계는 `data/manual_mainbiz_zones_donggu.geojson`에 저장됩니다. GitHub Actions는 매월 5일 API 기반 데이터를 다시 수집하며 수동 등록 경계는 별도 파일에 보존됩니다. `SDSC_SERVICE_KEY`와 `VWORLD_KEY` 저장소 Secret이 필요합니다.
 
+VWorld 주요상권 중 금남로4가역 1~4 경계는 수집 결과와 화면에서 제외합니다.
+
 ## 로컬 실행
 
 Vercel CLI를 설치한 뒤 실행합니다.

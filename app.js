@@ -4,7 +4,7 @@ import {
   pointInGeometry,
   summarizeStores
 } from "./lib/market.js";
-import { mergeZoneFeatures } from "./lib/zone-update.js";
+import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({
@@ -317,7 +317,8 @@ async function initializeMarket() {
     allStores = Array.isArray(payload.stores) ? payload.stores : [];
     marketMeta = payload.meta || {};
     const manualZones = Array.isArray(manualZonePayload.features) ? manualZonePayload.features : [];
-    mainBizZones = mergeZoneFeatures(zonePayload, manualZonePayload);
+    const visibleVworldPayload = { features: filterVworldZones(zonePayload.features) };
+    mainBizZones = mergeZoneFeatures(visibleVworldPayload, manualZonePayload);
     zoneMeta = { ...(zonePayload.meta || {}), manualZoneCount: manualZones.length };
     if (!allStores.length) throw new Error("상가정보 파일에 표시할 업소가 없습니다.");
     initializeMap();
