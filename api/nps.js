@@ -1,4 +1,4 @@
-import { compactWorkplace, compactWorkplaceDetail, parseNpsResponse, toBizNoPrefix } from '../lib/nps.js';
+import { compactWorkplace, compactWorkplaceDetail, parseNpsBody, toBizNoPrefix } from '../lib/nps.js';
 
 const BASE_URL = 'https://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2';
 const MAX_UPSTREAM_ATTEMPTS = 4;
@@ -19,7 +19,7 @@ function digitsOnly(value, maxLength) {
 
 function buildRequest(query, apiKey) {
   const action = String(query.action || 'search');
-  const params = new URLSearchParams({ serviceKey: apiKey, resultType: 'json' });
+  const params = new URLSearchParams({ serviceKey: apiKey });
 
   if (action === 'detail') {
     const seq = digitsOnly(query.seq, 20);
@@ -84,27 +84,18 @@ export default async function handler(req, res) {
   for (let attempt = 1; attempt <= MAX_UPSTREAM_ATTEMPTS; attempt += 1) {
     try {
       const response = await fetch(request.url, {
-        headers: { Accept: 'application/json' },
+        headers: { Accept: 'application/xml, application/json' },
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
       });
 
       const body = await response.text();
       if (response.ok) {
-        let payload;
-        try {
-          payload = JSON.parse(body);
-        } catch {
-          // 서비스키 오류 등은 XML 오류 문서로 돌아온다.
-          const reason = body.match(/<returnAuthMsg>(.*?)<\/returnAuthMsg>/)?.[1]
-            || body.match(/<errMsg>(.*?)<\/errMsg>/)?.[1]
-            || 'JSON이 아닌 응답';
-          return res.status(502).json({ error: `국민연금 API가 오류를 반환했습니다: ${reason}` });
-        }
+        // 이 서비스는 XML로 응답하며, 서비스키 오류도 XML 오류 문서로 돌아온다.
         let parsed;
         try {
-          parsed = parseNpsResponse(payload);
+          parsed = parseNpsBody(body);
         } catch (error) {
-          return res.status(502).json({ error: error.message });
+          return res.status(502).json({ error: error.message, detail: body.slice(0, 300) });
         }
         const compact = request.action === 'detail' ? compactWorkplaceDetail : compactWorkplace;
         return res.status(200).json({

@@ -6,7 +6,9 @@ import {
   compactWorkplace,
   compactWorkplaceDetail,
   ksicSection,
+  parseNpsBody,
   parseNpsResponse,
+  parseNpsXml,
   summarizeWorkplaces,
   toBizNoPrefix
 } from "../lib/nps.js";
@@ -116,6 +118,63 @@ test("사업장 통계는 상태·형태·업종·도로명을 함께 집계한�
   assert.equal(summary.sections[0].count, 2);
   assert.equal(summary.areas[0].name, "동구 서남로");
   assert.equal(summary.areas[0].count, 2);
+});
+
+const sampleXml = `<?xml version="1.0" encoding="UTF-8"?>
+<response>
+  <header><resultCode>00</resultCode><resultMsg>NORMAL SERVICE.</resultMsg></header>
+  <body>
+    <items>
+      <item>
+        <seq>20240101</seq>
+        <wkplNm><![CDATA[광주동구청 &amp; 부속기관]]></wkplNm>
+        <bzowrRgstNo>408815</bzowrRgstNo>
+        <wkplRoadNmDtlAddr>광주광역시 동구 서남로</wkplRoadNmDtlAddr>
+        <wkplJnngStcd>1</wkplJnngStcd>
+        <wkplStylDvcd>1</wkplStylDvcd>
+        <wkplIntpCd>84111</wkplIntpCd>
+        <dataCrtYm>202607</dataCrtYm>
+      </item>
+      <item>
+        <seq>20240102</seq>
+        <wkplNm>동구식당</wkplNm>
+        <bzowrRgstNo>408816</bzowrRgstNo>
+        <wkplRoadNmDtlAddr>광주광역시 동구 제봉로</wkplRoadNmDtlAddr>
+        <wkplJnngStcd>2</wkplJnngStcd>
+        <wkplStylDvcd>2</wkplStylDvcd>
+        <wkplIntpCd>56111</wkplIntpCd>
+        <dataCrtYm>202607</dataCrtYm>
+      </item>
+    </items>
+    <numOfRows>10</numOfRows><pageNo>1</pageNo><totalCount>1234</totalCount>
+  </body>
+</response>`;
+
+test("XML 응답에서 항목과 전체 건수를 읽는다", () => {
+  const parsed = parseNpsXml(sampleXml);
+  assert.equal(parsed.items.length, 2);
+  assert.equal(parsed.totalCount, 1234);
+  assert.equal(parsed.items[0].wkplNm, "광주동구청 & 부속기관");
+  assert.equal(parsed.items[1].wkplIntpCd, "56111");
+});
+
+test("XML 인증 오류 문서는 사유를 담아 오류로 올린다", () => {
+  const xml = `<OpenAPI_ServiceResponse><cmmMsgHeader>
+    <returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg>
+    <returnReasonCode>30</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>`;
+  assert.throws(() => parseNpsXml(xml), /30.*SERVICE_KEY_IS_NOT_REGISTERED_ERROR/);
+});
+
+test("XML 결과코드가 정상이 아니면 사유를 담아 오류로 올린다", () => {
+  const xml = "<response><header><resultCode>12</resultCode><resultMsg>NO OPENAPI SERVICE ERROR.</resultMsg></header></response>";
+  assert.throws(() => parseNpsXml(xml), /12: NO OPENAPI SERVICE ERROR/);
+});
+
+test("본문 파서는 JSON과 XML을 같은 형태로 돌려준다", () => {
+  assert.equal(parseNpsBody(sampleXml).totalCount, 1234);
+  assert.equal(parseNpsBody(JSON.stringify(npsEnvelope([sampleItem], 7))).totalCount, 7);
+  assert.throws(() => parseNpsBody("<html><body>Bad Gateway</body></html>"), /해석할 수 없습니다/);
+  assert.throws(() => parseNpsBody("그냥 문자열"), /해석할 수 없습니다/);
 });
 
 test("nps 프록시는 조건 없는 전국 검색을 upstream 전에 막는다", async () => {

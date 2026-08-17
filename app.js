@@ -567,6 +567,7 @@ async function fetchNps(params) {
   const response = await fetch(`/api/nps?${search}`);
   if (!response.ok) {
     const error = await response.json().catch(() => ({}));
+    if (error.detail) console.error("[nps]", error.error, error.detail);
     throw new Error(error.error || `HTTP ${response.status}`);
   }
   return response.json();
