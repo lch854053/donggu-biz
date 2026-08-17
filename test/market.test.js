@@ -94,13 +94,16 @@ test("rejects invalid or sharply reduced zone snapshots", () => {
   assert.doesNotThrow(() => assertZoneSnapshotHealthy({ features: ["1", "2", "3", "4", "5", "6", "7"].map(feature), previousCount: 7 }));
 });
 
-test("loads the manually registered Sansu Market boundary", async () => {
+test("loads the manually registered commercial-zone boundaries", async () => {
   const payload = JSON.parse(await readFile(new URL("../data/manual_mainbiz_zones_donggu.geojson", import.meta.url), "utf8"));
-  assertZoneSnapshotHealthy({ features: payload.features, minimumCount: 1 });
-  const [feature] = payload.features;
-  assert.equal(feature.properties.name, "산수시장");
-  assert.equal(pointInGeometry(126.930954807232, 35.1537139906824, feature.geometry), true);
-  assert.ok(Math.abs(geometryAreaSqm(feature.geometry) - feature.properties.areaSqm) < 1);
+  assert.equal(payload.meta.zoneCount, 2);
+  assertZoneSnapshotHealthy({ features: payload.features, minimumCount: 2 });
+  const sansu = payload.features.find((feature) => feature.properties.no === "manual-sansu-market");
+  const artStreet = payload.features.find((feature) => feature.properties.no === "manual-art-street");
+  assert.equal(pointInGeometry(126.930954807232, 35.1537139906824, sansu.geometry), true);
+  assert.equal(pointInGeometry(126.9189161085083, 35.14964229752389, artStreet.geometry), true);
+  assert.ok(Math.abs(geometryAreaSqm(sansu.geometry) - sansu.properties.areaSqm) < 1);
+  assert.ok(Math.abs(geometryAreaSqm(artStreet.geometry) - artStreet.properties.areaSqm) < 1);
 });
 
 test("merges VWorld and manual zones while rejecting duplicate numbers", () => {
