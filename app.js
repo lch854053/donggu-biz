@@ -395,6 +395,16 @@ function buildZoneLayer() {
   }).addTo(marketMap);
 }
 
+function syncZoneTooltips() {
+  zoneLeafletByNo.forEach((layer) => {
+    if (selectedZoneNo) {
+      layer.unbindTooltip();
+    } else if (!layer.getTooltip()) {
+      layer.bindTooltip(layer.feature.properties.name, { sticky: true, direction: "top" });
+    }
+  });
+}
+
 function createOption(value, label) {
   return new Option(label, value);
 }
@@ -426,6 +436,10 @@ function buildStoreMarkers() {
     const marker = L.marker([store.latitude, store.longitude], { icon, title: store.name });
     marker.store = store;
     marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(store.name)}${store.branch ? ` ${escapeHtml(store.branch)}` : ""}</strong><span>${escapeHtml(store.smallName || store.largeName)}</span><span>${escapeHtml(store.address)}</span></div>`);
+    marker.on({
+      mouseover() { if (selectedZoneNo) marker.openPopup(); },
+      mouseout() { if (selectedZoneNo) marker.closePopup(); }
+    });
     return marker;
   });
 }
@@ -472,6 +486,7 @@ function selectZone(number, fitBounds) {
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selectedZoneNo;
   $("dongFilter").value = selection.adminDong;
+  syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
   applyMarketFilters();
   const layer = zoneLeafletByNo.get(selectedZoneNo);
@@ -482,6 +497,7 @@ $("dongFilter").addEventListener("change", (event) => {
   const selection = buildLocationSelection("dong", event.target.value);
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selection.zoneNo;
+  syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
   applyMarketFilters();
   if (event.target.value && visibleStores.length) {
