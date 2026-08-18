@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import handler from "../api/nps.js";
+import handler, { resetParamStylePreference } from "../api/nps.js";
 import {
   addressArea,
   compactWorkplace,
@@ -215,10 +215,10 @@ test("nps 프록시는 지역 조건을 upstream 파라미터로 옮기고 결�
       query: { action: "search", sido: "29", sggu: "110", bzowrRgstNo: "408-81-52345", numOfRows: "5000" }
     }, res);
     assert.match(requestedUrl, /getBassInfoSearchV2/);
-    assert.match(requestedUrl, /ldong_addr_mgpl_dg_cd=29/);
-    assert.match(requestedUrl, /ldong_addr_mgpl_sggu_cd=110/);
-    assert.match(requestedUrl, /bzowr_rgst_no=408815/);
-    assert.match(requestedUrl, /numOfRows=1000/); // 상한으로 눌린다
+    assert.match(requestedUrl, /ldongAddrMgplDgCd=29/);
+    assert.match(requestedUrl, /ldongAddrMgplSgguCd=29110/); // 시군구는 시도를 포함한 5자리
+    assert.match(requestedUrl, /bzowrRgstNo=408815/);
+    assert.match(requestedUrl, /numOfRows=100/); // 상한으로 눌린다
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.totalCount, 42);
     assert.equal(res.body.items[0].sectionCode, "O");
@@ -250,7 +250,7 @@ test("nps 프록시는 XML 인증 오류 문서를 읽을 수 있는 메시지�
   }
 });
 
-test("nps 프록시는 상세조회에 seq와 기준월을 넘긴다", async () => {
+test("nps 프록시는 상세조회에 seq만 넘긴다", async () => {
   const originalFetch = global.fetch;
   const originalKey = process.env.NPS_SERVICE_KEY;
   let requestedUrl = "";
@@ -265,8 +265,88 @@ test("nps 프록시는 상세조회에 seq와 기준월을 넘긴다", async () 
     await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "detail", seq: "20240101", dataCrtYm: "202607" } }, res);
     assert.match(requestedUrl, /getDetailInfoSearchV2/);
     assert.match(requestedUrl, /seq=20240101/);
-    assert.match(requestedUrl, /data_crt_ym=202607/);
+    assert.doesNotMatch(requestedUrl, /crt_ym|dataCrtYm/); // 상세조회는 기준월을 받지 않는다
     assert.equal(res.body.items[0].subscriberCount, 12);
+  } finally {
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
+test("nps 프록시는 파라미터 오류를 만나면 다른 표기법으로 한 번 더 부른다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  const requestedUrls = [];
+  global.fetch = async (url) => {
+    requestedUrls.push(String(url));
+    if (requestedUrls.length === 1) {
+      return new Response(
+        "<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>CLIENT_ERROR</returnAuthMsg><returnReasonCode>97</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>",
+        { status: 200 }
+      );
+    }
+    return new Response(JSON.stringify(npsEnvelope([sampleItem], 3)), { status: 200 });
+  };
+  process.env.NPS_SERVICE_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "search", sido: "29" } }, res);
+    assert.equal(requestedUrls.length, 2);
+    assert.match(requestedUrls[0], /ldongAddrMgplDgCd=29/);
+    assert.match(requestedUrls[1], /ldong_addr_mgpl_dg_cd=29/);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.totalCount, 3);
+  } finally {
+    resetParamStylePreference();
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
+test("nps 프록시는 서비스키 오류에는 표기법을 바꿔 다시 부르지 않고 안내를 덧붙인다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    return new Response(
+      "<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg><returnReasonCode>30</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>",
+      { status: 200 }
+    );
+  };
+  process.env.NPS_SERVICE_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "search", sido: "29" } }, res);
+    assert.equal(calls, 1);
+    assert.equal(res.statusCode, 502);
+    assert.match(res.body.error, /디코딩 키/);
+  } finally {
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
+test("nps 프록시는 인코딩된 서비스키를 한 번 풀어서 보낸다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  let requestedUrl = "";
+  global.fetch = async (url) => {
+    requestedUrl = String(url);
+    return new Response(JSON.stringify(npsEnvelope([sampleItem], 1)), { status: 200 });
+  };
+  process.env.NPS_SERVICE_KEY = "abc%2Bdef%3D";
+
+  try {
+    const res = responseRecorder();
+    await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "search", sido: "29" } }, res);
+    assert.match(requestedUrl, /serviceKey=abc%2Bdef%3D(&|$)/);
+    assert.equal(res.statusCode, 200);
   } finally {
     global.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;

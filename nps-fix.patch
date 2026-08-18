@@ -1,0 +1,548 @@
+From 4b27f6db3db2c85827db344886352bcb8cadc67a Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 17 Aug 2026 23:55:21 +0000
+Subject: [PATCH] Fix national pension API client error 97
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+국민연금 가입 사업장 API가 CLIENT_ERROR(97)로 요청을 거부하던 규격
+위반을 바로잡는다.
+
+- numOfRows 상한을 100으로 맞추고 통계 수집을 100건씩 여러 장으로 나눈다
+- 시군구·읍면동 코드를 법정동코드 길이(5자리·8자리)로 보정한다
+- 상세조회에서 규격에 없는 data_crt_ym 파라미터를 뺀다
+- 조회 조건 파라미터를 카멜 표기로 먼저 호출하고, 파라미터 오류일 때만
+  스네이크 표기로 한 번 더 호출한다
+- 인코딩 서비스키가 들어와도 한 번 풀어 이중 인코딩을 막는다
+- 오류 코드별 안내를 응답 메시지에 덧붙인다
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01DeGq6kX3FGEmFEHtiwziqu
+---
+ README.md        |  10 +++
+ api/nps.js       | 196 ++++++++++++++++++++++++++++++++---------------
+ app.js           |  13 ++--
+ lib/nps.js       |  40 +++++++++-
+ test/nps.test.js |  94 +++++++++++++++++++++--
+ 5 files changed, 277 insertions(+), 76 deletions(-)
+
+diff --git a/README.md b/README.md
+index 8c35331..e7cc5a3 100644
+--- a/README.md
++++ b/README.md
+@@ -22,6 +22,16 @@
+ 
+ 국민연금 가입 사업장 내역 API는 **사업자등록번호를 앞 6자리까지만** 제공하고 **주소도 건물번호 없이 도로명까지만** 일반화해 제공합니다. 따라서 개별 사업자를 특정할 수 없고 국세청 사업자 상태조회 결과와 자동으로 연결되지 않으며, 통계의 지역 구분은 건물 단위가 아닌 도로명 단위입니다. 목록 API에는 가입자 수가 없어 통계 수치는 모두 사업장 수이고, 가입자 수는 개별 사업장 상세조회에서만 확인할 수 있습니다. 국민연금 미가입 사업장은 집계에서 빠지므로 지역 전체 사업체 수와 다릅니다.
+ 
++## 국민연금 API 호출 규격
++
++`api/nps.js`는 다음 규격에 맞춰 요청합니다. 어긋나면 게이트웨이가 `국민연금 API 오류 97: CLIENT_ERROR`로 응답합니다.
++
++- 목록 조회 `numOfRows`는 한 페이지 **최대 100건**입니다. 통계는 100건씩 여러 장을 이어 받습니다.
++- 지역 코드는 법정동코드 체계를 그대로 씁니다. 시도 2자리(`29`), 시군구 5자리(`29110`), 읍면동 8자리이며, 화면이 넘긴 하위 3자리는 서버에서 상위 코드를 붙여 보정합니다.
++- 상세조회 `getDetailInfoSearchV2`는 `seq`만 받습니다. 기준월(`dataCrtYm`)은 넘기지 않습니다.
++- 조회 조건 파라미터는 카멜(`wkplNm`) 표기로 먼저 호출하고, 파라미터 오류가 돌아오면 스네이크(`wkpl_nm`) 표기로 한 번 더 호출합니다.
++- `NPS_SERVICE_KEY`에는 **디코딩 키**를 넣습니다. 인코딩 키를 넣으면 키가 이중 인코딩되는데, 서버가 퍼센트 표기를 감지해 한 번 풀어 보정합니다.
++
+ ## 환경변수
+ 
+ `.env.example`을 참고해 다음 키를 설정합니다.
+diff --git a/api/nps.js b/api/nps.js
+index e08cf6c..78d8b2e 100644
+--- a/api/nps.js
++++ b/api/nps.js
+@@ -1,12 +1,37 @@
+-import { compactWorkplace, compactWorkplaceDetail, parseNpsBody, toBizNoPrefix } from '../lib/nps.js';
++import {
++  compactWorkplace,
++  compactWorkplaceDetail,
++  describeNpsError,
++  isRequestShapeError,
++  parseNpsBody,
++  toBizNoPrefix
++} from '../lib/nps.js';
+ 
+ const BASE_URL = 'https://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2';
+ const MAX_UPSTREAM_ATTEMPTS = 4;
+ const UPSTREAM_TIMEOUT_MS = 8000;
+-const MAX_ROWS = 1000;
++// 이 서비스는 한 페이지 100건까지만 허용한다. 넘기면 게이트웨이가 CLIENT_ERROR(97)로 끊는다.
++const MAX_ROWS = 100;
+ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+ export const maxDuration = 30;
+ 
++// 조회 조건 파라미터는 스펙 문서(스네이크)와 실제 게이트웨이(카멜) 표기가 엇갈린다.
++// 카멜로 먼저 부르고 파라미터 오류가 오면 스네이크로 한 번 더 부른다.
++const SNAKE_NAMES = {
++  wkplNm: 'wkpl_nm',
++  bzowrRgstNo: 'bzowr_rgst_no',
++  ldongAddrMgplDgCd: 'ldong_addr_mgpl_dg_cd',
++  ldongAddrMgplSgguCd: 'ldong_addr_mgpl_sggu_cd',
++  ldongAddrMgplSgguEmdCd: 'ldong_addr_mgpl_sggu_emd_cd'
++};
++const PARAM_STYLES = ['camel', 'snake'];
++let preferredStyle = PARAM_STYLES[0];
++
++/** 성공한 표기법 기억을 초기값으로 되돌린다. 테스트가 서로 간섭하지 않게 쓰는 훅이다. */
++export function resetParamStylePreference() {
++  preferredStyle = PARAM_STYLES[0];
++}
++
+ function boundedInt(value, fallback, min, max) {
+   const parsed = Number.parseInt(String(value ?? ''), 10);
+   if (!Number.isFinite(parsed)) return fallback;
+@@ -17,39 +42,106 @@ function digitsOnly(value, maxLength) {
+   return String(value ?? '').replace(/[^0-9]/g, '').slice(0, maxLength);
+ }
+ 
+-function buildRequest(query, apiKey) {
++/**
++ * 발급 화면의 "인코딩 키"를 그대로 넣어두면 쿼리 조립 때 %가 한 번 더 인코딩되어
++ * 키가 깨진다. 퍼센트 표기가 보이면 한 번 풀어서 디코딩 키로 맞춘다.
++ */
++function normalizeServiceKey(raw) {
++  const key = String(raw ?? '').trim();
++  if (!/%[0-9A-Fa-f]{2}/.test(key)) return key;
++  try {
++    return decodeURIComponent(key);
++  } catch {
++    return key;
++  }
++}
++
++/**
++ * 법정동코드는 시군구 5자리, 읍면동 8자리로 상위 코드를 포함한다.
++ * 화면이 넘기는 하위 3자리는 상위 코드를 붙여 스펙 길이에 맞춘다.
++ */
++function regionCodes(query) {
++  const sido = digitsOnly(query.sido, 2);
++  let sggu = digitsOnly(query.sggu, 5);
++  if (sggu.length === 3 && sido) sggu = `${sido}${sggu}`;
++  let emd = digitsOnly(query.emd, 8);
++  if (emd.length === 3 && sggu.length === 5) emd = `${sggu}${emd}`;
++  return { sido, sggu, emd };
++}
++
++function buildRequest(query) {
+   const action = String(query.action || 'search');
+-  const params = new URLSearchParams({ serviceKey: apiKey });
+ 
+   if (action === 'detail') {
+     const seq = digitsOnly(query.seq, 20);
+     if (!seq) return { error: 'seq 값이 필요합니다.' };
+-    params.set('seq', seq);
+-    const month = digitsOnly(query.dataCrtYm, 6);
+-    if (month) params.set('data_crt_ym', month);
+-    return { action, url: `${BASE_URL}/getDetailInfoSearchV2?${params}` };
++    // getDetailInfoSearchV2는 seq만 받는다. 기준월을 함께 넘기면 요청이 거부된다.
++    return { action, operation: 'getDetailInfoSearchV2', params: { seq } };
+   }
+ 
+   if (action !== 'search') return { error: `지원하지 않는 action 값입니다: ${action}` };
+ 
+-  params.set('pageNo', String(boundedInt(query.pageNo, 1, 1, 10000)));
+-  params.set('numOfRows', String(boundedInt(query.numOfRows, 100, 1, MAX_ROWS)));
++  const params = {
++    pageNo: String(boundedInt(query.pageNo, 1, 1, 10000)),
++    numOfRows: String(boundedInt(query.numOfRows, MAX_ROWS, 1, MAX_ROWS))
++  };
+ 
+   const name = String(query.wkplNm ?? '').trim().slice(0, 60);
+-  if (name) params.set('wkpl_nm', name);
++  if (name) params.wkplNm = name;
+   const bizNo = toBizNoPrefix(query.bzowrRgstNo);
+-  if (bizNo) params.set('bzowr_rgst_no', bizNo);
+-  const sido = digitsOnly(query.sido, 2);
+-  if (sido) params.set('ldong_addr_mgpl_dg_cd', sido);
+-  const sggu = digitsOnly(query.sggu, 5);
+-  if (sggu) params.set('ldong_addr_mgpl_sggu_cd', sggu);
+-  const emd = digitsOnly(query.emd, 5);
+-  if (emd) params.set('ldong_addr_mgpl_sggu_emd_cd', emd);
++  if (bizNo) params.bzowrRgstNo = bizNo;
++  const { sido, sggu, emd } = regionCodes(query);
++  if (sido) params.ldongAddrMgplDgCd = sido;
++  if (sggu) params.ldongAddrMgplSgguCd = sggu;
++  if (emd) params.ldongAddrMgplSgguEmdCd = emd;
+ 
+   if (!name && !bizNo && !sido) {
+     return { error: '사업장명, 사업자등록번호, 지역 중 하나 이상의 조건이 필요합니다.' };
+   }
+-  return { action, url: `${BASE_URL}/getBassInfoSearchV2?${params}` };
++  return { action, operation: 'getBassInfoSearchV2', params };
++}
++
++function requestUrl(request, apiKey, style) {
++  const search = new URLSearchParams({ serviceKey: apiKey });
++  for (const [name, value] of Object.entries(request.params)) {
++    search.set(style === 'snake' ? SNAKE_NAMES[name] ?? name : name, value);
++  }
++  return `${BASE_URL}/${request.operation}?${search}`;
++}
++
++/** 응답 본문을 그대로 돌려준다. 네트워크·5xx·429만 재시도한다. */
++async function fetchUpstream(url) {
++  let lastFailure = null;
++  for (let attempt = 1; attempt <= MAX_UPSTREAM_ATTEMPTS; attempt += 1) {
++    try {
++      const response = await fetch(url, {
++        headers: { Accept: 'application/xml, application/json' },
++        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
++      });
++      const body = await response.text();
++      if (response.ok) return { body };
++      lastFailure = { status: response.status, detail: body.slice(0, 500) };
++      if (response.status < 500 && response.status !== 429) break;
++    } catch (error) {
++      lastFailure = { error };
++    }
++    if (attempt < MAX_UPSTREAM_ATTEMPTS) await sleep(250 * 2 ** (attempt - 1));
++  }
++  return { failure: lastFailure };
++}
++
++function respondTransportFailure(res, failure) {
++  if (failure?.status && failure.status < 500 && failure.status !== 429) {
++    return res.status(502).json({
++      error: `국민연금 API 요청이 거부되었습니다. HTTP ${failure.status}`,
++      detail: failure.detail
++    });
++  }
++  res.setHeader('Retry-After', '5');
++  return res.status(503).json({
++    error: '국민연금 API가 일시적으로 불안정합니다. 잠시 후 다시 조회해 주세요.',
++    detail: failure?.detail
++  });
+ }
+ 
+ export default async function handler(req, res) {
+@@ -71,58 +163,42 @@ export default async function handler(req, res) {
+   if (req.method === 'OPTIONS') return res.status(200).end();
+   if (req.method !== 'GET') return res.status(405).json({ error: 'GET만 허용됩니다.' });
+ 
+-  const apiKey = process.env.NPS_SERVICE_KEY;
++  const apiKey = normalizeServiceKey(process.env.NPS_SERVICE_KEY);
+   if (!apiKey) {
+     return res.status(500).json({ error: 'API 키가 설정되지 않았습니다. Vercel 환경변수 NPS_SERVICE_KEY를 확인하세요.' });
+   }
+ 
+-  const query = req.query || {};
+-  const request = buildRequest(query, apiKey);
++  const request = buildRequest(req.query || {});
+   if (request.error) return res.status(400).json({ error: request.error });
+ 
+-  let lastFailure = null;
+-  for (let attempt = 1; attempt <= MAX_UPSTREAM_ATTEMPTS; attempt += 1) {
+-    try {
+-      const response = await fetch(request.url, {
+-        headers: { Accept: 'application/xml, application/json' },
+-        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS)
+-      });
+-
+-      const body = await response.text();
+-      if (response.ok) {
+-        // 이 서비스는 XML로 응답하며, 서비스키 오류도 XML 오류 문서로 돌아온다.
+-        let parsed;
+-        try {
+-          parsed = parseNpsBody(body);
+-        } catch (error) {
+-          return res.status(502).json({ error: error.message, detail: body.slice(0, 300) });
+-        }
+-        const compact = request.action === 'detail' ? compactWorkplaceDetail : compactWorkplace;
+-        return res.status(200).json({
+-          items: parsed.items.map(compact),
+-          totalCount: parsed.totalCount,
+-          pageNo: parsed.pageNo,
+-          numOfRows: parsed.numOfRows
+-        });
+-      }
++  const styles = [preferredStyle, ...PARAM_STYLES.filter((style) => style !== preferredStyle)];
++  let lastError = null;
++  for (const style of styles) {
++    const { body, failure } = await fetchUpstream(requestUrl(request, apiKey, style));
++    if (failure) return respondTransportFailure(res, failure);
+ 
+-      lastFailure = { status: response.status, detail: body.slice(0, 500) };
+-      if (response.status < 500 && response.status !== 429) break;
++    // 이 서비스는 XML로 응답하며, 서비스키·파라미터 오류도 XML 오류 문서로 돌아온다.
++    let parsed;
++    try {
++      parsed = parseNpsBody(body);
+     } catch (error) {
+-      lastFailure = { error };
++      lastError = { error, body };
++      if (isRequestShapeError(error)) continue;
++      break;
+     }
+-    if (attempt < MAX_UPSTREAM_ATTEMPTS) await sleep(250 * 2 ** (attempt - 1));
+-  }
+ 
+-  if (lastFailure?.status && lastFailure.status < 500 && lastFailure.status !== 429) {
+-    return res.status(502).json({
+-      error: `국민연금 API 요청이 거부되었습니다. HTTP ${lastFailure.status}`,
+-      detail: lastFailure.detail
++    preferredStyle = style;
++    const compact = request.action === 'detail' ? compactWorkplaceDetail : compactWorkplace;
++    return res.status(200).json({
++      items: parsed.items.map(compact),
++      totalCount: parsed.totalCount,
++      pageNo: parsed.pageNo,
++      numOfRows: parsed.numOfRows
+     });
+   }
+-  res.setHeader('Retry-After', '5');
+-  return res.status(503).json({
+-    error: '국민연금 API가 일시적으로 불안정합니다. 잠시 후 다시 조회해 주세요.',
+-    detail: lastFailure?.detail
++
++  return res.status(502).json({
++    error: describeNpsError(lastError.error),
++    detail: lastError.body.slice(0, 300)
+   });
+ }
+diff --git a/app.js b/app.js
+index f9d3e12..dc61b7a 100644
+--- a/app.js
++++ b/app.js
+@@ -540,13 +540,14 @@ $("resetMarketBtn").addEventListener("click", () => {
+ 
+ // National Pension workplace lookup
+ const NPS_REGIONS = {
+-  donggu: { label: "광주광역시 동구", sido: "29", sggu: "110" },
++  donggu: { label: "광주광역시 동구", sido: "29", sggu: "29110" },
+   gwangju: { label: "광주광역시", sido: "29" },
+   "": { label: "전국" }
+ };
+ const NPS_PAGE_SIZE = 100;
+-const STATS_PAGE_SIZE = 1000;
+-const STATS_MAX_PAGES = 40;
++// 목록 API는 한 페이지 100건이 상한이라 통계는 여러 장을 이어 받는다.
++const STATS_PAGE_SIZE = 100;
++const STATS_MAX_PAGES = 200;
+ 
+ let npsResults = [];
+ let npsTotalCount = 0;
+@@ -672,12 +673,12 @@ async function runNpsLookup(pageNo = 1) {
+   }
+ }
+ 
+-async function showNpsDetail(seq, dataCrtYm) {
++async function showNpsDetail(seq) {
+   const card = $("npsDetailCard");
+   card.hidden = false;
+   card.innerHTML = "<p>사업장 상세 정보를 불러오는 중입니다.</p>";
+   try {
+-    const payload = await fetchNps({ action: "detail", seq, dataCrtYm });
++    const payload = await fetchNps({ action: "detail", seq });
+     const detail = payload.items?.[0];
+     if (!detail) throw new Error("사업장 상세 정보를 찾을 수 없습니다.");
+     const month = detail.dataCreatedMonth?.replace(/^(\d{4})(\d{2})$/, "$1.$2") || "미확인";
+@@ -740,7 +741,7 @@ $("npsFilterTabs").addEventListener("click", (event) => {
+ });
+ $("npsResultBody").addEventListener("click", (event) => {
+   const button = event.target.closest(".detail-btn");
+-  if (button) showNpsDetail(button.dataset.seq, button.dataset.month);
++  if (button) showNpsDetail(button.dataset.seq);
+ });
+ $("npsDownloadBtn").addEventListener("click", () => {
+   if (!npsResults.length) return;
+diff --git a/lib/nps.js b/lib/nps.js
+index f020d28..fdb7ebb 100644
+--- a/lib/nps.js
++++ b/lib/nps.js
+@@ -109,6 +109,40 @@ export function compactWorkplaceDetail(item) {
+   };
+ }
+ 
++// 공공데이터포털 게이트웨이가 돌려주는 오류 코드별 안내. 화면에 그대로 보여줄 수 있는 문장이다.
++export const NPS_ERROR_HINTS = {
++  "4": "국민연금 API 서버가 제때 응답하지 않았습니다. 잠시 후 다시 시도해 주세요.",
++  "12": "폐기되었거나 주소가 바뀐 서비스입니다. 오퍼레이션 주소를 확인하세요.",
++  "20": "서비스 접근이 거부되었습니다. 활용신청 승인 상태를 확인하세요.",
++  "22": "일일 트래픽 한도를 초과했습니다.",
++  "30": "등록되지 않은 서비스키입니다. 인코딩 키가 아닌 디코딩 키를 NPS_SERVICE_KEY에 넣었는지 확인하세요.",
++  "31": "활용기간이 만료된 서비스키입니다.",
++  "32": "등록되지 않은 IP에서의 호출입니다.",
++  "97": "요청 파라미터가 규격과 맞지 않습니다. 파라미터 이름과 값(numOfRows 최대 100, 시군구는 시도를 포함한 5자리 법정동코드)을 확인하세요.",
++  "99": "국민연금 API 내부 오류입니다."
++};
++
++// 요청을 고쳐 다시 부를 여지가 없는 코드. 키·권한·한도 문제는 재시도해도 같은 답이 온다.
++const UNRECOVERABLE_ERROR_CODES = new Set(["12", "20", "22", "30", "31", "32"]);
++
++function npsError(code, message) {
++  const error = new Error(message);
++  if (code) error.code = String(code);
++  return error;
++}
++
++/** 오류 코드에 해당하는 안내를 덧붙인 메시지를 만든다. */
++export function describeNpsError(error) {
++  const hint = NPS_ERROR_HINTS[String(error?.code ?? "")];
++  return hint ? `${error.message} (${hint})` : String(error?.message ?? "국민연금 API 오류");
++}
++
++/** 파라미터 표기를 바꿔 다시 호출해 볼 만한 오류인지 판정한다. */
++export function isRequestShapeError(error) {
++  const code = String(error?.code ?? "");
++  return Boolean(code) && !UNRECOVERABLE_ERROR_CODES.has(code);
++}
++
+ const XML_ENTITIES = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", "#39": "'" };
+ 
+ function decodeXmlText(value) {
+@@ -132,11 +166,11 @@ export function parseNpsXml(xml) {
+   const authMessage = tag("returnAuthMsg") || tag("errMsg");
+   if (authMessage) {
+     const reason = tag("returnReasonCode") || tag("errorCode");
+-    throw new Error(`국민연금 API 오류${reason ? ` ${reason}` : ""}: ${authMessage}`);
++    throw npsError(reason, `국민연금 API 오류${reason ? ` ${reason}` : ""}: ${authMessage}`);
+   }
+   const resultCode = tag("resultCode");
+   if (resultCode && resultCode !== "00" && resultCode !== "0") {
+-    throw new Error(`국민연금 API 오류 ${resultCode}: ${tag("resultMsg") || "사유 미상"}`);
++    throw npsError(resultCode, `국민연금 API 오류 ${resultCode}: ${tag("resultMsg") || "사유 미상"}`);
+   }
+ 
+   const items = [...source.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(([, block]) => {
+@@ -184,7 +218,7 @@ export function parseNpsResponse(payload) {
+   const header = payload?.response?.header;
+   const resultCode = text(header?.resultCode);
+   if (resultCode && resultCode !== "00" && resultCode !== "0") {
+-    throw new Error(`국민연금 API 오류 ${resultCode}: ${text(header?.resultMsg) || "사유 미상"}`);
++    throw npsError(resultCode, `국민연금 API 오류 ${resultCode}: ${text(header?.resultMsg) || "사유 미상"}`);
+   }
+   if (!body) throw new Error("국민연금 API 응답 형식을 해석할 수 없습니다.");
+   const raw = body.items?.item ?? body.items ?? [];
+diff --git a/test/nps.test.js b/test/nps.test.js
+index 9f16d84..33e8e63 100644
+--- a/test/nps.test.js
++++ b/test/nps.test.js
+@@ -1,6 +1,6 @@
+ import test from "node:test";
+ import assert from "node:assert/strict";
+-import handler from "../api/nps.js";
++import handler, { resetParamStylePreference } from "../api/nps.js";
+ import {
+   addressArea,
+   compactWorkplace,
+@@ -215,10 +215,10 @@ test("nps 프록시는 지역 조건을 upstream 파라미터로 옮기고 결
+       query: { action: "search", sido: "29", sggu: "110", bzowrRgstNo: "408-81-52345", numOfRows: "5000" }
+     }, res);
+     assert.match(requestedUrl, /getBassInfoSearchV2/);
+-    assert.match(requestedUrl, /ldong_addr_mgpl_dg_cd=29/);
+-    assert.match(requestedUrl, /ldong_addr_mgpl_sggu_cd=110/);
+-    assert.match(requestedUrl, /bzowr_rgst_no=408815/);
+-    assert.match(requestedUrl, /numOfRows=1000/); // 상한으로 눌린다
++    assert.match(requestedUrl, /ldongAddrMgplDgCd=29/);
++    assert.match(requestedUrl, /ldongAddrMgplSgguCd=29110/); // 시군구는 시도를 포함한 5자리
++    assert.match(requestedUrl, /bzowrRgstNo=408815/);
++    assert.match(requestedUrl, /numOfRows=100/); // 상한으로 눌린다
+     assert.equal(res.statusCode, 200);
+     assert.equal(res.body.totalCount, 42);
+     assert.equal(res.body.items[0].sectionCode, "O");
+@@ -250,7 +250,7 @@ test("nps 프록시는 XML 인증 오류 문서를 읽을 수 있는 메시지
+   }
+ });
+ 
+-test("nps 프록시는 상세조회에 seq와 기준월을 넘긴다", async () => {
++test("nps 프록시는 상세조회에 seq만 넘긴다", async () => {
+   const originalFetch = global.fetch;
+   const originalKey = process.env.NPS_SERVICE_KEY;
+   let requestedUrl = "";
+@@ -265,7 +265,7 @@ test("nps 프록시는 상세조회에 seq와 기준월을 넘긴다", async ()
+     await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "detail", seq: "20240101", dataCrtYm: "202607" } }, res);
+     assert.match(requestedUrl, /getDetailInfoSearchV2/);
+     assert.match(requestedUrl, /seq=20240101/);
+-    assert.match(requestedUrl, /data_crt_ym=202607/);
++    assert.doesNotMatch(requestedUrl, /crt_ym|dataCrtYm/); // 상세조회는 기준월을 받지 않는다
+     assert.equal(res.body.items[0].subscriberCount, 12);
+   } finally {
+     global.fetch = originalFetch;
+@@ -273,3 +273,83 @@ test("nps 프록시는 상세조회에 seq와 기준월을 넘긴다", async ()
+     else process.env.NPS_SERVICE_KEY = originalKey;
+   }
+ });
++
++test("nps 프록시는 파라미터 오류를 만나면 다른 표기법으로 한 번 더 부른다", async () => {
++  const originalFetch = global.fetch;
++  const originalKey = process.env.NPS_SERVICE_KEY;
++  const requestedUrls = [];
++  global.fetch = async (url) => {
++    requestedUrls.push(String(url));
++    if (requestedUrls.length === 1) {
++      return new Response(
++        "<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>CLIENT_ERROR</returnAuthMsg><returnReasonCode>97</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>",
++        { status: 200 }
++      );
++    }
++    return new Response(JSON.stringify(npsEnvelope([sampleItem], 3)), { status: 200 });
++  };
++  process.env.NPS_SERVICE_KEY = "test-key";
++
++  try {
++    const res = responseRecorder();
++    await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "search", sido: "29" } }, res);
++    assert.equal(requestedUrls.length, 2);
++    assert.match(requestedUrls[0], /ldongAddrMgplDgCd=29/);
++    assert.match(requestedUrls[1], /ldong_addr_mgpl_dg_cd=29/);
++    assert.equal(res.statusCode, 200);
++    assert.equal(res.body.totalCount, 3);
++  } finally {
++    resetParamStylePreference();
++    global.fetch = originalFetch;
++    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
++    else process.env.NPS_SERVICE_KEY = originalKey;
++  }
++});
++
++test("nps 프록시는 서비스키 오류에는 표기법을 바꿔 다시 부르지 않고 안내를 덧붙인다", async () => {
++  const originalFetch = global.fetch;
++  const originalKey = process.env.NPS_SERVICE_KEY;
++  let calls = 0;
++  global.fetch = async () => {
++    calls += 1;
++    return new Response(
++      "<OpenAPI_ServiceResponse><cmmMsgHeader><returnAuthMsg>SERVICE_KEY_IS_NOT_REGISTERED_ERROR</returnAuthMsg><returnReasonCode>30</returnReasonCode></cmmMsgHeader></OpenAPI_ServiceResponse>",
++      { status: 200 }
++    );
++  };
++  process.env.NPS_SERVICE_KEY = "test-key";
++
++  try {
++    const res = responseRecorder();
++    await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "search", sido: "29" } }, res);
++    assert.equal(calls, 1);
++    assert.equal(res.statusCode, 502);
++    assert.match(res.body.error, /디코딩 키/);
++  } finally {
++    global.fetch = originalFetch;
++    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
++    else process.env.NPS_SERVICE_KEY = originalKey;
++  }
++});
++
++test("nps 프록시는 인코딩된 서비스키를 한 번 풀어서 보낸다", async () => {
++  const originalFetch = global.fetch;
++  const originalKey = process.env.NPS_SERVICE_KEY;
++  let requestedUrl = "";
++  global.fetch = async (url) => {
++    requestedUrl = String(url);
++    return new Response(JSON.stringify(npsEnvelope([sampleItem], 1)), { status: 200 });
++  };
++  process.env.NPS_SERVICE_KEY = "abc%2Bdef%3D";
++
++  try {
++    const res = responseRecorder();
++    await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "search", sido: "29" } }, res);
++    assert.match(requestedUrl, /serviceKey=abc%2Bdef%3D(&|$)/);
++    assert.equal(res.statusCode, 200);
++  } finally {
++    global.fetch = originalFetch;
++    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
++    else process.env.NPS_SERVICE_KEY = originalKey;
++  }
++});
+-- 
+2.43.0
+

@@ -540,13 +540,14 @@ $("resetMarketBtn").addEventListener("click", () => {
 
 // National Pension workplace lookup
 const NPS_REGIONS = {
-  donggu: { label: "광주광역시 동구", sido: "29", sggu: "110" },
+  donggu: { label: "광주광역시 동구", sido: "29", sggu: "29110" },
   gwangju: { label: "광주광역시", sido: "29" },
   "": { label: "전국" }
 };
 const NPS_PAGE_SIZE = 100;
-const STATS_PAGE_SIZE = 1000;
-const STATS_MAX_PAGES = 40;
+// 목록 API는 한 페이지 100건이 상한이라 통계는 여러 장을 이어 받는다.
+const STATS_PAGE_SIZE = 100;
+const STATS_MAX_PAGES = 200;
 
 let npsResults = [];
 let npsTotalCount = 0;
@@ -672,12 +673,12 @@ async function runNpsLookup(pageNo = 1) {
   }
 }
 
-async function showNpsDetail(seq, dataCrtYm) {
+async function showNpsDetail(seq) {
   const card = $("npsDetailCard");
   card.hidden = false;
   card.innerHTML = "<p>사업장 상세 정보를 불러오는 중입니다.</p>";
   try {
-    const payload = await fetchNps({ action: "detail", seq, dataCrtYm });
+    const payload = await fetchNps({ action: "detail", seq });
     const detail = payload.items?.[0];
     if (!detail) throw new Error("사업장 상세 정보를 찾을 수 없습니다.");
     const month = detail.dataCreatedMonth?.replace(/^(\d{4})(\d{2})$/, "$1.$2") || "미확인";
@@ -740,7 +741,7 @@ $("npsFilterTabs").addEventListener("click", (event) => {
 });
 $("npsResultBody").addEventListener("click", (event) => {
   const button = event.target.closest(".detail-btn");
-  if (button) showNpsDetail(button.dataset.seq, button.dataset.month);
+  if (button) showNpsDetail(button.dataset.seq);
 });
 $("npsDownloadBtn").addEventListener("click", () => {
   if (!npsResults.length) return;
