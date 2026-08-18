@@ -5,7 +5,7 @@ import {
   filterStores
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
-import { summarizeWorkplaces, toBizNoPrefix } from "./lib/nps.js";
+import { mergeWorkplaceHistory, summarizeWorkplaces, toBizNoPrefix } from "./lib/nps.js";
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({
@@ -577,10 +577,15 @@ async function fetchNps(params) {
   return payload;
 }
 
-function filteredNpsResults() {
-  if (npsFilter === "registered") return npsResults.filter((row) => row.statusCode === "1");
-  if (npsFilter === "withdrawn") return npsResults.filter((row) => row.statusCode === "2");
-  return npsResults;
+/**
+ * 이 API는 같은 사업장을 자료생성년월마다 한 건씩 돌려준다. 기본은 최근 기준월 한 건으로
+ * 접어서 보여주고, 접기는 지금 페이지에 담긴 결과 안에서만 일어난다.
+ */
+function visibleNpsResults() {
+  const merged = $("npsMergeToggle").checked ? mergeWorkplaceHistory(npsResults) : npsResults;
+  if (npsFilter === "registered") return merged.filter((row) => row.statusCode === "1");
+  if (npsFilter === "withdrawn") return merged.filter((row) => row.statusCode === "2");
+  return merged;
 }
 
 function npsStatusBadge(row) {
@@ -590,7 +595,7 @@ function npsStatusBadge(row) {
 }
 
 function renderNpsTable() {
-  const rows = filteredNpsResults();
+  const rows = visibleNpsResults();
   if (!rows.length) {
     $("npsResultBody").innerHTML = '<tr class="empty-row"><td colspan="8">해당 조건의 결과가 없습니다.</td></tr>';
     return;
@@ -598,7 +603,7 @@ function renderNpsTable() {
   const offset = (npsPageNo - 1) * NPS_PAGE_SIZE;
   $("npsResultBody").innerHTML = rows.map((row, index) => `<tr>
     <td class="seq">${offset + index + 1}</td>
-    <td>${escapeHtml(row.name)}</td>
+    <td>${escapeHtml(row.name)}${row.historyCount > 1 ? `<span class="history-badge" title="자료 기준월 ${escapeHtml((row.historyMonths || []).join(", "))}">${row.historyCount}개월</span>` : ""}</td>
     <td class="mono">${escapeHtml(row.bizNoPrefix ? `${row.bizNoPrefix}-****` : "-")}</td>
     <td>${escapeHtml(row.address || "-")}</td>
     <td>${escapeHtml(row.sectionName)}</td>
@@ -609,11 +614,12 @@ function renderNpsTable() {
 }
 
 function renderNpsStats() {
-  const registered = npsResults.filter((row) => row.statusCode === "1").length;
-  const withdrawn = npsResults.filter((row) => row.statusCode === "2").length;
+  const rows = visibleNpsResults();
+  const registered = rows.filter((row) => row.statusCode === "1").length;
+  const withdrawn = rows.filter((row) => row.statusCode === "2").length;
   $("npsStatsRow").innerHTML = `
     <span class="stat-item">전체 검색<strong>${npsTotalCount.toLocaleString("ko-KR")}</strong></span>
-    <span class="stat-item">현재 페이지<strong>${npsResults.length}</strong></span>
+    <span class="stat-item">현재 페이지<strong>${npsResults.length}${rows.length === npsResults.length ? "" : ` → ${rows.length}`}</strong></span>
     <span class="stat-item">등록<strong>${registered}</strong></span>
     <span class="stat-item">탈퇴<strong>${withdrawn}</strong></span>`;
 }
@@ -754,6 +760,10 @@ $("npsFilterTabs").addEventListener("click", (event) => {
   });
   renderNpsTable();
 });
+$("npsMergeToggle").addEventListener("change", () => {
+  renderNpsTable();
+  renderNpsStats();
+});
 $("npsResultBody").addEventListener("click", (event) => {
   const button = event.target.closest(".detail-btn");
   if (button) showNpsDetail(button.dataset.seq);
@@ -761,10 +771,11 @@ $("npsResultBody").addEventListener("click", (event) => {
 $("npsDownloadBtn").addEventListener("click", () => {
   if (!npsResults.length) return;
   downloadCsv(
-    ["순번", "사업장명", "사업자등록번호(앞6자리)", "소재지(도로명)", "업종코드", "업종대분류", "사업장형태", "가입상태", "자료기준월"],
-    npsResults.map((row, index) => [
+    ["순번", "사업장명", "사업자등록번호(앞6자리)", "소재지(도로명)", "업종코드", "업종대분류", "사업장형태", "가입상태", "자료기준월", "이력개월수"],
+    visibleNpsResults().map((row, index) => [
       (npsPageNo - 1) * NPS_PAGE_SIZE + index + 1,
-      row.name, row.bizNoPrefix, row.address, row.industryCode, row.sectionName, row.styleName, row.statusName, row.dataCreatedMonth
+      row.name, row.bizNoPrefix, row.address, row.industryCode, row.sectionName, row.styleName, row.statusName, row.dataCreatedMonth,
+      row.historyCount || 1
     ]),
     `국민연금사업장_${new Date().toISOString().slice(0, 10)}.csv`
   );
@@ -859,6 +870,8 @@ async function runStats() {
       $("statsProgressText").textContent = `${statsWorkplaces.length.toLocaleString("ko-KR")} / ${total.toLocaleString("ko-KR")}개 사업장 수집 (${percent}%)`;
     }
     if (!statsWorkplaces.length) throw new Error("집계할 사업장 내역이 없습니다.");
+    // 월별로 쌓인 이력을 접지 않으면 사업장 수가 개월 수만큼 부풀려진다.
+    statsWorkplaces = mergeWorkplaceHistory(statsWorkplaces);
     statsSummary = summarizeWorkplaces(statsWorkplaces);
     renderStats(region.label, snapshot);
     $("statsState").hidden = true;

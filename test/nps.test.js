@@ -6,6 +6,7 @@ import {
   compactWorkplace,
   compactWorkplaceDetail,
   ksicSection,
+  mergeWorkplaceHistory,
   parseNpsBody,
   parseNpsResponse,
   parseNpsXml,
@@ -457,4 +458,45 @@ test("상세 항목은 제공되지 않은 취득·상실자 수를 0으로 꾸�
   assert.equal(detail.subscriberCount, 12);
   assert.equal(detail.newSubscriberCount, null);
   assert.equal(detail.lostSubscriberCount, null);
+});
+
+test("같은 사업장의 월별 이력은 최근 기준월 한 건으로 접는다", () => {
+  const merged = mergeWorkplaceHistory([
+    compactWorkplace({ ...sampleItem, seq: "1", dataCrtYm: "202605", wkplNm: "(주)광주은행" }),
+    compactWorkplace({ ...sampleItem, seq: "2", dataCrtYm: "202607", wkplNm: "(주)광주은행", jnngpCnt: "10" }),
+    compactWorkplace({ ...sampleItem, seq: "3", dataCrtYm: "202606", wkplNm: "( 주 ) 광주은행" })
+  ]);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].dataCreatedMonth, "202607");
+  assert.equal(merged[0].seq, "2");
+  assert.equal(merged[0].historyCount, 3);
+  assert.deepEqual(merged[0].historyMonths, ["202607", "202606", "202605"]);
+});
+
+test("주소가 다른 지점은 합치지 않는다", () => {
+  const merged = mergeWorkplaceHistory([
+    compactWorkplace({ ...sampleItem, wkplNm: "(주)광주은행", wkplRoadNmDtlAddr: "광주광역시 동구 제봉로" }),
+    compactWorkplace({ ...sampleItem, wkplNm: "(주)광주은행", wkplRoadNmDtlAddr: "광주광역시 동구 서남로" })
+  ]);
+  assert.equal(merged.length, 2);
+  assert.equal(merged[0].historyCount, 1);
+});
+
+test("합친 목록으로 집계하면 사업장 수가 개월 수만큼 부풀지 않는다", () => {
+  const rows = ["202605", "202606", "202607"].map((month) =>
+    compactWorkplace({ ...sampleItem, dataCrtYm: month })
+  );
+  assert.equal(summarizeWorkplaces(rows).total, 3);
+  assert.equal(summarizeWorkplaces(mergeWorkplaceHistory(rows)).total, 1);
+});
+
+test("이미 접힌 목록을 다시 접어도 이력 개월 수가 남는다", () => {
+  const once = mergeWorkplaceHistory([
+    compactWorkplace({ ...sampleItem, dataCrtYm: "202605" }),
+    compactWorkplace({ ...sampleItem, dataCrtYm: "202607" })
+  ]);
+  const twice = mergeWorkplaceHistory(once);
+  assert.equal(twice.length, 1);
+  assert.equal(twice[0].historyCount, 2);
+  assert.equal(twice[0].dataCreatedMonth, "202607");
 });

@@ -5,7 +5,7 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compactWorkplace, compactWorkplaceDetail, parseNpsBody } from "../lib/nps.js";
+import { compactWorkplace, compactWorkplaceDetail, mergeWorkplaceHistory, parseNpsBody } from "../lib/nps.js";
 import { NPS_MAX_ROWS, NPS_VARIANTS, normalizeServiceKey, npsRequestUrl } from "../lib/nps-request.js";
 
 const REGION = { label: "광주광역시 동구", sido: "29", sggu: "110" };
@@ -75,13 +75,11 @@ for (let pageNo = 2; pageNo <= pageCount; pageNo += 1) {
   await sleep(DETAIL_PAUSE_MS);
 }
 
-// seq는 상세조회 키다. 같은 사업장이 여러 페이지에 겹쳐 오는 경우를 대비해 한 번만 남긴다.
-const workplaces = new Map();
-for (const item of rawItems) {
-  const workplace = compactWorkplace(item);
-  if (workplace.seq && !workplaces.has(workplace.seq)) workplaces.set(workplace.seq, workplace);
-}
-console.log(`[nps] 사업장 ${workplaces.size}개 수집, 상세조회로 업종을 채웁니다.`);
+// 같은 사업장이 자료생성년월마다 한 건씩 쌓여 온다. 먼저 최근 기준월 한 건으로 접어야
+// 상세조회를 이력 수만큼 중복해서 부르지 않는다.
+const collected = rawItems.map(compactWorkplace).filter((workplace) => workplace.seq);
+const items = mergeWorkplaceHistory(collected);
+console.log(`[nps] 이력 ${collected.length}건을 사업장 ${items.length}개로 합쳤습니다. 상세조회로 업종을 채웁니다.`);
 
 async function fetchDetail(seq) {
   const url = npsRequestUrl({ operation: "getDetailInfoSearchV2", apiKey, params: { seq }, variant });
@@ -89,27 +87,33 @@ async function fetchDetail(seq) {
   return item ? compactWorkplaceDetail(item) : null;
 }
 
-/** 상세조회를 몇 개씩 나눠 부른다. 실패한 사업장은 목록 정보만 남긴다. */
-const seqs = [...workplaces.keys()];
+/** 상세조회를 몇 개씩 나눠 부른다. 실패한 사업장은 목록 정보만 남는다. */
 let done = 0;
 let failed = 0;
-for (let offset = 0; offset < seqs.length; offset += DETAIL_CONCURRENCY) {
-  const batch = seqs.slice(offset, offset + DETAIL_CONCURRENCY);
-  await Promise.all(batch.map(async (seq) => {
+for (let offset = 0; offset < items.length; offset += DETAIL_CONCURRENCY) {
+  const batch = items.slice(offset, offset + DETAIL_CONCURRENCY);
+  await Promise.all(batch.map(async (workplace, index) => {
     try {
-      const detail = await fetchDetail(seq);
-      if (detail) workplaces.set(seq, { ...workplaces.get(seq), ...detail, seq });
+      const detail = await fetchDetail(workplace.seq);
+      // 상세조회 응답에는 자료생성년월이 없다. 목록에서 얻은 기준월과 이력은 그대로 둔다.
+      if (detail) {
+        items[offset + index] = {
+          ...workplace,
+          ...detail,
+          seq: workplace.seq,
+          dataCreatedMonth: workplace.dataCreatedMonth
+        };
+      }
     } catch (error) {
       failed += 1;
-      console.warn(`[nps] ${seq} 상세조회 실패: ${error.message}`);
+      console.warn(`[nps] ${workplace.seq} 상세조회 실패: ${error.message}`);
     }
   }));
   done += batch.length;
-  if (done % 500 < DETAIL_CONCURRENCY) console.log(`[nps] 상세 ${done}/${seqs.length}건`);
+  if (done % 500 < DETAIL_CONCURRENCY) console.log(`[nps] 상세 ${done}/${items.length}건`);
   await sleep(DETAIL_PAUSE_MS);
 }
 
-const items = [...workplaces.values()];
 const withIndustry = items.filter((workplace) => workplace.industryCode).length;
 if (!items.length) throw new Error("수집된 사업장이 없어 스냅샷을 쓰지 않습니다.");
 if (failed > items.length / 4) throw new Error(`상세조회 실패가 너무 많습니다: ${failed}/${items.length}`);
@@ -121,6 +125,7 @@ const snapshot = {
   collectedAt: new Date().toISOString(),
   dataCreatedMonth: items.find((workplace) => workplace.dataCreatedMonth)?.dataCreatedMonth ?? "",
   totalCount: firstPage.totalCount,
+  collectedRowCount: collected.length,
   detailFailedCount: failed,
   items
 };
