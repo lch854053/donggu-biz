@@ -500,3 +500,62 @@ test("이미 접힌 목록을 다시 접어도 이력 개월 수가 남는다", 
   assert.equal(twice[0].historyCount, 2);
   assert.equal(twice[0].dataCreatedMonth, "202607");
 });
+
+test("접힌 사업장은 달마다의 seq를 함께 남긴다", () => {
+  const merged = mergeWorkplaceHistory([
+    compactWorkplace({ ...sampleItem, seq: "11", dataCrtYm: "202605" }),
+    compactWorkplace({ ...sampleItem, seq: "12", dataCrtYm: "202607" })
+  ]);
+  assert.deepEqual(merged[0].historyRows, [
+    { seq: "12", month: "202607" },
+    { seq: "11", month: "202605" }
+  ]);
+});
+
+test("nps 프록시는 월별 추이를 달마다 상세·기간별 현황으로 모은다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  const requestedUrls = [];
+  global.fetch = async (url) => {
+    const text = String(url);
+    requestedUrls.push(text);
+    const seq = new URL(text).searchParams.get("seq");
+    if (text.includes("getPdAcctoSttusInfoSearchV2")) {
+      return new Response(JSON.stringify(npsEnvelope([{ nwAcqzrCnt: seq === "11" ? "4" : "9" }], 1)), { status: 200 });
+    }
+    return new Response(JSON.stringify(npsEnvelope([{ ...sampleItem, jnngpCnt: seq === "11" ? "100" : "120" }], 1)), { status: 200 });
+  };
+  process.env.NPS_SERVICE_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    await handler({
+      method: "GET",
+      headers: { host: "localhost:3000" },
+      query: { action: "history", seqs: "12:202607,11:202605" }
+    }, res);
+    assert.equal(res.statusCode, 200);
+    assert.deepEqual(res.body.series.map((point) => point.month), ["202605", "202607"]); // 오래된 달부터
+    assert.equal(res.body.series[0].subscriberCount, 100);
+    assert.equal(res.body.series[0].newSubscriberCount, 4);
+    assert.equal(res.body.series[1].subscriberCount, 120);
+    assert.equal(requestedUrls.length, 4); // 달마다 상세 + 기간별 현황
+  } finally {
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
+test("nps 프록시는 seq 없는 추이 요청을 upstream 전에 막는다", async () => {
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  process.env.NPS_SERVICE_KEY = "test-key";
+  try {
+    const res = responseRecorder();
+    await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "history", seqs: "" } }, res);
+    assert.equal(res.statusCode, 400);
+  } finally {
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});

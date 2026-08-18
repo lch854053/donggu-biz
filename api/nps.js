@@ -15,6 +15,9 @@ import {
 } from '../lib/nps-request.js';
 
 const MAX_UPSTREAM_ATTEMPTS = 4;
+// 월별 추이는 달마다 두 번씩 부른다. 서버리스 실행 시간 안에 끝나도록 개수를 묶어 둔다.
+const HISTORY_MAX_POINTS = 24;
+const HISTORY_CONCURRENCY = 6;
 const UPSTREAM_TIMEOUT_MS = 8000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export const maxDuration = 30;
@@ -145,6 +148,64 @@ async function fetchPeriodCounts(seq, apiKey) {
   }
 }
 
+/** 동시에 몇 개씩만 부르며 순서를 지켜 결과를 모은다. */
+async function mapWithLimit(values, limit, worker) {
+  const results = new Array(values.length);
+  for (let offset = 0; offset < values.length; offset += limit) {
+    const batch = values.slice(offset, offset + limit);
+    const settled = await Promise.all(batch.map(worker));
+    settled.forEach((value, index) => { results[offset + index] = value; });
+  }
+  return results;
+}
+
+/** 한 건의 응답에서 첫 항목만 꺼낸다. 실패하면 null. */
+async function fetchFirstItem(url) {
+  const { body } = await fetchUpstream(url);
+  if (!body) return null;
+  try {
+    return parseNpsBody(body).items[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * 월별 추이. 이 API는 사업장의 각 달을 서로 다른 seq로 주므로, 달마다 상세조회와
+ * 기간별 현황을 한 번씩 불러 가입자 수·고지금액·취득·상실을 모은다.
+ */
+async function handleHistory(query, apiKey, res) {
+  const points = String(query.seqs ?? '')
+    .split(',')
+    .map((token) => {
+      const [seq, month] = String(token).split(':');
+      return { seq: digitsOnly(seq, 20), month: digitsOnly(month, 6) };
+    })
+    .filter((point) => point.seq)
+    .slice(0, HISTORY_MAX_POINTS);
+  if (!points.length) return res.status(400).json({ error: 'seq 값이 필요합니다.' });
+
+  const variant = NPS_VARIANTS[preferredVariant];
+  const series = await mapWithLimit(points, HISTORY_CONCURRENCY, async ({ seq, month }) => {
+    const [detail, period] = await Promise.all([
+      fetchFirstItem(npsRequestUrl({ operation: 'getDetailInfoSearchV2', apiKey, params: { seq }, variant })),
+      fetchFirstItem(npsRequestUrl({ operation: 'getPdAcctoSttusInfoSearchV2', apiKey, params: { seq, pageNo: '1', numOfRows: '1' }, variant }))
+    ]);
+    if (!detail && !period) return null;
+    const compact = compactWorkplaceDetail({ ...(detail ?? {}), ...(period ?? {}) });
+    return {
+      month,
+      subscriberCount: compact.subscriberCount,
+      monthlyNoticeAmount: compact.monthlyNoticeAmount,
+      newSubscriberCount: compact.newSubscriberCount,
+      lostSubscriberCount: compact.lostSubscriberCount
+    };
+  });
+
+  const collected = series.filter(Boolean).sort((a, b) => a.month.localeCompare(b.month));
+  return res.status(200).json({ series: collected });
+}
+
 function payloadFor(request, parsed, variant, attempts) {
   const compact = request.action === 'detail' ? compactWorkplaceDetail : compactWorkplace;
   return {
@@ -181,7 +242,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API 키가 설정되지 않았습니다. Vercel 환경변수 NPS_SERVICE_KEY를 확인하세요.' });
   }
 
-  const request = buildRequest(req.query || {});
+  const query = req.query || {};
+  if (String(query.action || '') === 'history') return handleHistory(query, apiKey, res);
+
+  const request = buildRequest(query);
   if (request.error) return res.status(400).json({ error: request.error });
 
   // 첫 페이지가 0건이면 조건이 정말 없는 것인지 표기·코드 형식이 어긋난 것인지 알 수 없다.
