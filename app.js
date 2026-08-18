@@ -540,7 +540,7 @@ $("resetMarketBtn").addEventListener("click", () => {
 
 // National Pension workplace lookup
 const NPS_REGIONS = {
-  donggu: { label: "광주광역시 동구", sido: "29", sggu: "29110" },
+  donggu: { label: "광주광역시 동구", sido: "29", sggu: "110" },
   gwangju: { label: "광주광역시", sido: "29" },
   "": { label: "전국" }
 };
@@ -571,7 +571,10 @@ async function fetchNps(params) {
     if (error.detail) console.error("[nps]", error.error, error.detail);
     throw new Error(error.error || `HTTP ${response.status}`);
   }
-  return response.json();
+  const payload = await response.json();
+  // 0건일 때 어떤 파라미터 조합으로 물었는지 콘솔에 남긴다. 원인 확인용이다.
+  if (payload.meta && !(payload.items || []).length) console.info("[nps] 조회 결과 없음", payload.meta);
+  return payload;
 }
 
 function filteredNpsResults() {

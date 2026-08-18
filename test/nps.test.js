@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import handler, { resetParamStylePreference } from "../api/nps.js";
+import handler, { resetVariantPreference } from "../api/nps.js";
 import {
   addressArea,
   compactWorkplace,
@@ -216,7 +216,7 @@ test("nps 프록시는 지역 조건을 upstream 파라미터로 옮기고 결�
     }, res);
     assert.match(requestedUrl, /getBassInfoSearchV2/);
     assert.match(requestedUrl, /ldongAddrMgplDgCd=29/);
-    assert.match(requestedUrl, /ldongAddrMgplSgguCd=29110/); // 시군구는 시도를 포함한 5자리
+    assert.match(requestedUrl, /ldongAddrMgplSgguCd=110/); // 화면이 넘긴 코드를 그대로 먼저 쓴다
     assert.match(requestedUrl, /bzowrRgstNo=408815/);
     assert.match(requestedUrl, /numOfRows=100/); // 상한으로 눌린다
     assert.equal(res.statusCode, 200);
@@ -299,7 +299,7 @@ test("nps 프록시는 파라미터 오류를 만나면 다른 표기법으로 �
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.totalCount, 3);
   } finally {
-    resetParamStylePreference();
+    resetVariantPreference();
     global.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
     else process.env.NPS_SERVICE_KEY = originalKey;
@@ -348,6 +348,95 @@ test("nps 프록시는 인코딩된 서비스키를 한 번 풀어서 보낸다"
     assert.match(requestedUrl, /serviceKey=abc%2Bdef%3D(&|$)/);
     assert.equal(res.statusCode, 200);
   } finally {
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
+test("nps 프록시는 첫 페이지가 0건이면 다른 코드 형식으로 다시 물어본다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  const requestedUrls = [];
+  global.fetch = async (url) => {
+    requestedUrls.push(String(url));
+    const empty = requestedUrls.length === 1;
+    return new Response(JSON.stringify(npsEnvelope(empty ? [] : [sampleItem], empty ? 0 : 5)), { status: 200 });
+  };
+  process.env.NPS_SERVICE_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    await handler({
+      method: "GET",
+      headers: { host: "localhost:3000" },
+      query: { action: "search", sido: "29", sggu: "110" }
+    }, res);
+    assert.equal(requestedUrls.length, 2);
+    assert.match(requestedUrls[0], /ldongAddrMgplSgguCd=110(&|$)/);
+    assert.match(requestedUrls[1], /ldongAddrMgplSgguCd=29110(&|$)/);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.items.length, 1);
+    assert.equal(res.body.meta.regionForm, "prefixed");
+  } finally {
+    resetVariantPreference();
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
+test("nps 프록시는 모든 조합이 0건이면 빈 결과와 시도 내역을 돌려준다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify(npsEnvelope([], 0)), { status: 200 });
+  };
+  process.env.NPS_SERVICE_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    await handler({
+      method: "GET",
+      headers: { host: "localhost:3000" },
+      query: { action: "search", sido: "29", sggu: "110" }
+    }, res);
+    assert.equal(calls, 4);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.items.length, 0);
+    assert.equal(res.body.meta.attempts.length, 4);
+    assert.doesNotMatch(JSON.stringify(res.body.meta), /test-key/); // 서비스키는 가린다
+  } finally {
+    resetVariantPreference();
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
+test("nps 프록시는 2페이지 이후에는 0건이어도 다시 묻지 않는다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  let calls = 0;
+  global.fetch = async () => {
+    calls += 1;
+    return new Response(JSON.stringify(npsEnvelope([], 0)), { status: 200 });
+  };
+  process.env.NPS_SERVICE_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    await handler({
+      method: "GET",
+      headers: { host: "localhost:3000" },
+      query: { action: "search", sido: "29", pageNo: "3" }
+    }, res);
+    assert.equal(calls, 1);
+    assert.equal(res.statusCode, 200);
+  } finally {
+    resetVariantPreference();
     global.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
     else process.env.NPS_SERVICE_KEY = originalKey;
