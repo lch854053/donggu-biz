@@ -61,14 +61,6 @@
       </nav>
 
       <div class="sub-panel" id="subpanel-nts" role="tabpanel" aria-labelledby="tab-nts">
-      <section class="service-alert" aria-labelledby="nts-outage-title">
-        <span class="service-alert-label">서비스 장애</span>
-        <div>
-          <h2 id="nts-outage-title">국세청 사업자 상태조회 API 일시 장애 안내</h2>
-          <p>국세청 서버가 외부의 비정상 접근 시도를 탐지해 보안 조치로 공공데이터포털 IP를 일시 차단했습니다. 국세청이 긴급 복구 중이며 정상화 전까지 조회가 실패하거나 지연될 수 있습니다.</p>
-          <p class="service-alert-meta"><time datetime="2026-08-11">2026.08.11 공지</time> · 출처: 국세청</p>
-        </div>
-      </section>
       <div class="business-layout">
         <section class="input-station" aria-labelledby="business-input-title">
           <div class="station-heading">
@@ -133,7 +125,7 @@
             <div class="station-heading">
               <div>
                 <h2 id="nps-input-title">국민연금 가입 사업장 조회</h2>
-                <p>사업장명 또는 사업자등록번호로 국민연금 가입 사업장 내역을 조회합니다. 지역은 광주 동구로 좁힐 수 있습니다.</p>
+                <p>광주 동구의 국민연금 가입 사업장을 사업장명 또는 사업자등록번호로 조회합니다.</p>
               </div>
               <span class="count-badge" id="npsCountBadge">0개 사업장</span>
             </div>
@@ -145,14 +137,6 @@
               <label class="field">
                 <span>사업자등록번호 (앞 6자리)</span>
                 <input id="npsBizNoInput" type="search" inputmode="numeric" autocomplete="off" placeholder="예: 408815 또는 408-81-5xxxx">
-              </label>
-              <label class="field">
-                <span>지역</span>
-                <select id="npsRegionSelect">
-                  <option value="donggu">광주광역시 동구</option>
-                  <option value="gwangju">광주광역시 전체</option>
-                  <option value="">전국</option>
-                </select>
               </label>
             </div>
             <div class="action-row">
@@ -170,6 +154,7 @@
             <h2 id="nps-guide-title">조회 기준</h2>
             <dl>
               <div><dt>출처</dt><dd>국민연금공단</dd></div>
+              <div><dt>지역</dt><dd>광주광역시 동구</dd></div>
               <div><dt>1회 표시</dt><dd>최대 100건</dd></div>
               <div><dt>가입 상태</dt><dd>등록·탈퇴</dd></div>
             </dl>
@@ -255,16 +240,9 @@
       <div class="market-heading">
         <div>
           <h2>국민연금 가입 사업장 통계</h2>
-          <p id="statsMeta">국민연금공단 국민연금 가입 사업장 내역을 지역 단위로 모두 수집해 집계합니다.</p>
+          <p id="statsMeta">광주 동구의 국민연금 가입 사업장 내역을 모두 모아 집계합니다.</p>
         </div>
         <div class="toolbar-actions">
-          <label class="field field-inline">
-            <span>집계 지역</span>
-            <select id="statsRegionSelect">
-              <option value="donggu">광주광역시 동구</option>
-              <option value="gwangju">광주광역시 전체</option>
-            </select>
-          </label>
           <button class="button button-primary" id="statsRunBtn" type="button">통계 집계</button>
           <button class="button button-export" id="statsDownloadBtn" type="button" disabled>CSV 다운로드</button>
         </div>
@@ -275,7 +253,7 @@
         <p id="statsProgressText" aria-live="polite">대기 중</p>
       </div>
 
-      <div class="market-state" id="statsState" role="status">집계 지역을 고르고 <strong>통계 집계</strong>를 누르면 사업장 내역을 수집합니다.</div>
+      <div class="market-state" id="statsState" role="status"><strong>통계 집계</strong>를 누르면 광주 동구 사업장 내역을 집계합니다.</div>
 
       <div id="statsWorkspace" hidden>
         <div class="stat-tiles" id="statTiles"></div>

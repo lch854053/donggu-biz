@@ -539,11 +539,9 @@ $("resetMarketBtn").addEventListener("click", () => {
 });
 
 // National Pension workplace lookup
-const NPS_REGIONS = {
-  donggu: { label: "광주광역시 동구", sido: "29", sggu: "110" },
-  gwangju: { label: "광주광역시", sido: "29" },
-  "": { label: "전국" }
-};
+// 이 서비스는 광주 동구만 다룬다. 조회·통계·스냅샷이 모두 같은 지역 코드를 쓴다.
+const NPS_REGION = { label: "광주광역시 동구", sido: "29", sggu: "110" };
+
 const NPS_PAGE_SIZE = 100;
 // 중복을 걷어낸 건수를 보여주려면 이력을 다 받아야 한다. 지역 전체처럼 큰 조회는 여기서 멈춘다.
 const NPS_MAX_COLLECT_PAGES = 30;
@@ -560,14 +558,6 @@ let npsPageNo = 1;
 let npsFilter = "all";
 let npsBusy = false;
 let npsSnapshotIndex = null;
-
-function regionParams(key) {
-  const region = NPS_REGIONS[key] || NPS_REGIONS[""];
-  const params = {};
-  if (region.sido) params.sido = region.sido;
-  if (region.sggu) params.sggu = region.sggu;
-  return params;
-}
 
 async function fetchNps(params) {
   const search = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== "" && value != null));
@@ -610,7 +600,7 @@ function renderNpsTable() {
   const offset = (npsPageNo - 1) * NPS_PAGE_SIZE;
   $("npsResultBody").innerHTML = rows.map((row, index) => `<tr>
     <td class="seq">${offset + index + 1}</td>
-    <td>${escapeHtml(row.name)}${row.historyCount > 1 ? `<span class="history-badge" title="자료 기준월 ${escapeHtml((row.historyMonths || []).join(", "))}">${row.historyCount}개월</span>` : ""}</td>
+    <td>${escapeHtml(row.name)}</td>
     <td class="mono">${escapeHtml(row.bizNoPrefix ? `${row.bizNoPrefix}-****` : "-")}</td>
     <td>${escapeHtml(row.address || "-")}</td>
     <td>${escapeHtml(row.sectionName)}</td>
@@ -729,11 +719,6 @@ async function runNpsLookup() {
   const name = $("npsNameInput").value.trim();
   const rawBizNo = $("npsBizNoInput").value.trim();
   const bizNo = toBizNoPrefix(rawBizNo);
-  const regionKey = $("npsRegionSelect").value;
-  if (!name && !bizNo && !NPS_REGIONS[regionKey]?.sido) {
-    showToast("전국 조회는 사업장명 또는 사업자등록번호가 필요합니다.");
-    return;
-  }
   if (rawBizNo && bizNo.length < 6) {
     showToast("사업자등록번호는 앞 6자리 이상 입력해 주세요.");
     return;
@@ -749,7 +734,7 @@ async function runNpsLookup() {
 
   try {
     const { rows, truncated } = await collectNpsRows({
-      action: "search", wkplNm: name, bzowrRgstNo: bizNo, ...regionParams(regionKey)
+      action: "search", wkplNm: name, bzowrRgstNo: bizNo, sido: NPS_REGION.sido, sggu: NPS_REGION.sggu
     });
     // 같은 사업장이 자료생성년월마다 한 건씩 오므로 합쳐서 사업장 단위로 보여준다.
     npsRows = mergeWorkplaceHistory(rows);
@@ -830,10 +815,12 @@ async function renderNpsHistory(listRow) {
     }
     target.innerHTML = `<h3 class="chart-heading">월별 추이 <span class="chart-note">${points.length}개월</span></h3>
       <div class="chart-grid">
-        ${trendChart("가입자 수", points, "subscriberCount", "line", "#3987e5", (value) => `${value.toLocaleString("ko-KR")}명`)}
-        ${trendChart("당월 고지금액", points, "monthlyNoticeAmount", "line", "#3987e5", (value) => `${Math.round(value / 10000).toLocaleString("ko-KR")}만원`)}
-        ${trendChart("월별 신규 취득자", points, "newSubscriberCount", "bar", "#199e70", (value) => `${value.toLocaleString("ko-KR")}명`)}
-        ${trendChart("월별 상실 가입자", points, "lostSubscriberCount", "bar", "#d95926", (value) => `${value.toLocaleString("ko-KR")}명`)}
+        ${trendChart("가입자 수", points, [{ key: "subscriberCount", label: "가입자 수", color: "#3987e5" }], "line", (value) => `${value.toLocaleString("ko-KR")}명`)}
+        ${trendChart("당월 고지금액", points, [{ key: "monthlyNoticeAmount", label: "당월 고지금액", color: "#3987e5" }], "line", (value) => `${Math.round(value / 10000).toLocaleString("ko-KR")}만원`)}
+        ${trendChart("월별 취득·상실 가입자", points, [
+          { key: "newSubscriberCount", label: "신규 취득", color: "#199e70" },
+          { key: "lostSubscriberCount", label: "상실", color: "#d95926" }
+        ], "bar", (value) => `${value.toLocaleString("ko-KR")}명`)}
       </div>`;
   } catch (error) {
     target.innerHTML = `<p class="summary-empty">월별 추이를 불러오지 못했습니다. ${escapeHtml(error.message)}</p>`;
@@ -845,62 +832,84 @@ function shortMonth(month) {
   return String(month ?? "").replace(/^\d{2}(\d{2})(\d{2})$/, "$1.$2");
 }
 
+const CHART_WIDTH = 320;
+const CHART_HEIGHT = 136;
+const CHART_PAD_X = 30;
+const CHART_PAD_TOP = 22;
+const CHART_BASELINE = CHART_HEIGHT - 26;
+
 /**
- * 지표 하나짜리 미니 그래프. 지표마다 단위가 달라 축을 겹치지 않고 그래프를 따로 그린다.
- * 값이 하나도 없는 지표는 자리만 차지하지 않도록 빈 안내를 남긴다.
+ * 월별 추이 그래프. 지표마다 단위가 달라 축을 겹치지 않고 그래프를 따로 그린다.
+ * 값과 월 라벨은 서로 겹치지 않을 만큼만 남기고, 마지막 달은 항상 남긴다.
  */
-function trendChart(title, points, key, shape, color, format) {
-  const values = points.map((point) => (typeof point[key] === "number" ? point[key] : null));
-  if (values.every((value) => value == null)) {
-    return `<figure class="chart"><figcaption>${escapeHtml(title)}</figcaption>
+function trendChart(title, points, series, shape, format) {
+  const active = series.filter(({ key }) => points.some((point) => typeof point[key] === "number"));
+  if (!active.length) {
+    return `<figure class="chart"><figcaption><span>${escapeHtml(title)}</span></figcaption>
       <p class="summary-empty">제공되지 않는 항목입니다.</p></figure>`;
   }
 
-  const width = 260;
-  const height = 84;
-  const padX = 6;
-  const padTop = 8;
-  const baseline = height - 18;
-  const present = values.filter((value) => value != null);
-  const max = Math.max(...present);
-  const min = Math.min(...present);
+  const values = active.flatMap(({ key }) => points.map((point) => point[key]).filter((value) => typeof value === "number"));
+  const max = Math.max(...values);
   // 막대는 0에서 시작해야 길이가 값이 된다. 선그래프는 변화를 보려는 것이라 실제 범위에 맞춘다.
-  const low = shape === "bar" ? 0 : min;
-  const span = Math.max(max - low, 1);
-  const step = points.length > 1 ? (width - padX * 2) / (points.length - 1) : 0;
-  const x = (index) => padX + index * step;
-  const y = (value) => baseline - ((value - low) / span) * (baseline - padTop);
-  const last = [...values].reverse().find((value) => value != null) ?? 0;
+  const low = shape === "bar" ? 0 : Math.min(...values);
+  const high = max > low ? max : low + 1;
+  const step = points.length > 1 ? (CHART_WIDTH - CHART_PAD_X * 2) / (points.length - 1) : 0;
+  const x = (index) => CHART_PAD_X + index * step;
+  const y = (value) => CHART_BASELINE - ((value - low) / (high - low)) * (CHART_BASELINE - CHART_PAD_TOP);
+
+  const labelStep = Math.max(1, Math.ceil(30 * active.length / Math.max(step, 1)));
+  const tickStep = Math.max(1, Math.ceil(30 / Math.max(step, 1)));
+  const keepFromEnd = (index, every) => (points.length - 1 - index) % every === 0;
 
   let marks = "";
   if (shape === "line") {
-    const drawn = values.map((value, index) => ({ value, index })).filter((point) => point.value != null);
-    const path = drawn.map((point, order) => `${order ? "L" : "M"}${x(point.index).toFixed(1)} ${y(point.value).toFixed(1)}`).join(" ");
-    const tip = drawn[drawn.length - 1];
-    marks = `<path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
-      <circle cx="${x(tip.index).toFixed(1)}" cy="${y(tip.value).toFixed(1)}" r="4" fill="${color}" stroke="var(--surface)" stroke-width="2"></circle>`;
-  } else {
-    const barWidth = Math.max(3, Math.min(14, (width - padX * 2) / points.length - 2));
-    marks = values.map((value, index) => {
-      if (value == null) return "";
-      const top = y(value);
-      return `<rect x="${(x(index) - barWidth / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(1, baseline - top).toFixed(1)}" rx="2" fill="${color}"></rect>`;
+    marks = active.map(({ key, color }) => {
+      const drawn = points.map((point, index) => ({ value: point[key], index })).filter((point) => typeof point.value === "number");
+      const path = drawn.map((point, order) => `${order ? "L" : "M"}${x(point.index).toFixed(1)} ${y(point.value).toFixed(1)}`).join(" ");
+      const dots = drawn.map((point) => `<circle cx="${x(point.index).toFixed(1)}" cy="${y(point.value).toFixed(1)}" r="3.5" fill="${color}" stroke="var(--surface)" stroke-width="2"></circle>`).join("");
+      const labels = drawn.filter((point) => keepFromEnd(point.index, labelStep))
+        .map((point) => `<text x="${x(point.index).toFixed(1)}" y="${(y(point.value) - 8).toFixed(1)}" text-anchor="middle" class="chart-value">${escapeHtml(format(point.value))}</text>`).join("");
+      return `<path d="${path}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>${dots}${labels}`;
     }).join("");
+  } else {
+    const slot = Math.max(4, Math.min(12, (step || CHART_WIDTH / 3) / active.length - 2));
+    marks = points.map((point, index) => active.map(({ key, color }, order) => {
+      const value = point[key];
+      if (typeof value !== "number") return "";
+      // 같은 달의 막대는 계열 수만큼 나란히 놓고 사이에 틈을 둔다.
+      const left = x(index) - (slot * active.length + 2 * (active.length - 1)) / 2 + order * (slot + 2);
+      const top = y(value);
+      // 두 계열의 막대가 붙어 있어 값 라벨은 막대 색을 그대로 입혀 어느 쪽 값인지 알 수 있게 한다.
+      const label = keepFromEnd(index, labelStep)
+        ? `<text x="${(left + slot / 2).toFixed(1)}" y="${(top - 5).toFixed(1)}" text-anchor="middle" class="chart-value" style="fill:${color}">${escapeHtml(format(value))}</text>`
+        : "";
+      return `<rect x="${left.toFixed(1)}" y="${top.toFixed(1)}" width="${slot.toFixed(1)}" height="${Math.max(1, CHART_BASELINE - top).toFixed(1)}" rx="2" fill="${color}"></rect>${label}`;
+    }).join("")).join("");
   }
 
-  const hits = points.map((point, index) => `<rect x="${(x(index) - step / 2).toFixed(1)}" y="0" width="${Math.max(step, 6).toFixed(1)}" height="${baseline}" fill="transparent">
-    <title>${escapeHtml(shortMonth(point.month))} · ${escapeHtml(values[index] == null ? "자료 없음" : format(values[index]))}</title></rect>`).join("");
+  const hits = points.map((point, index) => {
+    const summary = active.map(({ key, label }) => `${label} ${typeof point[key] === "number" ? format(point[key]) : "자료 없음"}`).join(" · ");
+    return `<rect x="${(x(index) - Math.max(step, 8) / 2).toFixed(1)}" y="0" width="${Math.max(step, 8).toFixed(1)}" height="${CHART_BASELINE}" fill="transparent">
+      <title>${escapeHtml(shortMonth(point.month))} · ${escapeHtml(summary)}</title></rect>`;
+  }).join("");
+
+  const ticks = points.map((point, index) => (keepFromEnd(index, tickStep)
+    ? `<text x="${x(index).toFixed(1)}" y="${CHART_HEIGHT - 8}" text-anchor="middle" class="chart-axis">${escapeHtml(shortMonth(point.month))}</text>`
+    : "")).join("");
+
+  const legend = active.length > 1
+    ? `<span class="chart-legend">${active.map(({ label, color }) => `<span><i style="background:${color}"></i>${escapeHtml(label)}</span>`).join("")}</span>`
+    : "";
 
   return `<figure class="chart">
-    <figcaption>${escapeHtml(title)}<strong>${escapeHtml(format(last))}</strong></figcaption>
-    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(title)} 월별 추이" preserveAspectRatio="none">
-      <line x1="${padX}" y1="${baseline}" x2="${width - padX}" y2="${baseline}" stroke="var(--line)" stroke-width="1"></line>
+    <figcaption><span>${escapeHtml(title)}</span>${legend}</figcaption>
+    <svg viewBox="0 0 ${CHART_WIDTH} ${CHART_HEIGHT}" role="img" aria-label="${escapeHtml(title)} 월별 추이">
+      <line x1="${CHART_PAD_X - 6}" y1="${CHART_BASELINE}" x2="${CHART_WIDTH - CHART_PAD_X + 6}" y2="${CHART_BASELINE}" stroke="var(--line)" stroke-width="1"></line>
       ${marks}
       ${hits}
-      <text x="${padX}" y="${height - 5}" class="chart-axis">${escapeHtml(shortMonth(points[0].month))}</text>
-      <text x="${width - padX}" y="${height - 5}" text-anchor="end" class="chart-axis">${escapeHtml(shortMonth(points[points.length - 1].month))}</text>
+      ${ticks}
     </svg>
-    <p class="chart-range">${escapeHtml(shape === "bar" ? `최대 ${format(max)}` : `${format(min)} ~ ${format(max)}`)}</p>
   </figure>`;
 }
 
@@ -990,8 +999,7 @@ function statsBars(counts, limit) {
  * 동구는 월 1회 배치로 받아둔 스냅샷을 먼저 쓴다. 업종은 사업장별 상세조회에서만
  * 오기 때문에 실시간 수집으로는 채울 수 없다. 스냅샷이 없으면 실시간 수집으로 돌아간다.
  */
-async function loadNpsSnapshot(regionKey) {
-  if (regionKey !== "donggu") return null;
+async function loadNpsSnapshot() {
   try {
     const response = await fetch("data/nps_donggu.json", { cache: "no-cache" });
     if (!response.ok) return null;
@@ -1026,8 +1034,6 @@ function renderStats(regionLabel, snapshot) {
 
 async function runStats() {
   if (statsBusy) return;
-  const regionKey = $("statsRegionSelect").value;
-  const region = NPS_REGIONS[regionKey] || NPS_REGIONS.donggu;
   statsBusy = true;
   statsWorkplaces = [];
   $("statsRunBtn").disabled = true;
@@ -1039,7 +1045,7 @@ async function runStats() {
   $("statsProgressFill").style.width = "0%";
 
   try {
-    const snapshot = await loadNpsSnapshot(regionKey);
+    const snapshot = await loadNpsSnapshot();
     if (snapshot) {
       statsWorkplaces = snapshot.items;
       $("statsProgressFill").style.width = "100%";
@@ -1049,7 +1055,7 @@ async function runStats() {
     let total = snapshot ? statsWorkplaces.length : Infinity;
     for (let pageNo = 1; !snapshot && pageNo <= STATS_MAX_PAGES && statsWorkplaces.length < total; pageNo += 1) {
       const payload = await fetchNps({
-        action: "search", pageNo, numOfRows: STATS_PAGE_SIZE, ...regionParams(regionKey)
+        action: "search", pageNo, numOfRows: STATS_PAGE_SIZE, sido: NPS_REGION.sido, sggu: NPS_REGION.sggu
       });
       const items = payload.items || [];
       total = payload.totalCount || items.length;
@@ -1063,7 +1069,7 @@ async function runStats() {
     // 월별로 쌓인 이력을 접지 않으면 사업장 수가 개월 수만큼 부풀려진다.
     statsWorkplaces = mergeWorkplaceHistory(statsWorkplaces);
     statsSummary = summarizeWorkplaces(statsWorkplaces);
-    renderStats(region.label, snapshot);
+    renderStats(NPS_REGION.label, snapshot);
     $("statsState").hidden = true;
     $("statsWorkspace").hidden = false;
     $("statsProgressFill").style.width = "100%";
