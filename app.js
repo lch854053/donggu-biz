@@ -604,7 +604,7 @@ function renderNpsTable() {
     <td>${escapeHtml(row.sectionName)}</td>
     <td>${escapeHtml(row.styleName)}</td>
     <td>${npsStatusBadge(row)}</td>
-    <td><button class="button button-quiet detail-btn" type="button" data-seq="${escapeHtml(row.seq)}" data-month="${escapeHtml(row.dataCreatedMonth)}">상세</button></td>
+    <td><button class="button button-quiet detail-btn" type="button" data-seq="${escapeHtml(row.seq)}">상세</button></td>
   </tr>`).join("");
 }
 
@@ -684,23 +684,35 @@ async function showNpsDetail(seq) {
     const payload = await fetchNps({ action: "detail", seq });
     const detail = payload.items?.[0];
     if (!detail) throw new Error("사업장 상세 정보를 찾을 수 없습니다.");
-    const month = detail.dataCreatedMonth?.replace(/^(\d{4})(\d{2})$/, "$1.$2") || "미확인";
+    const industry = [detail.industryName, detail.industryCode && `(${detail.industryCode})`].filter(Boolean).join(" ") || detail.sectionName;
+    const row = (label, value) => (value == null ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
+    const people = (value) => (value == null ? null : `${value.toLocaleString("ko-KR")}명`);
     card.innerHTML = `<p class="selection-name">${escapeHtml(detail.name)}</p>
       <dl>
-        <div><dt>자료 기준월</dt><dd>${escapeHtml(month)}</dd></div>
-        <div><dt>사업자등록번호</dt><dd>${escapeHtml(detail.bizNoPrefix ? `${detail.bizNoPrefix}-****` : "-")}</dd></div>
-        <div><dt>소재지</dt><dd>${escapeHtml(detail.address || "-")}</dd></div>
-        <div><dt>업종</dt><dd>${escapeHtml(detail.sectionName)} (${escapeHtml(detail.industryCode || "-")})</dd></div>
-        <div><dt>사업장 형태</dt><dd>${escapeHtml(detail.styleName)}</dd></div>
-        <div><dt>가입 상태</dt><dd>${escapeHtml(detail.statusName)}</dd></div>
-        <div><dt>가입자 수</dt><dd>${detail.subscriberCount.toLocaleString("ko-KR")}명</dd></div>
-        <div><dt>당월 신규 취득자</dt><dd>${detail.newSubscriberCount.toLocaleString("ko-KR")}명</dd></div>
-        <div><dt>당월 상실 가입자</dt><dd>${detail.lostSubscriberCount.toLocaleString("ko-KR")}명</dd></div>
-        <div><dt>당월 고지금액</dt><dd>${detail.monthlyNoticeAmount.toLocaleString("ko-KR")}원</dd></div>
+        ${row("사업자등록번호", escapeHtml(detail.bizNoPrefix ? `${detail.bizNoPrefix}-****` : "-"))}
+        ${row("소재지", escapeHtml(detail.address || "-"))}
+        ${row("업종", escapeHtml(industry))}
+        ${row("사업장 형태", escapeHtml(detail.styleName))}
+        ${row("가입 상태", escapeHtml(detail.statusName))}
+        ${row("사업장 등록일", escapeHtml(formatYmd(detail.registeredDate)))}
+        ${row("사업장 탈퇴일", detail.withdrawnDate ? escapeHtml(formatYmd(detail.withdrawnDate)) : null)}
+        ${row("가입자 수", people(detail.subscriberCount))}
+        ${row("월별 신규 취득자", people(detail.newSubscriberCount))}
+        ${row("월별 상실 가입자", people(detail.lostSubscriberCount))}
+        ${row("당월 고지금액", `${detail.monthlyNoticeAmount.toLocaleString("ko-KR")}원`)}
       </dl>`;
   } catch (error) {
     card.innerHTML = `<p class="summary-empty">${escapeHtml(error.message)}</p>`;
   }
+  // 카드가 결과 표 아래에 있어 목록이 길면 화면 밖에 그려진다. 눌렀을 때 보이도록 옮겨준다.
+  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+/** yyyymmdd 또는 yyyy-mm-dd 문자열을 yyyy.mm.dd로 보여준다. 값이 없으면 하이픈. */
+function formatYmd(value) {
+  const digits = String(value ?? "").replace(/[^0-9]/g, "");
+  if (digits.length !== 8) return value || "-";
+  return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6)}`;
 }
 
 function downloadCsv(headers, rows, fileName) {
@@ -773,7 +785,23 @@ function statsBars(counts, limit) {
   </div>`).join("");
 }
 
-function renderStats(regionLabel) {
+/**
+ * 동구는 월 1회 배치로 받아둔 스냅샷을 먼저 쓴다. 업종은 사업장별 상세조회에서만
+ * 오기 때문에 실시간 수집으로는 채울 수 없다. 스냅샷이 없으면 실시간 수집으로 돌아간다.
+ */
+async function loadNpsSnapshot(regionKey) {
+  if (regionKey !== "donggu") return null;
+  try {
+    const response = await fetch("data/nps_donggu.json", { cache: "no-cache" });
+    if (!response.ok) return null;
+    const snapshot = await response.json();
+    return snapshot?.items?.length ? snapshot : null;
+  } catch {
+    return null;
+  }
+}
+
+function renderStats(regionLabel, snapshot) {
   const summary = statsSummary;
   const month = summary.months[0]?.name?.replace(/^(\d{4})(\d{2})$/, "$1.$2") || "미확인";
   $("statTiles").innerHTML = [
@@ -788,7 +816,10 @@ function renderStats(regionLabel) {
   $("statsAreas").innerHTML = statsBars(summary.areas, 12);
   $("statsStyles").innerHTML = statsBars(summary.styles, 5);
   $("statsStatuses").innerHTML = statsBars(summary.statuses, 5);
-  $("statsMeta").textContent = `국민연금공단 가입 사업장 내역 · ${regionLabel} · 자료 기준월 ${month} · 사업장 ${summary.total.toLocaleString("ko-KR")}개 집계`;
+  const source = snapshot
+    ? `${new Date(snapshot.collectedAt).toLocaleDateString("ko-KR")} 수집 자료`
+    : "실시간 수집";
+  $("statsMeta").textContent = `국민연금공단 가입 사업장 내역 · ${regionLabel} · 자료 기준월 ${month} · 사업장 ${summary.total.toLocaleString("ko-KR")}개 집계 · ${source}`;
   $("statsDownloadBtn").disabled = !summary.total;
 }
 
@@ -807,8 +838,15 @@ async function runStats() {
   $("statsProgressFill").style.width = "0%";
 
   try {
-    let total = Infinity;
-    for (let pageNo = 1; pageNo <= STATS_MAX_PAGES && statsWorkplaces.length < total; pageNo += 1) {
+    const snapshot = await loadNpsSnapshot(regionKey);
+    if (snapshot) {
+      statsWorkplaces = snapshot.items;
+      $("statsProgressFill").style.width = "100%";
+      $("statsProgressText").textContent = `${statsWorkplaces.length.toLocaleString("ko-KR")}개 사업장 (미리 받아둔 자료)`;
+    }
+
+    let total = snapshot ? statsWorkplaces.length : Infinity;
+    for (let pageNo = 1; !snapshot && pageNo <= STATS_MAX_PAGES && statsWorkplaces.length < total; pageNo += 1) {
       const payload = await fetchNps({
         action: "search", pageNo, numOfRows: STATS_PAGE_SIZE, ...regionParams(regionKey)
       });
@@ -822,7 +860,7 @@ async function runStats() {
     }
     if (!statsWorkplaces.length) throw new Error("집계할 사업장 내역이 없습니다.");
     statsSummary = summarizeWorkplaces(statsWorkplaces);
-    renderStats(region.label);
+    renderStats(region.label, snapshot);
     $("statsState").hidden = true;
     $("statsWorkspace").hidden = false;
     $("statsProgressFill").style.width = "100%";

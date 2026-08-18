@@ -6,31 +6,19 @@ import {
   parseNpsBody,
   toBizNoPrefix
 } from '../lib/nps.js';
+import {
+  NPS_BASE_URL,
+  NPS_MAX_ROWS,
+  NPS_VARIANTS,
+  normalizeServiceKey,
+  npsRequestUrl
+} from '../lib/nps-request.js';
 
-const BASE_URL = 'https://apis.data.go.kr/B552015/NpsBplcInfoInqireServiceV2';
 const MAX_UPSTREAM_ATTEMPTS = 4;
 const UPSTREAM_TIMEOUT_MS = 8000;
-// 이 서비스는 한 페이지 100건까지만 허용한다. 넘기면 게이트웨이가 CLIENT_ERROR(97)로 끊는다.
-const MAX_ROWS = 100;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 export const maxDuration = 30;
 
-// 조회 조건 파라미터는 스펙 문서(스네이크)와 실제 게이트웨이(카멜) 표기가 엇갈리고,
-// 법정동코드도 하위 코드만 받는 쪽과 상위 코드를 포함한 쪽 설명이 엇갈린다.
-// 표기·코드 형식 조합을 순서대로 시도해 결과가 나오는 조합을 골라 기억한다.
-const SNAKE_NAMES = {
-  wkplNm: 'wkpl_nm',
-  bzowrRgstNo: 'bzowr_rgst_no',
-  ldongAddrMgplDgCd: 'ldong_addr_mgpl_dg_cd',
-  ldongAddrMgplSgguCd: 'ldong_addr_mgpl_sggu_cd',
-  ldongAddrMgplSgguEmdCd: 'ldong_addr_mgpl_sggu_emd_cd'
-};
-const VARIANTS = [
-  { style: 'camel', region: 'asIs' },
-  { style: 'camel', region: 'prefixed' },
-  { style: 'snake', region: 'asIs' },
-  { style: 'snake', region: 'prefixed' }
-];
 let preferredVariant = 0;
 
 /** 성공한 조합 기억을 초기값으로 되돌린다. 테스트가 서로 간섭하지 않게 쓰는 훅이다. */
@@ -46,20 +34,6 @@ function boundedInt(value, fallback, min, max) {
 
 function digitsOnly(value, maxLength) {
   return String(value ?? '').replace(/[^0-9]/g, '').slice(0, maxLength);
-}
-
-/**
- * 발급 화면의 "인코딩 키"를 그대로 넣어두면 쿼리 조립 때 %가 한 번 더 인코딩되어
- * 키가 깨진다. 퍼센트 표기가 보이면 한 번 풀어서 디코딩 키로 맞춘다.
- */
-function normalizeServiceKey(raw) {
-  const key = String(raw ?? '').trim();
-  if (!/%[0-9A-Fa-f]{2}/.test(key)) return key;
-  try {
-    return decodeURIComponent(key);
-  } catch {
-    return key;
-  }
 }
 
 function maskKey(url) {
@@ -81,7 +55,7 @@ function buildRequest(query) {
   const pageNo = boundedInt(query.pageNo, 1, 1, 10000);
   const params = {
     pageNo: String(pageNo),
-    numOfRows: String(boundedInt(query.numOfRows, MAX_ROWS, 1, MAX_ROWS))
+    numOfRows: String(boundedInt(query.numOfRows, NPS_MAX_ROWS, 1, NPS_MAX_ROWS))
   };
 
   const name = String(query.wkplNm ?? '').trim().slice(0, 60);
@@ -103,33 +77,16 @@ function buildRequest(query) {
   return { action, operation: 'getBassInfoSearchV2', params, region, pageNo };
 }
 
-/** 하위 코드만 들어온 시군구·읍면동 코드에 상위 코드를 붙여 누적 형식으로 만든다. */
-function prefixRegion({ sido, sggu, emd }) {
-  const fullSggu = sggu.length === 3 && sido ? `${sido}${sggu}` : sggu;
-  const fullEmd = emd.length === 3 && fullSggu.length === 5 ? `${fullSggu}${emd}` : emd;
-  return { sido, sggu: fullSggu, emd: fullEmd };
-}
-
 function requestUrl(request, apiKey, variant) {
-  const region = variant.region === 'prefixed' ? prefixRegion(request.region) : request.region;
-  const params = { ...request.params };
-  if (region.sido) params.ldongAddrMgplDgCd = region.sido;
-  if (region.sggu) params.ldongAddrMgplSgguCd = region.sggu;
-  if (region.emd) params.ldongAddrMgplSgguEmdCd = region.emd;
-
-  const search = new URLSearchParams({ serviceKey: apiKey });
-  for (const [name, value] of Object.entries(params)) {
-    search.set(variant.style === 'snake' ? SNAKE_NAMES[name] ?? name : name, value);
-  }
-  return `${BASE_URL}/${request.operation}?${search}`;
+  return npsRequestUrl({ operation: request.operation, apiKey, params: request.params, region: request.region, variant });
 }
 
 /** 시도해 볼 요청 URL 목록. 같은 URL이 되는 조합은 한 번만 부른다. */
 function candidateUrls(request, apiKey) {
-  const ordered = [preferredVariant, ...VARIANTS.keys()].filter((index, position, all) => all.indexOf(index) === position);
+  const ordered = [preferredVariant, ...NPS_VARIANTS.keys()].filter((index, position, all) => all.indexOf(index) === position);
   const candidates = [];
   for (const index of ordered) {
-    const url = requestUrl(request, apiKey, VARIANTS[index]);
+    const url = requestUrl(request, apiKey, NPS_VARIANTS[index]);
     if (candidates.some((candidate) => candidate.url === url)) continue;
     candidates.push({ index, url });
   }
@@ -169,6 +126,23 @@ function respondTransportFailure(res, failure) {
     error: '국민연금 API가 일시적으로 불안정합니다. 잠시 후 다시 조회해 주세요.',
     detail: failure?.detail
   });
+}
+
+/**
+ * 월별 취득·상실자 수는 상세조회가 아니라 기간별 현황 오퍼레이션에만 있다.
+ * 상세 카드를 채우려고 한 번 더 물어보되, 실패하면 조용히 넘어간다.
+ */
+async function fetchPeriodCounts(seq, apiKey) {
+  const search = new URLSearchParams({ serviceKey: apiKey, seq, pageNo: '1', numOfRows: '1' });
+  const { body } = await fetchUpstream(`${NPS_BASE_URL}/getPdAcctoSttusInfoSearchV2?${search}`);
+  if (!body) return null;
+  try {
+    const [item] = parseNpsBody(body).items;
+    if (!item) return null;
+    return { nwAcqzrCnt: item.nwAcqzrCnt ?? '', lssJnngpCnt: item.lssJnngpCnt ?? '' };
+  } catch {
+    return null;
+  }
 }
 
 function payloadFor(request, parsed, variant, attempts) {
@@ -234,13 +208,17 @@ export default async function handler(req, res) {
     }
 
     attempts.push({ url: maskKey(candidate.url), totalCount: parsed.totalCount, itemCount: parsed.items.length });
-    const variant = VARIANTS[candidate.index];
+    const variant = NPS_VARIANTS[candidate.index];
     if (probeEmpty && !parsed.items.length && position < candidates.length - 1) {
       emptyResult = emptyResult ?? { parsed, variant };
       continue;
     }
 
     if (parsed.items.length) preferredVariant = candidate.index;
+    if (request.action === 'detail' && parsed.items.length) {
+      const counts = await fetchPeriodCounts(request.params.seq, apiKey);
+      if (counts) Object.assign(parsed.items[0], counts);
+    }
     return res.status(200).json(payloadFor(request, parsed, variant, attempts));
   }
 

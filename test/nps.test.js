@@ -250,23 +250,32 @@ test("nps 프록시는 XML 인증 오류 문서를 읽을 수 있는 메시지�
   }
 });
 
-test("nps 프록시는 상세조회에 seq만 넘긴다", async () => {
+test("nps 프록시는 상세조회에 seq만 넘기고 기간별 현황을 합친다", async () => {
   const originalFetch = global.fetch;
   const originalKey = process.env.NPS_SERVICE_KEY;
-  let requestedUrl = "";
+  const requestedUrls = [];
   global.fetch = async (url) => {
-    requestedUrl = String(url);
-    return new Response(JSON.stringify(npsEnvelope([{ ...sampleItem, jnngpCnt: "12" }], 1)), { status: 200 });
+    requestedUrls.push(String(url));
+    const detail = requestedUrls.length === 1;
+    return new Response(JSON.stringify(npsEnvelope(
+      [detail ? { ...sampleItem, jnngpCnt: "12", vldtVlKrnNm: "일반 행정", adptDt: "19880101" } : { nwAcqzrCnt: "7", lssJnngpCnt: "3" }],
+      1
+    )), { status: 200 });
   };
   process.env.NPS_SERVICE_KEY = "test-key";
 
   try {
     const res = responseRecorder();
     await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "detail", seq: "20240101", dataCrtYm: "202607" } }, res);
-    assert.match(requestedUrl, /getDetailInfoSearchV2/);
-    assert.match(requestedUrl, /seq=20240101/);
-    assert.doesNotMatch(requestedUrl, /crt_ym|dataCrtYm/); // 상세조회는 기준월을 받지 않는다
+    assert.match(requestedUrls[0], /getDetailInfoSearchV2/);
+    assert.match(requestedUrls[0], /seq=20240101/);
+    assert.doesNotMatch(requestedUrls[0], /crt_ym|dataCrtYm/); // 상세조회는 기준월을 받지 않는다
+    assert.match(requestedUrls[1], /getPdAcctoSttusInfoSearchV2/);
     assert.equal(res.body.items[0].subscriberCount, 12);
+    assert.equal(res.body.items[0].industryName, "일반 행정");
+    assert.equal(res.body.items[0].registeredDate, "19880101");
+    assert.equal(res.body.items[0].newSubscriberCount, 7);
+    assert.equal(res.body.items[0].lostSubscriberCount, 3);
   } finally {
     global.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
@@ -441,4 +450,11 @@ test("nps 프록시는 2페이지 이후에는 0건이어도 다시 묻지 않�
     if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
     else process.env.NPS_SERVICE_KEY = originalKey;
   }
+});
+
+test("상세 항목은 제공되지 않은 취득·상실자 수를 0으로 꾸미지 않는다", () => {
+  const detail = compactWorkplaceDetail({ ...sampleItem, jnngpCnt: "12" });
+  assert.equal(detail.subscriberCount, 12);
+  assert.equal(detail.newSubscriberCount, null);
+  assert.equal(detail.lostSubscriberCount, null);
 });
