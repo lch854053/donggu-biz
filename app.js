@@ -601,7 +601,7 @@ function npsStatusBadge(row) {
 function renderNpsTable() {
   const rows = npsPageRows();
   if (!rows.length) {
-    $("npsResultBody").innerHTML = '<tr class="empty-row"><td colspan="8">해당 조건의 결과가 없습니다.</td></tr>';
+    $("npsResultBody").innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 결과가 없습니다.</td></tr>';
     return;
   }
   const offset = (npsPageNo - 1) * NPS_PAGE_SIZE;
@@ -611,10 +611,19 @@ function renderNpsTable() {
     <td class="mono">${escapeHtml(row.bizNoPrefix ? `${row.bizNoPrefix}-****` : "-")}</td>
     <td>${escapeHtml(row.address || "-")}</td>
     <td>${escapeHtml(row.sectionName)}</td>
+    <td>${escapeHtml(npsIndustryDetailLabel(row))}</td>
     <td>${escapeHtml(row.styleName)}</td>
+    <td class="mono">${escapeHtml(row.registeredDate ? formatYmd(row.registeredDate) : "-")}</td>
+    <td class="mono">${typeof row.subscriberCount === "number" ? `${row.subscriberCount.toLocaleString("ko-KR")}명` : "-"}</td>
     <td>${npsStatusBadge(row)}</td>
     <td><button class="button button-quiet detail-btn" type="button" data-seq="${escapeHtml(row.seq)}">상세</button></td>
   </tr>`).join("");
+}
+
+/** 상세분류 열에 쓸 업종명. 상세조회를 아직 못 받았으면 비워 둔다. */
+function npsIndustryDetailLabel(row) {
+  if (row.industryName) return row.industryCode ? `${row.industryName} (${row.industryCode})` : row.industryName;
+  return row.detailLoaded ? "-" : "";
 }
 
 function renderNpsStats() {
@@ -688,23 +697,27 @@ async function npsIndustryIndexFromSnapshot() {
 
 // 대분류는 스냅샷에 적힌 값을 믿지 않고 업종코드에서 다시 판정한다. 분류 표를 고쳐도
 // 지난달에 만들어 둔 스냅샷은 그대로이므로, 읽는 쪽에서 맞춰야 옛 판정이 남지 않는다.
-function applyIndustry(row, source) {
+// 등록일과 가입자 수도 목록 API에는 없어 여기서 함께 채운다.
+function applyDetail(row, source) {
   const section = industrySection(source.industryCode);
   row.industryCode = source.industryCode;
   row.industryName = isPlaceholderIndustry(source.industryCode) ? "" : (source.industryName ?? row.industryName ?? "");
   row.sectionCode = section.code;
   row.sectionName = section.name;
+  row.registeredDate = source.registeredDate ?? row.registeredDate ?? "";
+  if (typeof source.subscriberCount === "number") row.subscriberCount = source.subscriberCount;
+  row.detailLoaded = true;
 }
 
 async function fillMissingIndustries() {
-  const rows = npsPageRows().filter((row) => !row.industryCode && row.seq);
+  const rows = npsPageRows().filter((row) => !row.detailLoaded && row.seq);
   if (!rows.length) return;
 
   const index = await npsIndustryIndexFromSnapshot();
   const remaining = [];
   for (const row of rows) {
     const hit = index.get(workplaceIdentity(row));
-    if (hit) applyIndustry(row, hit);
+    if (hit) applyDetail(row, hit);
     else remaining.push(row);
   }
   renderNpsTable();
@@ -715,7 +728,7 @@ async function fillMissingIndustries() {
     await Promise.all(batch.map(async (row) => {
       try {
         const detail = (await fetchNps({ action: "detail", seq: row.seq })).items?.[0];
-        if (detail?.industryCode) applyIndustry(row, detail);
+        if (detail) applyDetail(row, detail);
       } catch {
         // 한 건 실패는 업종 미상으로 남긴다.
       }
@@ -838,6 +851,13 @@ async function renderNpsHistory(listRow) {
   }
 }
 
+/** yyyymm을 안내창에 쓸 "yyyy년 m월"로 편다. */
+function monthLabel(month) {
+  const digits = String(month ?? "").replace(/[^0-9]/g, "");
+  if (digits.length !== 6) return shortMonth(month);
+  return `${digits.slice(0, 4)}년 ${Number(digits.slice(4))}월`;
+}
+
 /** yyyymm을 그래프 축에 쓸 yy.mm으로 줄인다. */
 function shortMonth(month) {
   return String(month ?? "").replace(/^\d{2}(\d{2})(\d{2})$/, "$1.$2");
@@ -899,10 +919,17 @@ function trendChart(title, points, series, shape, format) {
     }).join("")).join("");
   }
 
+  // 막대·꼭짓점 위에 뜨는 안내창의 내용. 막대는 좁아서 열 전체를 덮는 투명한 판으로 받는다.
   const hits = points.map((point, index) => {
-    const summary = active.map(({ key, label }) => `${label} ${typeof point[key] === "number" ? format(point[key]) : "자료 없음"}`).join(" · ");
-    return `<rect x="${(x(index) - Math.max(step, 8) / 2).toFixed(1)}" y="0" width="${Math.max(step, 8).toFixed(1)}" height="${CHART_BASELINE}" fill="transparent">
-      <title>${escapeHtml(shortMonth(point.month))} · ${escapeHtml(summary)}</title></rect>`;
+    const tip = {
+      month: monthLabel(point.month),
+      rows: active.map(({ key, label, color }) => ({
+        label,
+        color,
+        value: typeof point[key] === "number" ? format(point[key]) : "자료 없음"
+      }))
+    };
+    return `<rect x="${(x(index) - Math.max(step, 8) / 2).toFixed(1)}" y="0" width="${Math.max(step, 8).toFixed(1)}" height="${CHART_BASELINE}" fill="transparent" class="chart-hit" data-tip="${escapeHtml(JSON.stringify(tip))}"></rect>`;
   }).join("");
 
   const ticks = points.map((point, index) => (keepFromEnd(index, tickStep)
@@ -923,6 +950,50 @@ function trendChart(title, points, series, shape, format) {
     </svg>
   </figure>`;
 }
+
+/**
+ * 그래프 위에 뜨는 미니 안내창. 상세 카드가 다시 그려져도 살아 있도록 문서에 한 번만 걸고,
+ * 커서를 따라다니되 화면 밖으로 밀려나지 않게 가장자리에서 붙잡는다.
+ */
+let chartTipEl = null;
+function chartTipNode() {
+  if (!chartTipEl) {
+    chartTipEl = document.createElement("div");
+    chartTipEl.className = "chart-tip";
+    chartTipEl.hidden = true;
+    document.body.appendChild(chartTipEl);
+  }
+  return chartTipEl;
+}
+
+function hideChartTip() {
+  if (chartTipEl) chartTipEl.hidden = true;
+}
+
+function showChartTip(hit, clientX, clientY) {
+  let tip;
+  try {
+    tip = JSON.parse(hit.dataset.tip);
+  } catch {
+    return;
+  }
+  const node = chartTipNode();
+  node.innerHTML = `<strong>${escapeHtml(tip.month)}</strong>${tip.rows.map(({ label, color, value }) =>
+    `<span><i style="background:${escapeHtml(color)}"></i>${escapeHtml(label)}<b>${escapeHtml(value)}</b></span>`).join("")}`;
+  node.hidden = false;
+  const box = node.getBoundingClientRect();
+  const left = Math.min(Math.max(8, clientX - box.width / 2), window.innerWidth - box.width - 8);
+  const top = clientY - box.height - 12;
+  node.style.left = `${left}px`;
+  node.style.top = `${(top < 8 ? clientY + 16 : top)}px`;
+}
+
+document.addEventListener("mousemove", (event) => {
+  const hit = event.target.closest?.(".chart-hit");
+  if (hit) showChartTip(hit, event.clientX, event.clientY);
+  else hideChartTip();
+});
+document.addEventListener("scroll", hideChartTip, true);
 
 /** yyyymmdd 또는 yyyy-mm-dd 문자열을 yyyy.mm.dd로 보여준다. 값이 없으면 하이픈. */
 function formatYmd(value) {
