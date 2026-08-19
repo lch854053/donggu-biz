@@ -5,7 +5,14 @@ import {
   filterStores
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
-import { mergeWorkplaceHistory, summarizeWorkplaces, toBizNoPrefix, workplaceIdentity } from "./lib/nps.js";
+import {
+  industrySection,
+  isPlaceholderIndustry,
+  mergeWorkplaceHistory,
+  summarizeWorkplaces,
+  toBizNoPrefix,
+  workplaceIdentity
+} from "./lib/nps.js";
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({
@@ -679,11 +686,14 @@ async function npsIndustryIndexFromSnapshot() {
   return npsSnapshotIndex;
 }
 
+// 대분류는 스냅샷에 적힌 값을 믿지 않고 업종코드에서 다시 판정한다. 분류 표를 고쳐도
+// 지난달에 만들어 둔 스냅샷은 그대로이므로, 읽는 쪽에서 맞춰야 옛 판정이 남지 않는다.
 function applyIndustry(row, source) {
+  const section = industrySection(source.industryCode);
   row.industryCode = source.industryCode;
-  row.industryName = source.industryName ?? row.industryName ?? "";
-  row.sectionCode = source.sectionCode;
-  row.sectionName = source.sectionName;
+  row.industryName = isPlaceholderIndustry(source.industryCode) ? "" : (source.industryName ?? row.industryName ?? "");
+  row.sectionCode = section.code;
+  row.sectionName = section.name;
 }
 
 async function fillMissingIndustries() {
@@ -772,7 +782,8 @@ async function showNpsDetail(seq) {
     const payload = await fetchNps({ action: "detail", seq });
     const detail = payload.items?.[0];
     if (!detail) throw new Error("사업장 상세 정보를 찾을 수 없습니다.");
-    const industry = [detail.industryName, detail.industryCode && `(${detail.industryCode})`].filter(Boolean).join(" ") || detail.sectionName;
+    const industryCode = isPlaceholderIndustry(detail.industryCode) ? "" : detail.industryCode;
+    const industry = [detail.industryName, industryCode && `(${industryCode})`].filter(Boolean).join(" ") || detail.sectionName;
     const row = (label, value) => (value == null ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
     const people = (value) => (value == null ? null : `${value.toLocaleString("ko-KR")}명`);
     card.innerHTML = `<p class="selection-name">${escapeHtml(detail.name)}</p>
@@ -973,7 +984,8 @@ $("npsDownloadBtn").addEventListener("click", () => {
     ["순번", "사업장명", "사업자등록번호(앞6자리)", "소재지(도로명)", "업종코드", "업종대분류", "사업장형태", "가입상태", "자료기준월", "이력개월수"],
     filteredNpsRows().map((row, index) => [
       index + 1,
-      row.name, row.bizNoPrefix, row.address, row.industryCode, row.sectionName, row.styleName, row.statusName, row.dataCreatedMonth,
+      row.name, row.bizNoPrefix, row.address, isPlaceholderIndustry(row.industryCode) ? "" : row.industryCode,
+      row.sectionName, row.styleName, row.statusName, row.dataCreatedMonth,
       row.historyCount || 1
     ]),
     `국민연금사업장_${new Date().toISOString().slice(0, 10)}.csv`

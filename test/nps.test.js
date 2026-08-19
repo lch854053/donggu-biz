@@ -5,7 +5,8 @@ import {
   addressArea,
   compactWorkplace,
   compactWorkplaceDetail,
-  ksicSection,
+  industrySection,
+  isPlaceholderIndustry,
   mergeWorkplaceHistory,
   parseNpsBody,
   parseNpsResponse,
@@ -43,7 +44,7 @@ const sampleItem = {
   wkplRoadNmDtlAddr: "광주광역시 동구 서남로",
   wkplJnngStcd: "1",
   wkplStylDvcd: "1",
-  wkplIntpCd: "84111",
+  wkplIntpCd: "751100",
   ldongAddrMgplDgCd: "29",
   ldongAddrMgplSgguCd: "110",
   ldongAddrMgplSgguEmdCd: "101"
@@ -55,12 +56,32 @@ test("사업자등록번호는 앞 6자리로만 잘라낸다", () => {
   assert.equal(toBizNoPrefix(""), "");
 });
 
-test("업종코드를 표준산업분류 대분류로 옮긴다", () => {
-  assert.equal(ksicSection("84111").code, "O");
-  assert.equal(ksicSection("56111").name, "숙박 및 음식점업");
-  assert.equal(ksicSection("10120").code, "C");
-  assert.equal(ksicSection("").name, "업종 미상");
-  assert.equal(ksicSection("44000").name, "업종 미상");
+test("업종코드를 API가 쓰는 옛 분류 기준 대분류로 옮긴다", () => {
+  assert.equal(industrySection("751100").code, "N"); // 일반 행정
+  assert.equal(industrySection("552101").name, "숙박 및 음식점업");
+  assert.equal(industrySection("452125").name, "건설업"); // 일반 전기 공사업
+  assert.equal(industrySection("513421").name, "도매 및 소매업"); // 서적, 잡지 도매업
+  assert.equal(industrySection("292902").code, "D"); // 인쇄 및 제책용 기계 제조업
+  assert.equal(industrySection("").name, "업종 미상");
+  assert.equal(industrySection("440000").name, "업종 미상");
+});
+
+test("업종이 비어 있다는 뜻의 자리표시 코드는 국제기관이 아니라 미상으로 둔다", () => {
+  // 어린이집처럼 사업자등록번호가 잡히지 않는 사업장은 999999로 내려온다.
+  assert.equal(industrySection("999999").name, "업종 미상");
+  assert.equal(industrySection("000000").name, "업종 미상");
+  assert.ok(isPlaceholderIndustry("999999"));
+  assert.ok(!isPlaceholderIndustry("991100"));
+
+  const daycare = compactWorkplaceDetail({
+    ...sampleItem,
+    wkplNm: "광주은행어린이집",
+    wkplIntpCd: "999999",
+    vldtVlKrnNm: "BIZ_NO미존재사업장"
+  });
+  assert.equal(daycare.sectionName, "업종 미상");
+  assert.equal(daycare.sectionCode, "");
+  assert.equal(daycare.industryName, "");
 });
 
 test("건물번호 없는 주소에서 시군구와 도로명을 집계 단위로 뽑는다", () => {
@@ -75,7 +96,7 @@ test("사업장 항목을 화면과 통계가 함께 쓰는 형태로 정규화�
   assert.equal(workplace.bizNoPrefix, "408815");
   assert.equal(workplace.statusName, "등록");
   assert.equal(workplace.styleName, "법인사업장");
-  assert.equal(workplace.sectionCode, "O");
+  assert.equal(workplace.sectionCode, "N");
   assert.equal(workplace.area, "동구 서남로");
 });
 
@@ -107,8 +128,8 @@ test("정상이 아닌 결과코드는 사유를 담아 오류로 올린다", ()
 test("사업장 통계는 상태·형태·업종·도로명을 함께 집계한다", () => {
   const summary = summarizeWorkplaces([
     compactWorkplace(sampleItem),
-    compactWorkplace({ ...sampleItem, wkplJnngStcd: "2", wkplStylDvcd: "2", wkplIntpCd: "56111" }),
-    compactWorkplace({ ...sampleItem, wkplIntpCd: "56112", wkplRoadNmDtlAddr: "광주광역시 동구 제봉로" })
+    compactWorkplace({ ...sampleItem, wkplJnngStcd: "2", wkplStylDvcd: "2", wkplIntpCd: "552101" }),
+    compactWorkplace({ ...sampleItem, wkplIntpCd: "552102", wkplRoadNmDtlAddr: "광주광역시 동구 제봉로" })
   ]);
   assert.equal(summary.total, 3);
   assert.equal(summary.registered, 2);
@@ -133,7 +154,7 @@ const sampleXml = `<?xml version="1.0" encoding="UTF-8"?>
         <wkplRoadNmDtlAddr>광주광역시 동구 서남로</wkplRoadNmDtlAddr>
         <wkplJnngStcd>1</wkplJnngStcd>
         <wkplStylDvcd>1</wkplStylDvcd>
-        <wkplIntpCd>84111</wkplIntpCd>
+        <wkplIntpCd>751100</wkplIntpCd>
         <dataCrtYm>202607</dataCrtYm>
       </item>
       <item>
@@ -143,7 +164,7 @@ const sampleXml = `<?xml version="1.0" encoding="UTF-8"?>
         <wkplRoadNmDtlAddr>광주광역시 동구 제봉로</wkplRoadNmDtlAddr>
         <wkplJnngStcd>2</wkplJnngStcd>
         <wkplStylDvcd>2</wkplStylDvcd>
-        <wkplIntpCd>56111</wkplIntpCd>
+        <wkplIntpCd>552101</wkplIntpCd>
         <dataCrtYm>202607</dataCrtYm>
       </item>
     </items>
@@ -156,7 +177,7 @@ test("XML 응답에서 항목과 전체 건수를 읽는다", () => {
   assert.equal(parsed.items.length, 2);
   assert.equal(parsed.totalCount, 1234);
   assert.equal(parsed.items[0].wkplNm, "광주동구청 & 부속기관");
-  assert.equal(parsed.items[1].wkplIntpCd, "56111");
+  assert.equal(parsed.items[1].wkplIntpCd, "552101");
 });
 
 test("XML 인증 오류 문서는 사유를 담아 오류로 올린다", () => {
@@ -222,7 +243,7 @@ test("nps 프록시는 지역 조건을 upstream 파라미터로 옮기고 결�
     assert.match(requestedUrl, /numOfRows=100/); // 상한으로 눌린다
     assert.equal(res.statusCode, 200);
     assert.equal(res.body.totalCount, 42);
-    assert.equal(res.body.items[0].sectionCode, "O");
+    assert.equal(res.body.items[0].sectionCode, "N");
   } finally {
     global.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
