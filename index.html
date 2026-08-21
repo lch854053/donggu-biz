@@ -117,47 +117,72 @@
       </div>
 
       <div class="sub-panel" id="subpanel-nps" role="tabpanel" aria-labelledby="tab-nps" hidden>
-        <div class="business-layout">
-          <section class="input-station" aria-labelledby="nps-input-title">
-            <div class="station-heading">
-              <div>
-                <h2 id="nps-input-title">국민연금 가입 사업장 조회</h2>
-                <p>광주 동구의 국민연금 가입 사업장을 사업장명 또는 사업자등록번호로 조회합니다.</p>
+        <section class="input-station" aria-labelledby="nps-input-title">
+          <div class="station-heading">
+            <div>
+              <h2 id="nps-input-title">국민연금 가입 사업장 조회</h2>
+              <p class="source-note">출처 : 국민연금공단<br>조회 지역 : 광주 동구<br>유의사항 : 사업자등록번호는 앞 6자리만 제공되며, 주소는 상세주소는 조회되지 않습니다.</p>
+            </div>
+            <span class="count-badge" id="npsCountBadge">0개 사업장</span>
+          </div>
+          <div class="query-grid" id="npsQueryGrid">
+            <label class="field">
+              <span>사업장명</span>
+              <input id="npsNameInput" type="search" autocomplete="off" placeholder="공란이면 동구 전체 조회">
+              <span class="field-note is-warn" id="npsNameNote" hidden>사업장명이 바뀌었습니다. 조회 시작을 눌러 다시 조회하세요.</span>
+            </label>
+            <div class="field">
+              <span>업종 대분류</span>
+              <select id="npsSectionSelect"><option value="">전체</option></select>
+              <label class="check-line"><input type="checkbox" id="npsUnknownIndustry"> 업종 미상만 조회</label>
+            </div>
+            <div class="field">
+              <span>업종 상세분류</span>
+              <select id="npsIndustrySelect"><option value="">전체</option></select>
+              <span class="field-note" id="npsIndustryNote">조회 결과에 있는 업종만 나열됩니다.</span>
+            </div>
+            <div class="field">
+              <span>사업장 형태</span>
+              <div class="filter-tabs" id="npsStyleTabs" role="group" aria-label="사업장 형태">
+                <button class="filter-chip is-active" type="button" data-style="" aria-pressed="true">전체</button>
+                <button class="filter-chip" type="button" data-style="2" aria-pressed="false">개인</button>
+                <button class="filter-chip" type="button" data-style="1" aria-pressed="false">법인</button>
               </div>
-              <span class="count-badge" id="npsCountBadge">0개 사업장</span>
             </div>
-            <div class="query-grid">
-              <label class="field">
-                <span>사업장명</span>
-                <input id="npsNameInput" type="search" autocomplete="off" placeholder="예: 광주은행">
-              </label>
-              <label class="field">
-                <span>사업자등록번호 (앞 6자리)</span>
-                <input id="npsBizNoInput" type="search" inputmode="numeric" autocomplete="off" placeholder="예: 408815 또는 408-81-5xxxx">
-              </label>
+            <div class="field range-field">
+              <span>사업장 등록일 <b class="range-readout" id="npsYearReadout">전체</b></span>
+              <div class="range-dual" id="npsYearRange">
+                <i class="range-fill" aria-hidden="true"></i>
+                <input type="range" id="npsYearFrom" aria-label="사업장 등록일 시작 연도">
+                <input type="range" id="npsYearTo" aria-label="사업장 등록일 종료 연도">
+              </div>
+              <div class="range-bounds"><span id="npsYearMinLabel"></span><span id="npsYearMaxLabel"></span></div>
             </div>
-            <div class="action-row">
-              <button class="button button-primary" id="npsRunBtn" type="button">조회 시작</button>
-              <button class="button button-quiet" id="npsClearBtn" type="button">초기화</button>
-              <button class="button button-export" id="npsDownloadBtn" type="button" disabled>CSV 다운로드</button>
+            <div class="field range-field">
+              <span>가입자 수 <b class="range-readout" id="npsPeopleReadout">전체</b></span>
+              <div class="range-dual" id="npsPeopleRange">
+                <i class="range-fill" aria-hidden="true"></i>
+                <input type="range" id="npsPeopleFrom" aria-label="가입자 수 하한">
+                <input type="range" id="npsPeopleTo" aria-label="가입자 수 상한">
+              </div>
+              <div class="range-bounds"><span id="npsPeopleMinLabel"></span><span id="npsPeopleMaxLabel"></span></div>
             </div>
-            <div class="progress-wrap" id="npsProgressWrap" hidden>
-              <div class="progress-track"><div class="progress-fill" id="npsProgressFill"></div></div>
-              <p id="npsProgressText" aria-live="polite">대기 중</p>
+            <div class="field">
+              <span>가입 상태</span>
+              <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 탈퇴 사업장도 조회</label>
+              <span class="field-note">기본은 가입 상태가 등록인 사업장만 조회합니다.</span>
             </div>
-          </section>
-
-          <aside class="business-guide" aria-labelledby="nps-guide-title">
-            <h2 id="nps-guide-title">조회 기준</h2>
-            <dl>
-              <div><dt>출처</dt><dd>국민연금공단</dd></div>
-              <div><dt>지역</dt><dd>광주광역시 동구</dd></div>
-              <div><dt>1회 표시</dt><dd>최대 100건</dd></div>
-              <div><dt>가입 상태</dt><dd>등록·탈퇴</dd></div>
-            </dl>
-            <p><strong>사업자등록번호는 앞 6자리만 제공</strong>되므로 개별 사업자를 특정할 수 없고, 국세청 상태조회 결과와 자동으로 연결되지 않습니다. 주소도 건물번호 없이 도로명까지만 일반화되어 제공됩니다.</p>
-          </aside>
-        </div>
+          </div>
+          <div class="action-row">
+            <button class="button button-primary" id="npsRunBtn" type="button">조회 시작</button>
+            <button class="button button-quiet" id="npsClearBtn" type="button">초기화</button>
+            <button class="button button-export" id="npsDownloadBtn" type="button" disabled>CSV 다운로드</button>
+          </div>
+          <div class="progress-wrap" id="npsProgressWrap" hidden>
+            <div class="progress-track"><div class="progress-fill" id="npsProgressFill"></div></div>
+            <p id="npsProgressText" aria-live="polite">대기 중</p>
+          </div>
+        </section>
 
         <section class="result-section" id="npsResultSection" hidden aria-labelledby="nps-result-title">
           <div class="result-toolbar">
@@ -166,11 +191,6 @@
               <div class="result-stats" id="npsStatsRow"></div>
             </div>
             <div class="toolbar-actions">
-              <div class="filter-tabs" id="npsFilterTabs" aria-label="가입 상태 필터">
-                <button class="filter-chip is-active" type="button" data-filter="all" aria-pressed="true">전체</button>
-                <button class="filter-chip" type="button" data-filter="registered" aria-pressed="false">등록</button>
-                <button class="filter-chip" type="button" data-filter="withdrawn" aria-pressed="false">탈퇴</button>
-              </div>
               <div class="pager" id="npsPager" hidden>
                 <button class="button button-secondary" id="npsPrevBtn" type="button">이전</button>
                 <span id="npsPageLabel" class="mono">1</span>
@@ -184,7 +204,6 @@
               <tbody id="npsResultBody"></tbody>
             </table>
           </div>
-          <div class="detail-card" id="npsDetailCard" hidden aria-live="polite"></div>
         </section>
       </div>
     </section>

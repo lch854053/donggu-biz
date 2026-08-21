@@ -182,7 +182,8 @@ button { color: inherit; }
   border-bottom: 1px solid var(--line);
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0 16px;
+  gap: 16px;
+  align-items: start;
 }
 
 .query-grid .field { margin-bottom: 0; }
@@ -202,7 +203,9 @@ button { color: inherit; }
 .pager .button { min-height: 36px; padding: 6px 12px; }
 .pager span { color: var(--text-secondary); font-size: 12px; }
 
-.detail-btn { min-height: 32px; padding: 4px 10px; font-size: 12px; }
+/* 열이 좁아도 "상 / 세"로 끊기지 않게 붙여 둔다. */
+.detail-cell { white-space: nowrap; }
+.detail-btn { min-height: 32px; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
 
 .detail-card {
   margin-top: 16px;
@@ -218,6 +221,94 @@ button { color: inherit; }
 .detail-card dl div { padding: 8px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 14px; }
 .detail-card dt { color: var(--text-secondary); font-size: 12px; }
 .detail-card dd { margin: 0; text-align: right; font: 12px/1.5 var(--mono); overflow-wrap: anywhere; }
+
+/* 상세는 표 맨 아래가 아니라 누른 행 바로 아래에 한 줄로 끼워 펼친다. */
+.detail-row td { padding: 0 8px 12px; border-top: 0; }
+.detail-row td, tbody .detail-row:hover td { background: transparent; }
+.detail-row .detail-card { margin-top: 0; }
+tbody tr.is-open td { background: #1b2334; }
+
+.source-note { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.7; }
+
+.field-note { margin-top: 6px; display: block; color: var(--text-muted); font-size: 12px; }
+.field-note.is-warn { color: var(--yellow); }
+
+.check-line {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.check-line input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+.range-field .range-readout { color: var(--text); font-family: var(--mono); font-weight: 600; }
+
+/* 손잡이 두 개를 같은 트랙 위에 겹쳐 놓는다. 트랙은 아래 ::before가 그리고, 실제
+   input의 트랙은 투명하게 둔 채 손잡이만 눌리도록 포인터를 손잡이에만 되살린다. */
+.range-dual { position: relative; height: 32px; margin-top: 2px; }
+
+.range-dual::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 14px;
+  height: 4px;
+  border-radius: 4px;
+  background: #252d3d;
+}
+
+.range-dual .range-fill {
+  position: absolute;
+  top: 14px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--accent);
+}
+
+.range-dual input[type="range"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.range-dual input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent-strong);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.range-dual input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent-strong);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.range-dual input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+.range-dual input[type="range"]:focus-visible::-moz-range-thumb { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
+
+.range-bounds { margin-top: 2px; display: flex; justify-content: space-between; color: var(--text-muted); font: 12px/1.4 var(--mono); }
 
 main { padding: 28px clamp(18px, 3vw, 40px) 72px; }
 .service-panel { max-width: 1560px; margin: 0 auto; }
