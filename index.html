@@ -131,16 +131,10 @@
               <input id="npsNameInput" type="search" autocomplete="off" placeholder="공란이면 동구 전체 조회">
               <span class="field-note is-warn" id="npsNameNote" hidden>사업장명이 바뀌었습니다. 조회 시작을 눌러 다시 조회하세요.</span>
             </label>
-            <div class="field">
+            <label class="field">
               <span>업종 대분류</span>
               <select id="npsSectionSelect"><option value="">전체</option></select>
-              <label class="check-line"><input type="checkbox" id="npsUnknownIndustry"> 업종 미상만 조회</label>
-            </div>
-            <div class="field">
-              <span>업종 상세분류</span>
-              <select id="npsIndustrySelect"><option value="">전체</option></select>
-              <span class="field-note" id="npsIndustryNote">조회 결과에 있는 업종만 나열됩니다.</span>
-            </div>
+            </label>
             <div class="field">
               <span>사업장 형태</span>
               <div class="filter-tabs" id="npsStyleTabs" role="group" aria-label="사업장 형태">
@@ -148,6 +142,7 @@
                 <button class="filter-chip" type="button" data-style="2" aria-pressed="false">개인</button>
                 <button class="filter-chip" type="button" data-style="1" aria-pressed="false">법인</button>
               </div>
+              <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 탈퇴 사업장 포함 조회</label>
             </div>
             <div class="field range-field">
               <span>사업장 등록일 <b class="range-readout" id="npsYearReadout">전체</b></span>
@@ -167,11 +162,6 @@
               </div>
               <div class="range-bounds"><span id="npsPeopleMinLabel"></span><span id="npsPeopleMaxLabel"></span></div>
             </div>
-            <div class="field">
-              <span>가입 상태</span>
-              <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 탈퇴 사업장도 조회</label>
-              <span class="field-note">기본은 가입 상태가 등록인 사업장만 조회합니다.</span>
-            </div>
           </div>
           <div class="action-row">
             <button class="button button-primary" id="npsRunBtn" type="button">조회 시작</button>
@@ -189,6 +179,7 @@
             <div>
               <h2 id="nps-result-title">조회 결과</h2>
               <div class="result-stats" id="npsStatsRow"></div>
+              <div class="result-note" id="npsResultNote" hidden></div>
             </div>
             <div class="toolbar-actions">
               <div class="pager" id="npsPager" hidden>
