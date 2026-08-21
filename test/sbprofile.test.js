@@ -4,6 +4,7 @@ import {
   SB_REGIONS,
   formatMonth,
   formatRatio,
+  isRetryableStatus,
   leadingNumber,
   normalizeProfile,
   parseSbResponse,
@@ -181,4 +182,13 @@ test("위쪽만 막힌 구간은 같은 숫자로 시작하는 구간보다 앞�
 
 test("업종명에 겹친 공백은 하나로 줄인다", () => {
   assert.equal(rowOf({ bizBzcCdNm: "기타 전문  과학 및 기술 서비스업" }).industryName, "기타 전문 과학 및 기술 서비스업");
+});
+
+test("5xx와 혼잡 응답만 재시도하고 4xx는 바로 실패시킨다", () => {
+  assert.equal(isRetryableStatus(504), true);
+  assert.equal(isRetryableStatus(500), true);
+  assert.equal(isRetryableStatus(429), true);
+  assert.equal(isRetryableStatus(408), true);
+  assert.equal(isRetryableStatus(401), false);
+  assert.equal(isRetryableStatus(404), false);
 });
