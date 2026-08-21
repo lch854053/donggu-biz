@@ -4,6 +4,8 @@ import {
   SB_REGIONS,
   formatMonth,
   formatRatio,
+  isRetryableStatus,
+  isSameSnapshotData,
   leadingNumber,
   normalizeProfile,
   parseSbResponse,
@@ -159,4 +161,61 @@ test("기준년월과 비중 표기", () => {
   assert.equal(formatMonth(""), "미상");
   assert.equal(formatRatio(0.1234), "12.3%");
   assert.equal(formatRatio(0), "0%");
+});
+
+test("위쪽만 막힌 구간은 같은 숫자로 시작하는 구간보다 앞에 온다", () => {
+  assert.equal(leadingNumber("30세 미만"), 29.5);
+  assert.equal(leadingNumber("30대"), 30);
+  assert.equal(leadingNumber("1명 이상 5명 미만"), 1);
+
+  const summary = summarizeProfiles([
+    rowOf({ rprAggrNm: "30대" }),
+    rowOf({ rprAggrNm: "30세 미만" }),
+    rowOf({ rprAggrNm: "80대 이상" }),
+    rowOf({ rprAggrNm: "70대" }),
+    rowOf({ rprAggrNm: "미상" })
+  ]);
+  assert.deepEqual(summary.ages.map((item) => item.name), ["30세 미만", "30대", "70대", "80대 이상", "미상"]);
+  // 30세 미만은 40대 미만에 들어가고 60대 이상에는 들어가지 않는다.
+  assert.equal(summary.indicators.under40.count, 2);
+  assert.equal(summary.indicators.over60.count, 2);
+});
+
+test("업종명에 겹친 공백은 하나로 줄인다", () => {
+  assert.equal(rowOf({ bizBzcCdNm: "기타 전문  과학 및 기술 서비스업" }).industryName, "기타 전문 과학 및 기술 서비스업");
+});
+
+test("5xx와 혼잡 응답만 재시도하고 4xx는 바로 실패시킨다", () => {
+  assert.equal(isRetryableStatus(504), true);
+  assert.equal(isRetryableStatus(500), true);
+  assert.equal(isRetryableStatus(429), true);
+  assert.equal(isRetryableStatus(408), true);
+  assert.equal(isRetryableStatus(401), false);
+  assert.equal(isRetryableStatus(404), false);
+});
+
+test("집계가 같으면 수집 시각이 달라도 같은 스냅샷으로 본다", () => {
+  const regions = { donggu: { label: "광주 동구", byMonth: { 202506: { total: 1 } } } };
+  const meta = { months: ["202506"] };
+  assert.equal(
+    isSameSnapshotData(
+      { meta: { ...meta, collectedAt: "2026-01-01T00:00:00.000Z" }, regions },
+      { meta: { ...meta, collectedAt: "2026-08-21T00:00:00.000Z" }, regions }
+    ),
+    true
+  );
+});
+
+test("기준월이 늘거나 집계가 달라지면 다른 스냅샷으로 본다", () => {
+  const regions = { donggu: { label: "광주 동구", byMonth: { 202506: { total: 1 } } } };
+  assert.equal(isSameSnapshotData(
+    { meta: { months: ["202506"] }, regions },
+    { meta: { months: ["202606", "202506"] }, regions }
+  ), false);
+  assert.equal(isSameSnapshotData(
+    { meta: { months: ["202506"] }, regions },
+    { meta: { months: ["202506"] }, regions: { donggu: { label: "광주 동구", byMonth: { 202506: { total: 2 } } } } }
+  ), false);
+  // 파일이 없던 첫 수집
+  assert.equal(isSameSnapshotData(null, { meta: { months: ["202506"] }, regions }), false);
 });

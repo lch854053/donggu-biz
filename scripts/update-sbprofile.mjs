@@ -1,12 +1,14 @@
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { SB_REGIONS, normalizeProfile, parseSbResponse, summarizeByMonth } from "../lib/sbprofile.js";
+import { SB_REGIONS, isRetryableStatus, isSameSnapshotData, normalizeProfile, parseSbResponse, summarizeByMonth } from "../lib/sbprofile.js";
 
 const API_URL = "https://apis.data.go.kr/1160100/service/GetSBProfileInfoService/getOtlInfo";
-const PAGE_SIZE = 10000;
-const MAX_PAGES = 20;
-const MAX_RETRIES = 3;
+// 한 장에 10,000행을 달라고 하면 게이트웨이가 504로 끊는 일이 있다. 하루 한도가 10,000회라
+// 광주 전체를 1,000행씩 서른몇 장에 나눠 받아도 호출량은 문제가 되지 않는다.
+const PAGE_SIZE = 1000;
+const MAX_PAGES = 200;
+const MAX_RETRIES = 5;
 const key = process.env.FSC_SB_KEY;
 
 if (!key) throw new Error("FSC_SB_KEY 환경변수가 필요합니다.");
@@ -30,11 +32,17 @@ async function fetchPage(bizAreaNm, pageNo) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
       const response = await fetch(url, { signal: AbortSignal.timeout(60000) });
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      if (!response.ok) {
+        const error = new Error(`HTTP ${response.status}`);
+        error.retryable = isRetryableStatus(response.status);
+        throw error;
+      }
       return parseSbResponse(await response.json());
     } catch (error) {
-      if (attempt === MAX_RETRIES) throw error;
-      await sleep(attempt * 1000);
+      if (attempt === MAX_RETRIES || error.retryable === false) throw error;
+      const wait = 2 ** attempt * 1000;
+      console.log(`[sbprofile] ${bizAreaNm} ${pageNo}쪽 ${error.message}, ${wait / 1000}초 뒤 재시도 (${attempt}/${MAX_RETRIES})`);
+      await sleep(wait);
     }
   }
 }
@@ -80,6 +88,13 @@ const latest = months[0];
 if (!latest) throw new Error("기준년월을 찾지 못했습니다.");
 if (!donggu?.byMonth?.[latest]?.total) throw new Error(`최신 기준월 ${latest}에 동구 자료가 없습니다.`);
 
+let previous = null;
+try {
+  previous = JSON.parse(await readFile(outputPath, "utf8"));
+} catch (error) {
+  if (error?.code !== "ENOENT") throw new Error(`기존 데이터 파일을 읽을 수 없습니다: ${error.message}`);
+}
+
 const payload = {
   meta: {
     source: "금융위원회 개인사업자기본정보(개인사업자개요정보조회)",
@@ -90,6 +105,13 @@ const payload = {
   },
   regions
 };
+
+// 자료는 연 1회 갱신인데 배치는 매월 돈다. 집계가 그대로면 파일을 손대지 않아야
+// 수집 시각만 바뀐 커밋이 매달 쌓이지 않는다.
+if (isSameSnapshotData(previous, payload)) {
+  console.log(`[sbprofile] 지난 수집과 집계가 같아 파일을 그대로 둡니다 (기준월 ${months.join(", ")}).`);
+  process.exit(0);
+}
 
 await mkdir(dirname(outputPath), { recursive: true });
 await writeFile(tempPath, `${JSON.stringify(payload)}\n`, "utf8");
