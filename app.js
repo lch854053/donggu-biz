@@ -12,7 +12,6 @@ import {
   toBizNoPrefix,
   workplaceIdentity
 } from "./lib/nps.js";
-import { SB_REGIONS, formatMonth, formatRatio } from "./lib/sbprofile.js";
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({
@@ -50,7 +49,6 @@ function activateService(panelName) {
     $(`panel-${tab.dataset.panel}`).hidden = !active;
   });
   if (panelName === "market") initializeMarket();
-  if (panelName === "stats") initializeStats();
 }
 
 // Business lookup sub-navigation
@@ -1058,153 +1056,6 @@ $("npsDownloadBtn").addEventListener("click", () => {
       row.historyCount || 1
     ]),
     `국민연금사업장_${new Date().toISOString().slice(0, 10)}.csv`
-  );
-});
-
-// 개인사업자 통계 (금융위원회 개인사업자기본정보)
-//
-// 자료는 연 1회 갱신이라 실시간 수집을 두지 않고 배치로 받아둔 스냅샷만 읽는다.
-// 인증키가 브라우저로 나가지 않도록 프록시도 두지 않는다.
-let sbSnapshot = null;
-let sbLoaded = false;
-
-const SB_INDICATORS = [
-  ["여성 대표", "female"],
-  ["40대 미만 대표", "under40"],
-  ["60대 이상 대표", "over60"],
-  ["종업원 0명", "solo"],
-  ["업력 10년 이상", "veteran"]
-];
-
-function summaryBars(counts, limit) {
-  if (!counts?.length) return '<p class="summary-empty">집계할 자료가 없습니다.</p>';
-  const total = counts.reduce((sum, item) => sum + item.count, 0);
-  // 연령대·업력은 건수 순서가 아니라 구간 순서로 정렬되므로 첫 항목을 최대값으로 볼 수 없다.
-  const max = Math.max(...counts.map((item) => item.count)) || 1;
-  return counts.slice(0, limit).map(({ name, count }) => `<div class="summary-row">
-    <div class="summary-label"><span>${escapeHtml(name)}</span><strong>${count.toLocaleString("ko-KR")}명</strong></div>
-    <div class="summary-track" title="전체의 ${total ? Math.round(count / total * 100) : 0}%"><span style="width:${Math.round(count / max * 100)}%"></span></div>
-  </div>`).join("");
-}
-
-function fillSelect(select, options) {
-  select.innerHTML = options
-    .map(({ value, label }) => `<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`)
-    .join("");
-}
-
-function sbSummaryOf(regionId, month) {
-  return sbSnapshot?.regions?.[regionId]?.byMonth?.[month] || null;
-}
-
-function showStatsMessage(message, isError) {
-  $("statsWorkspace").hidden = true;
-  $("statsState").hidden = false;
-  $("statsState").classList.toggle("is-error", Boolean(isError));
-  $("statsState").textContent = message;
-  $("statsDownloadBtn").disabled = true;
-}
-
-/** 두 지역을 같은 기준년월로 나란히 놓는다. 동구만으로는 높고 낮음을 판단할 기준이 없다. */
-function renderSbCompare(month) {
-  const columns = SB_REGIONS
-    .filter((region) => sbSnapshot?.regions?.[region.id])
-    .map((region) => ({ label: sbSnapshot.regions[region.id].label || region.label, summary: sbSummaryOf(region.id, month) }));
-  const cell = (item) => `<td class="mono">${item ? `${item.count.toLocaleString("ko-KR")}명 (${formatRatio(item.ratio)})` : "-"}</td>`;
-  const rows = SB_INDICATORS
-    .map(([label, key]) => `<tr><th scope="row">${label}</th>${columns.map(({ summary }) => cell(summary?.indicators?.[key])).join("")}</tr>`)
-    .join("");
-  $("statsCompare").innerHTML = `<table>
-    <thead><tr><th scope="col">지표</th>${columns.map(({ label }) => `<th scope="col">${escapeHtml(label)}</th>`).join("")}</tr></thead>
-    <tbody>
-      <tr><th scope="row">개인사업자 수</th>${columns.map(({ summary }) => `<td class="mono">${summary ? `${summary.total.toLocaleString("ko-KR")}명` : "-"}</td>`).join("")}</tr>
-      ${rows}
-    </tbody>
-  </table>`;
-}
-
-function renderSbStats() {
-  const month = $("statsMonth").value;
-  const regionId = $("statsRegion").value;
-  const region = sbSnapshot?.regions?.[regionId];
-  const summary = sbSummaryOf(regionId, month);
-  if (!summary?.total) {
-    showStatsMessage(`${region?.label || "선택한 지역"}의 ${formatMonth(month)} 자료가 없습니다.`, false);
-    return;
-  }
-
-  const collected = sbSnapshot?.meta?.collectedAt
-    ? `${new Date(sbSnapshot.meta.collectedAt).toLocaleDateString("ko-KR")} 수집 자료`
-    : "";
-  $("statsMeta").textContent = [
-    "금융위원회 개인사업자기본정보",
-    region.label,
-    `기준년월 ${formatMonth(month)}`,
-    `개인사업자 ${summary.total.toLocaleString("ko-KR")}명`,
-    collected
-  ].filter(Boolean).join(" · ");
-
-  const tile = (label, item) => [label, `${item.count.toLocaleString("ko-KR")}명 (${formatRatio(item.ratio)})`];
-  $("statTiles").innerHTML = [
-    ["개인사업자", `${summary.total.toLocaleString("ko-KR")}명`],
-    ...SB_INDICATORS.map(([label, key]) => tile(label, summary.indicators[key]))
-  ].map(([label, value]) => `<div class="stat-tile"><dt>${label}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
-
-  $("statsAges").innerHTML = summaryBars(summary.ages, 12);
-  $("statsTenures").innerHTML = summaryBars(summary.tenures, 8);
-  $("statsIndustries").innerHTML = summaryBars(summary.industries, 12);
-  $("statsEmployees").innerHTML = summaryBars(summary.employees, 8);
-  $("statsSexes").innerHTML = summaryBars(summary.sexes, 4);
-  renderSbCompare(month);
-
-  $("statsState").hidden = true;
-  $("statsState").classList.remove("is-error");
-  $("statsWorkspace").hidden = false;
-  $("statsDownloadBtn").disabled = false;
-}
-
-async function initializeStats() {
-  if (sbLoaded) return;
-  try {
-    const response = await fetch("data/sbprofile_gwangju.json", { cache: "no-cache" });
-    if (!response.ok) throw new Error("개인사업자 자료 파일을 찾지 못했습니다.");
-    sbSnapshot = await response.json();
-    const months = sbSnapshot?.meta?.months || [];
-    const regions = SB_REGIONS.filter((region) => sbSnapshot?.regions?.[region.id]);
-    if (!months.length || !regions.length) throw new Error("개인사업자 자료가 비어 있습니다.");
-    fillSelect($("statsRegion"), regions.map((region) => ({
-      value: region.id, label: sbSnapshot.regions[region.id].label || region.label
-    })));
-    fillSelect($("statsMonth"), months.map((month) => ({ value: month, label: formatMonth(month) })));
-    sbLoaded = true;
-    renderSbStats();
-  } catch (error) {
-    // 다음에 탭을 다시 열면 재시도한다.
-    showStatsMessage(`${error.message} npm run update-sbprofile로 자료를 먼저 만들어야 합니다.`, true);
-  }
-}
-
-$("statsRegion").addEventListener("change", renderSbStats);
-$("statsMonth").addEventListener("change", renderSbStats);
-$("statsDownloadBtn").addEventListener("click", () => {
-  const month = $("statsMonth").value;
-  const region = sbSnapshot?.regions?.[$("statsRegion").value];
-  const summary = sbSummaryOf($("statsRegion").value, month);
-  if (!summary) return;
-  const group = (title, counts) => counts.map((item) => [
-    region.label, formatMonth(month), title, item.name, item.count,
-    formatRatio(summary.total ? item.count / summary.total : 0)
-  ]);
-  downloadCsv(
-    ["지역", "기준년월", "구분", "항목", "사업자 수", "비중"],
-    [
-      ...group("대표자 연령대", summary.ages),
-      ...group("대표자 성별", summary.sexes),
-      ...group("업력", summary.tenures),
-      ...group("업종 중분류", summary.industries),
-      ...group("종업원 규모", summary.employees)
-    ],
-    `개인사업자통계_${new Date().toISOString().slice(0, 10)}.csv`
   );
 });
 

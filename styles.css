@@ -198,9 +198,6 @@ button { color: inherit; }
   font-size: 15px;
 }
 
-.field-inline { display: flex; align-items: center; gap: 8px; margin-bottom: 0; }
-.field-inline > span { margin-bottom: 0; white-space: nowrap; }
-
 .pager { display: flex; align-items: center; gap: 8px; }
 .pager .button { min-height: 36px; padding: 6px 12px; }
 .pager span { color: var(--text-secondary); font-size: 12px; }
@@ -221,43 +218,6 @@ button { color: inherit; }
 .detail-card dl div { padding: 8px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 14px; }
 .detail-card dt { color: var(--text-secondary); font-size: 12px; }
 .detail-card dd { margin: 0; text-align: right; font: 12px/1.5 var(--mono); overflow-wrap: anywhere; }
-
-.stat-tiles {
-  margin-bottom: 16px;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-}
-
-.stat-tile {
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-}
-
-.stat-tile dt { color: var(--text-secondary); font-size: 12px; font-weight: 600; }
-.stat-tile dd { margin: 6px 0 0; color: var(--text); font: 600 20px/1.3 var(--mono); font-variant-numeric: tabular-nums; }
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 14px;
-}
-
-.stats-card {
-  padding: 18px 20px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  background: var(--surface);
-}
-
-.stats-card h3 { margin: 0 0 14px; font-size: 15px; }
-
-#panel-stats .market-heading { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 14px; }
-#panel-stats .progress-wrap { padding: 0 0 16px; }
-#panel-stats .data-note { margin-top: 18px; }
-#panel-stats .market-state { min-height: 200px; padding: 24px; }
 
 main { padding: 28px clamp(18px, 3vw, 40px) 72px; }
 .service-panel { max-width: 1560px; margin: 0 auto; }
@@ -530,7 +490,6 @@ tbody tr:hover td { background: #191f2d; }
   .sub-tabs { overflow-x: auto; }
   .sub-tab { flex: 1 0 auto; }
   .query-grid { padding: 14px 12px; }
-  #panel-stats .market-heading { align-items: stretch; flex-direction: column; }
   .market-workspace { display: flex; flex-direction: column; }
   .filter-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .map-stage { min-height: 56vh; }
