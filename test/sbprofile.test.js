@@ -160,3 +160,25 @@ test("기준년월과 비중 표기", () => {
   assert.equal(formatRatio(0.1234), "12.3%");
   assert.equal(formatRatio(0), "0%");
 });
+
+test("위쪽만 막힌 구간은 같은 숫자로 시작하는 구간보다 앞에 온다", () => {
+  assert.equal(leadingNumber("30세 미만"), 29.5);
+  assert.equal(leadingNumber("30대"), 30);
+  assert.equal(leadingNumber("1명 이상 5명 미만"), 1);
+
+  const summary = summarizeProfiles([
+    rowOf({ rprAggrNm: "30대" }),
+    rowOf({ rprAggrNm: "30세 미만" }),
+    rowOf({ rprAggrNm: "80대 이상" }),
+    rowOf({ rprAggrNm: "70대" }),
+    rowOf({ rprAggrNm: "미상" })
+  ]);
+  assert.deepEqual(summary.ages.map((item) => item.name), ["30세 미만", "30대", "70대", "80대 이상", "미상"]);
+  // 30세 미만은 40대 미만에 들어가고 60대 이상에는 들어가지 않는다.
+  assert.equal(summary.indicators.under40.count, 2);
+  assert.equal(summary.indicators.over60.count, 2);
+});
+
+test("업종명에 겹친 공백은 하나로 줄인다", () => {
+  assert.equal(rowOf({ bizBzcCdNm: "기타 전문  과학 및 기술 서비스업" }).industryName, "기타 전문 과학 및 기술 서비스업");
+});
