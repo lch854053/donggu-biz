@@ -11,7 +11,6 @@ import {
   parseNpsBody,
   parseNpsResponse,
   parseNpsXml,
-  summarizeWorkplaces,
   toBizNoPrefix
 } from "../lib/nps.js";
 
@@ -123,23 +122,6 @@ test("항목이 하나뿐인 응답도 배열로 해석한다", () => {
 test("정상이 아닌 결과코드는 사유를 담아 오류로 올린다", () => {
   const payload = { response: { header: { resultCode: "30", resultMsg: "SERVICE KEY IS NOT REGISTERED ERROR." }, body: {} } };
   assert.throws(() => parseNpsResponse(payload), /30/);
-});
-
-test("사업장 통계는 상태·형태·업종·도로명을 함께 집계한다", () => {
-  const summary = summarizeWorkplaces([
-    compactWorkplace(sampleItem),
-    compactWorkplace({ ...sampleItem, wkplJnngStcd: "2", wkplStylDvcd: "2", wkplIntpCd: "552101" }),
-    compactWorkplace({ ...sampleItem, wkplIntpCd: "552102", wkplRoadNmDtlAddr: "광주광역시 동구 제봉로" })
-  ]);
-  assert.equal(summary.total, 3);
-  assert.equal(summary.registered, 2);
-  assert.equal(summary.withdrawn, 1);
-  assert.equal(summary.corporate, 2);
-  assert.equal(summary.individual, 1);
-  assert.equal(summary.sections[0].name, "숙박 및 음식점업");
-  assert.equal(summary.sections[0].count, 2);
-  assert.equal(summary.areas[0].name, "동구 서남로");
-  assert.equal(summary.areas[0].count, 2);
 });
 
 const sampleXml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -507,8 +489,8 @@ test("합친 목록으로 집계하면 사업장 수가 개월 수만큼 부풀�
   const rows = ["202605", "202606", "202607"].map((month) =>
     compactWorkplace({ ...sampleItem, dataCrtYm: month })
   );
-  assert.equal(summarizeWorkplaces(rows).total, 3);
-  assert.equal(summarizeWorkplaces(mergeWorkplaceHistory(rows)).total, 1);
+  assert.equal(rows.length, 3);
+  assert.equal(mergeWorkplaceHistory(rows).length, 1);
 });
 
 test("이미 접힌 목록을 다시 접어도 이력 개월 수가 남는다", () => {

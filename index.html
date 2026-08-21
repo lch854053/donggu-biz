@@ -34,6 +34,7 @@
       <span>국세청</span>
       <span>소상공인시장진흥공단</span>
       <span>국민연금공단</span>
+      <span>금융위원회</span>
     </div>
   </header>
 
@@ -239,45 +240,55 @@
     <section class="service-panel" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
       <div class="market-heading">
         <div>
-          <h2>국민연금 가입 사업장 통계</h2>
-          <p id="statsMeta">광주 동구의 국민연금 가입 사업장 내역을 모두 모아 집계합니다.</p>
+          <h2>개인사업자 통계</h2>
+          <p id="statsMeta">금융위원회 개인사업자기본정보로 대표자 연령·성별, 업력, 업종, 종업원 규모 분포를 봅니다.</p>
         </div>
         <div class="toolbar-actions">
-          <button class="button button-primary" id="statsRunBtn" type="button">통계 집계</button>
+          <label class="field field-inline">
+            <span>지역</span>
+            <select id="statsRegion"></select>
+          </label>
+          <label class="field field-inline">
+            <span>기준년월</span>
+            <select id="statsMonth"></select>
+          </label>
           <button class="button button-export" id="statsDownloadBtn" type="button" disabled>CSV 다운로드</button>
         </div>
       </div>
 
-      <div class="progress-wrap" id="statsProgressWrap" hidden>
-        <div class="progress-track"><div class="progress-fill" id="statsProgressFill"></div></div>
-        <p id="statsProgressText" aria-live="polite">대기 중</p>
-      </div>
-
-      <div class="market-state" id="statsState" role="status"><strong>통계 집계</strong>를 누르면 광주 동구 사업장 내역을 집계합니다.</div>
+      <div class="market-state" id="statsState" role="status">개인사업자 자료를 불러오는 중입니다.</div>
 
       <div id="statsWorkspace" hidden>
         <div class="stat-tiles" id="statTiles"></div>
         <div class="stats-grid">
-          <section class="stats-card" aria-labelledby="stats-section-title">
-            <h3 id="stats-section-title">업종 대분류별 사업장 수</h3>
-            <div id="statsSections"></div>
+          <section class="stats-card" aria-labelledby="stats-age-title">
+            <h3 id="stats-age-title">대표자 연령대</h3>
+            <div id="statsAges"></div>
           </section>
-          <section class="stats-card" aria-labelledby="stats-area-title">
-            <h3 id="stats-area-title">도로명별 사업장 수 상위 12곳</h3>
-            <div id="statsAreas"></div>
+          <section class="stats-card" aria-labelledby="stats-tenure-title">
+            <h3 id="stats-tenure-title">업력 (설립년도 기준)</h3>
+            <div id="statsTenures"></div>
           </section>
-          <section class="stats-card" aria-labelledby="stats-style-title">
-            <h3 id="stats-style-title">사업장 형태</h3>
-            <div id="statsStyles"></div>
+          <section class="stats-card" aria-labelledby="stats-industry-title">
+            <h3 id="stats-industry-title">업종 중분류별 사업자 수 상위 12개</h3>
+            <div id="statsIndustries"></div>
           </section>
-          <section class="stats-card" aria-labelledby="stats-status-title">
-            <h3 id="stats-status-title">가입 상태</h3>
-            <div id="statsStatuses"></div>
+          <section class="stats-card" aria-labelledby="stats-employee-title">
+            <h3 id="stats-employee-title">종업원 규모</h3>
+            <div id="statsEmployees"></div>
+          </section>
+          <section class="stats-card" aria-labelledby="stats-sex-title">
+            <h3 id="stats-sex-title">대표자 성별</h3>
+            <div id="statsSexes"></div>
+          </section>
+          <section class="stats-card" aria-labelledby="stats-compare-title">
+            <h3 id="stats-compare-title">광주 동구 · 광주광역시 전체 비교</h3>
+            <div class="table-wrap" id="statsCompare"></div>
           </section>
         </div>
         <div class="data-note">
           <strong>해석 유의사항</strong>
-          <p>국민연금 가입 사업장 내역은 사업자등록번호를 앞 6자리까지만, 주소는 건물번호 없이 도로명까지만 제공합니다. 따라서 개별 사업자를 특정할 수 없고, 도로명별 집계는 실제 건물 단위 분포가 아닙니다. 목록 API에는 가입자 수가 포함되지 않아 아래 수치는 모두 <em>사업장 수</em>이며, 가입자 수는 개별 사업장 상세조회에서만 확인할 수 있습니다. 국민연금에 가입하지 않은 사업장은 집계에 포함되지 않으므로 지역 전체 사업체 수와 다릅니다.</p>
+          <p>금융위원회 개인사업자기본정보는 정책금융기관과 거래한 개인사업자를 익명처리해 제공하는 자료입니다. 지역 전체 개인사업자가 아니므로 상권분석 탭의 상가업소 수와 같은 뜻으로 읽으면 안 되고, 사업자등록번호가 없어 사업자 상태조회 결과와 연결되지 않습니다. 갱신은 연 1회이고 기준년월마다 자료가 따로 쌓이므로 위 수치는 선택한 기준년월 한 시점의 사업자 수입니다. 업종은 최신 한국표준산업분류 중분류로, 국민연금 사업장 조회의 업종 대분류(옛 분류 기준)와 체계가 다릅니다. 표본이 작은 구간은 교차 해석하지 마십시오.</p>
         </div>
       </div>
     </section>
