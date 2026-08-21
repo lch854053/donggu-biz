@@ -6,11 +6,15 @@ import {
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
 import {
+  INDUSTRY_SECTIONS,
+  displayAddress,
+  hasIndustryDetail,
   industrySection,
   isPlaceholderIndustry,
+  matchesWorkplaceCriteria,
   mergeWorkplaceHistory,
-  toBizNoPrefix,
-  workplaceIdentity
+  workplaceIdentity,
+  ymdYear
 } from "./lib/nps.js";
 
 const $ = (id) => document.getElementById(id);
@@ -546,21 +550,36 @@ $("resetMarketBtn").addEventListener("click", () => {
 
 // National Pension workplace lookup
 // 이 서비스는 광주 동구만 다룬다. 조회·통계·스냅샷이 모두 같은 지역 코드를 쓴다.
-const NPS_REGION = { label: "광주광역시 동구", sido: "29", sggu: "110" };
+const NPS_REGION = { label: "광주 동구", sido: "29", sggu: "110" };
 
 const NPS_PAGE_SIZE = 100;
 // 중복을 걷어낸 건수를 보여주려면 이력을 다 받아야 한다. 지역 전체처럼 큰 조회는 여기서 멈춘다.
 const NPS_MAX_COLLECT_PAGES = 30;
 const NPS_DETAIL_CONCURRENCY = 4;
+// 업종·등록일·가입자 수는 사업장마다 상세조회를 한 번씩 불러야 얻는다. 조건검색이 이 값들을
+// 쓰므로 보이는 페이지만이 아니라 조회한 사업장 전부를 채우되, 호출 수는 여기서 끊는다.
+const NPS_DETAIL_MAX_ROWS = 900;
 const NPS_HISTORY_MAX_POINTS = 24;
 
+/**
+ * 등록일 슬라이더의 기본 범위. 국민연금 사업장 당연적용은 1988년 10인 이상 사업장에서
+ * 시작해 1992년 5인 이상, 1999년 전 사업장으로 넓어졌으므로 그 전으로 등록된 사업장은
+ * 없다. 동구 조회 결과가 더 이른 해를 담고 있으면 그만큼 아래로 넓힌다.
+ */
+const NPS_YEAR_FLOOR = 1988;
+// 가입자 수 슬라이더의 상한은 조회 결과에서 정한다. 결과가 작아도 이보다 좁히지는 않는다.
+const NPS_PEOPLE_CEILING_MIN = 50;
+
 let npsRows = [];
-let npsHistoryRowCount = 0;
 let npsTruncated = false;
+let npsDetailTruncated = false;
 let npsPageNo = 1;
-let npsFilter = "all";
 let npsBusy = false;
 let npsSnapshotIndex = null;
+let npsStyleCode = "";
+let npsSearchedName = "";
+let npsDetailToken = 0;
+let npsDetail = { seq: "", html: "" };
 
 async function fetchNps(params) {
   const search = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== "" && value != null));
@@ -576,10 +595,119 @@ async function fetchNps(params) {
   return payload;
 }
 
+/**
+ * 값 두 개를 잡는 슬라이더. 두 손잡이를 겹쳐 놓고 서로를 넘어가지 못하게 잡아 준다.
+ * 양 끝에 그대로 있으면 "전체"로 보고 조건을 걸지 않는다 — 아직 상세를 받지 못해
+ * 값이 비어 있는 사업장이 슬라이더를 건드리지도 않았는데 사라지면 안 되기 때문이다.
+ */
+function createRangeControl({ wrapId, fromId, toId, minLabelId, maxLabelId, readoutId, format, onChange }) {
+  const wrap = $(wrapId);
+  const fill = wrap.querySelector(".range-fill");
+  const from = $(fromId);
+  const to = $(toId);
+  let bounds = { min: 0, max: 1 };
+  let touched = false;
+
+  function paint() {
+    const span = bounds.max - bounds.min || 1;
+    const left = (Number(from.value) - bounds.min) / span * 100;
+    const right = (Number(to.value) - bounds.min) / span * 100;
+    fill.style.left = `${left}%`;
+    fill.style.width = `${Math.max(0, right - left)}%`;
+    $(readoutId).textContent = isFull() ? "전체" : `${format(Number(from.value))} ~ ${format(Number(to.value))}`;
+  }
+
+  function isFull() {
+    return Number(from.value) <= bounds.min && Number(to.value) >= bounds.max;
+  }
+
+  function handle(event) {
+    touched = true;
+    // 두 손잡이가 서로를 지나치면 값이 뒤집힌다. 밀어붙인 쪽을 상대편에서 멈춘다.
+    if (event.target === from && Number(from.value) > Number(to.value)) from.value = to.value;
+    if (event.target === to && Number(to.value) < Number(from.value)) to.value = from.value;
+    paint();
+    onChange();
+  }
+
+  from.addEventListener("input", handle);
+  to.addEventListener("input", handle);
+
+  return {
+    /** 조회 결과에 맞춰 범위를 다시 잡는다. 사용자가 손대지 않았으면 양 끝으로 벌린다. */
+    setBounds(min, max) {
+      bounds = { min, max: Math.max(max, min + 1) };
+      for (const input of [from, to]) {
+        input.min = String(bounds.min);
+        input.max = String(bounds.max);
+        input.step = "1";
+      }
+      if (touched) {
+        from.value = String(Math.min(Math.max(Number(from.value), bounds.min), bounds.max));
+        to.value = String(Math.min(Math.max(Number(to.value), bounds.min), bounds.max));
+      } else {
+        from.value = String(bounds.min);
+        to.value = String(bounds.max);
+      }
+      $(minLabelId).textContent = format(bounds.min);
+      $(maxLabelId).textContent = format(bounds.max);
+      paint();
+    },
+    value() {
+      return { from: Number(from.value), to: Number(to.value), full: isFull() };
+    },
+    reset() {
+      touched = false;
+      from.value = String(bounds.min);
+      to.value = String(bounds.max);
+      paint();
+    }
+  };
+}
+
+const npsYearRange = createRangeControl({
+  wrapId: "npsYearRange",
+  fromId: "npsYearFrom",
+  toId: "npsYearTo",
+  minLabelId: "npsYearMinLabel",
+  maxLabelId: "npsYearMaxLabel",
+  readoutId: "npsYearReadout",
+  format: (year) => `${year}년`,
+  onChange: () => applyNpsFilters()
+});
+
+const npsPeopleRange = createRangeControl({
+  wrapId: "npsPeopleRange",
+  fromId: "npsPeopleFrom",
+  toId: "npsPeopleTo",
+  minLabelId: "npsPeopleMinLabel",
+  maxLabelId: "npsPeopleMaxLabel",
+  readoutId: "npsPeopleReadout",
+  format: (people) => `${people.toLocaleString("ko-KR")}명`,
+  onChange: () => applyNpsFilters()
+});
+
+/** 지금 화면에 걸린 조회 조건. 사업장명은 서버 조회와 화면 좁히기에 함께 쓴다. */
+function npsCriteria() {
+  const years = npsYearRange.value();
+  const people = npsPeopleRange.value();
+  return {
+    name: $("npsNameInput").value.trim(),
+    includeWithdrawn: $("npsIncludeWithdrawn").checked,
+    styleCode: npsStyleCode,
+    sectionCode: $("npsSectionSelect").value,
+    unknownIndustryOnly: $("npsUnknownIndustry").checked,
+    industryName: $("npsIndustrySelect").value,
+    registeredFromYear: years.full ? null : years.from,
+    registeredToYear: years.full ? null : years.to,
+    subscriberMin: people.full ? null : people.from,
+    subscriberMax: people.full ? null : people.to
+  };
+}
+
 function filteredNpsRows() {
-  if (npsFilter === "registered") return npsRows.filter((row) => row.statusCode === "1");
-  if (npsFilter === "withdrawn") return npsRows.filter((row) => row.statusCode === "2");
-  return npsRows;
+  const criteria = npsCriteria();
+  return npsRows.filter((row) => matchesWorkplaceCriteria(row, criteria));
 }
 
 function npsPageRows() {
@@ -596,24 +724,32 @@ function npsStatusBadge(row) {
 
 function renderNpsTable() {
   const rows = npsPageRows();
+  const body = $("npsResultBody");
   if (!rows.length) {
-    $("npsResultBody").innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 결과가 없습니다.</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 결과가 없습니다.</td></tr>';
     return;
   }
   const offset = (npsPageNo - 1) * NPS_PAGE_SIZE;
-  $("npsResultBody").innerHTML = rows.map((row, index) => `<tr>
+  body.innerHTML = rows.map((row, index) => {
+    const opened = Boolean(row.seq) && npsDetail.seq === row.seq;
+    // 상세 카드는 표 맨 아래가 아니라 누른 행 바로 아래에 한 줄을 끼워 펼친다.
+    const card = opened
+      ? `<tr class="detail-row"><td colspan="11"><div class="detail-card">${npsDetail.html}</div></td></tr>`
+      : "";
+    return `<tr${opened ? ' class="is-open"' : ""}>
     <td class="seq">${offset + index + 1}</td>
     <td>${escapeHtml(row.name)}</td>
     <td class="mono">${escapeHtml(row.bizNoPrefix ? `${row.bizNoPrefix}-****` : "-")}</td>
-    <td>${escapeHtml(row.address || "-")}</td>
-    <td>${escapeHtml(row.sectionName)}</td>
+    <td>${escapeHtml(displayAddress(row.address) || "-")}</td>
+    <td>${escapeHtml(hasIndustryDetail(row) ? row.sectionName : "")}</td>
     <td>${escapeHtml(npsIndustryDetailLabel(row))}</td>
     <td>${escapeHtml(row.styleName)}</td>
     <td class="mono">${escapeHtml(row.registeredDate ? formatYmd(row.registeredDate) : "-")}</td>
     <td class="mono">${typeof row.subscriberCount === "number" ? `${row.subscriberCount.toLocaleString("ko-KR")}명` : "-"}</td>
     <td>${npsStatusBadge(row)}</td>
-    <td><button class="button button-quiet detail-btn" type="button" data-seq="${escapeHtml(row.seq)}">상세</button></td>
-  </tr>`).join("");
+    <td class="detail-cell"><button class="button button-quiet detail-btn" type="button" data-seq="${escapeHtml(row.seq)}" aria-expanded="${opened}">상세</button></td>
+  </tr>${card}`;
+  }).join("");
 }
 
 /** 상세분류 열에 쓸 업종명. 상세조회를 아직 못 받았으면 비워 둔다. */
@@ -627,11 +763,11 @@ function renderNpsStats() {
   const registered = rows.filter((row) => row.statusCode === "1").length;
   const withdrawn = rows.filter((row) => row.statusCode === "2").length;
   $("npsStatsRow").innerHTML = `
-    <span class="stat-item">사업장<strong>${npsRows.length.toLocaleString("ko-KR")}</strong></span>
-    <span class="stat-item">수집한 월별 이력<strong>${npsHistoryRowCount.toLocaleString("ko-KR")}</strong></span>
+    <span class="stat-item">사업장<strong>${rows.length.toLocaleString("ko-KR")}</strong></span>
     <span class="stat-item">등록<strong>${registered.toLocaleString("ko-KR")}</strong></span>
     <span class="stat-item">탈퇴<strong>${withdrawn.toLocaleString("ko-KR")}</strong></span>
-    ${npsTruncated ? '<span class="stat-item">수집 상한에 걸려 일부만 집계<strong>조건을 좁혀 주세요</strong></span>' : ""}`;
+    ${npsTruncated ? '<span class="stat-item">수집 상한에 걸려 일부만 집계<strong>조건을 좁혀 주세요</strong></span>' : ""}
+    ${npsDetailTruncated ? '<span class="stat-item">업종·등록일·가입자 수는 상한까지만 채웠습니다<strong>조건을 좁혀 주세요</strong></span>' : ""}`;
 }
 
 function renderNpsPager() {
@@ -642,12 +778,64 @@ function renderNpsPager() {
   $("npsNextBtn").disabled = npsPageNo >= lastPage || npsBusy;
 }
 
+function renderNps() {
+  const shown = filteredNpsRows().length;
+  $("npsCountBadge").textContent = `${shown.toLocaleString("ko-KR")}개 사업장`;
+  $("npsDownloadBtn").disabled = !shown;
+  renderNpsTable();
+  renderNpsStats();
+  renderNpsPager();
+}
+
+/** 조건을 바꾸면 새로 조회하지 않고 이미 받아 둔 사업장을 다시 걸러 보여준다. */
+function applyNpsFilters() {
+  npsPageNo = 1;
+  renderNps();
+}
+
 function showNpsPage(pageNo) {
   const lastPage = Math.max(1, Math.ceil(filteredNpsRows().length / NPS_PAGE_SIZE));
   npsPageNo = Math.min(Math.max(pageNo, 1), lastPage);
   renderNpsTable();
   renderNpsPager();
-  fillMissingIndustries();
+}
+
+/** 업종 대분류 목록은 분류표에서, 상세분류 목록은 조회 결과에 실제로 있는 업종명에서 만든다. */
+function fillNpsSectionOptions() {
+  const select = $("npsSectionSelect");
+  select.innerHTML = ['<option value="">전체</option>',
+    ...INDUSTRY_SECTIONS.map(({ code, name }) => `<option value="${code}">${escapeHtml(name)}</option>`)].join("");
+}
+
+function fillNpsIndustryOptions() {
+  const select = $("npsIndustrySelect");
+  // 업종 미상만 볼 때는 대분류가 잠기므로 상세분류 목록도 대분류로 좁히지 않는다.
+  const sectionCode = $("npsUnknownIndustry").checked ? "" : $("npsSectionSelect").value;
+  const names = new Set();
+  for (const row of npsRows) {
+    if (!row.industryName) continue;
+    if (sectionCode && industrySection(row.industryCode).code !== sectionCode) continue;
+    names.add(row.industryName);
+  }
+  const kept = names.has(select.value) ? select.value : "";
+  select.innerHTML = ['<option value="">전체</option>',
+    ...[...names].sort((a, b) => a.localeCompare(b, "ko")).map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)].join("");
+  select.value = kept;
+  select.disabled = !names.size;
+  $("npsIndustryNote").textContent = names.size
+    ? `조회 결과에 있는 업종 ${names.size.toLocaleString("ko-KR")}종`
+    : "조회 결과에 있는 업종만 나열됩니다.";
+}
+
+/** 조회 결과가 담고 있는 등록 연도와 가입자 수에 맞춰 슬라이더 범위를 다시 잡는다. */
+function fitNpsRanges() {
+  const thisYear = new Date().getFullYear();
+  const years = npsRows.map((row) => ymdYear(row.registeredDate)).filter((year) => year != null);
+  npsYearRange.setBounds(Math.min(NPS_YEAR_FLOOR, ...years), Math.max(thisYear, ...years));
+
+  const counts = npsRows.map((row) => row.subscriberCount).filter((value) => typeof value === "number");
+  const ceiling = Math.max(NPS_PEOPLE_CEILING_MIN, ...counts);
+  npsPeopleRange.setBounds(0, ceiling);
 }
 
 /**
@@ -672,7 +860,7 @@ async function collectNpsRows(params) {
 
 /**
  * 목록 API에는 업종코드가 없다. 미리 받아둔 동구 스냅샷에서 먼저 찾고, 거기에도 없는
- * 사업장만 상세조회로 채운다. 지금 보고 있는 페이지의 사업장만 대상으로 한다.
+ * 사업장만 상세조회로 채운다.
  */
 async function npsIndustryIndexFromSnapshot() {
   if (npsSnapshotIndex) return npsSnapshotIndex;
@@ -705,88 +893,132 @@ function applyDetail(row, source) {
   row.detailLoaded = true;
 }
 
-async function fillMissingIndustries() {
-  const rows = npsPageRows().filter((row) => !row.detailLoaded && row.seq);
-  if (!rows.length) return;
+/** 조회 문구. 상세를 채우는 동안에는 진행 상황을 뒤에 덧붙인다. */
+function setNpsProgress(done, total) {
+  const searched = `사업장 ${npsRows.length.toLocaleString("ko-KR")}개를 조회했습니다.`;
+  const loading = done < total
+    ? ` 업종·등록일·가입자 수 ${done.toLocaleString("ko-KR")}/${total.toLocaleString("ko-KR")} 불러오는 중입니다.`
+    : "";
+  $("npsProgressText").textContent = `${searched}${loading}`;
+  $("npsProgressFill").style.width = total ? `${Math.round(done / total * 100)}%` : "100%";
+}
+
+/**
+ * 조건검색이 업종·등록일·가입자 수를 쓰므로 보이는 페이지가 아니라 조회한 사업장 전부의
+ * 상세를 채운다. 스냅샷에서 찾을 수 있는 만큼 먼저 채우고 나머지만 상세조회로 부른다.
+ * 새 조회가 시작되면 토큰이 바뀌어 이전 채우기는 조용히 멈춘다.
+ */
+async function fillNpsDetails() {
+  const token = npsDetailToken;
+  const pending = npsRows.filter((row) => !row.detailLoaded && !row.detailFailed && row.seq);
+  if (!pending.length) {
+    setNpsProgress(1, 1);
+    return;
+  }
 
   const index = await npsIndustryIndexFromSnapshot();
+  if (token !== npsDetailToken) return;
   const remaining = [];
-  for (const row of rows) {
+  for (const row of pending) {
     const hit = index.get(workplaceIdentity(row));
     if (hit) applyDetail(row, hit);
     else remaining.push(row);
   }
-  renderNpsTable();
+  const targets = remaining.slice(0, NPS_DETAIL_MAX_ROWS);
+  npsDetailTruncated = remaining.length > targets.length;
+  fitNpsRanges();
+  fillNpsIndustryOptions();
+  renderNps();
+  setNpsProgress(pending.length - targets.length, pending.length);
 
-  for (let offset = 0; offset < remaining.length; offset += NPS_DETAIL_CONCURRENCY) {
-    if (npsBusy) return;
-    const batch = remaining.slice(offset, offset + NPS_DETAIL_CONCURRENCY);
+  for (let offset = 0; offset < targets.length; offset += NPS_DETAIL_CONCURRENCY) {
+    if (token !== npsDetailToken) return;
+    const batch = targets.slice(offset, offset + NPS_DETAIL_CONCURRENCY);
     await Promise.all(batch.map(async (row) => {
       try {
         const detail = (await fetchNps({ action: "detail", seq: row.seq })).items?.[0];
         if (detail) applyDetail(row, detail);
+        else row.detailFailed = true;
       } catch {
-        // 한 건 실패는 업종 미상으로 남긴다.
+        // 한 건 실패는 업종 미상으로 남기고 다시 부르지 않는다.
+        row.detailFailed = true;
       }
     }));
-    renderNpsTable();
+    if (token !== npsDetailToken) return;
+    fitNpsRanges();
+    fillNpsIndustryOptions();
+    renderNps();
+    setNpsProgress(pending.length - targets.length + offset + batch.length, pending.length);
   }
 }
 
 async function runNpsLookup() {
   if (npsBusy) return;
   const name = $("npsNameInput").value.trim();
-  const rawBizNo = $("npsBizNoInput").value.trim();
-  const bizNo = toBizNoPrefix(rawBizNo);
-  if (rawBizNo && bizNo.length < 6) {
-    showToast("사업자등록번호는 앞 6자리 이상 입력해 주세요.");
-    return;
-  }
 
   npsBusy = true;
+  npsDetailToken += 1;
+  npsDetail = { seq: "", html: "" };
   $("npsRunBtn").disabled = true;
   $("npsProgressWrap").hidden = false;
   $("npsProgressFill").style.width = "10%";
   $("npsProgressText").textContent = "국민연금 사업장 내역을 조회하는 중입니다.";
-  $("npsDetailCard").hidden = true;
   renderNpsPager();
 
   try {
     const { rows, truncated } = await collectNpsRows({
-      action: "search", wkplNm: name, bzowrRgstNo: bizNo, sido: NPS_REGION.sido, sggu: NPS_REGION.sggu
+      action: "search", wkplNm: name, sido: NPS_REGION.sido, sggu: NPS_REGION.sggu
     });
     // 같은 사업장이 자료생성년월마다 한 건씩 오므로 합쳐서 사업장 단위로 보여준다.
     npsRows = mergeWorkplaceHistory(rows);
-    npsHistoryRowCount = rows.length;
     npsTruncated = truncated;
+    npsDetailTruncated = false;
+    npsSearchedName = name;
     npsPageNo = 1;
+    markNpsNameChanged();
+    fitNpsRanges();
+    fillNpsIndustryOptions();
     $("npsResultSection").hidden = false;
-    $("npsCountBadge").textContent = `${npsRows.length.toLocaleString("ko-KR")}개 사업장`;
-    $("npsDownloadBtn").disabled = !npsRows.length;
-    $("npsProgressFill").style.width = "100%";
-    $("npsProgressText").textContent = truncated
-      ? `월별 이력 ${npsHistoryRowCount.toLocaleString("ko-KR")}건까지만 수집했습니다. 조건을 좁혀 주세요.`
-      : `월별 이력 ${npsHistoryRowCount.toLocaleString("ko-KR")}건을 사업장 ${npsRows.length.toLocaleString("ko-KR")}개로 정리했습니다.`;
-    renderNpsTable();
-    renderNpsStats();
-    showToast(npsRows.length ? "국민연금 사업장 조회가 완료되었습니다." : "조건에 맞는 사업장이 없습니다.");
+    renderNps();
+    setNpsProgress(0, npsRows.length || 1);
+    showToast(npsRows.length ? `사업장 ${npsRows.length.toLocaleString("ko-KR")}개를 조회했습니다.` : "조건에 맞는 사업장이 없습니다.");
   } catch (error) {
     $("npsProgressFill").style.width = "0%";
     $("npsProgressText").textContent = error.message;
     showToast(error.message);
-  } finally {
     npsBusy = false;
     $("npsRunBtn").disabled = false;
     renderNpsPager();
+    return;
   }
-  fillMissingIndustries();
+  npsBusy = false;
+  $("npsRunBtn").disabled = false;
+  renderNpsPager();
+  fillNpsDetails();
 }
 
+/** 사업장명은 서버에서 거른다. 조회 뒤에 이름만 바꿔 두면 결과가 어긋나므로 알려 준다. */
+function markNpsNameChanged() {
+  const changed = $("npsNameInput").value.trim() !== npsSearchedName && !$("npsResultSection").hidden;
+  $("npsNameNote").hidden = !changed;
+}
+
+
+/**
+ * 상세 카드. 누른 행 바로 아래 한 줄을 끼워 펼치고, 같은 행을 다시 누르면 접는다.
+ * 표는 상세를 채우는 동안에도 다시 그려지므로 카드 내용은 상태로 들고 있는다.
+ */
 async function showNpsDetail(seq) {
-  const card = $("npsDetailCard");
+  if (npsDetail.seq === seq) {
+    npsDetail = { seq: "", html: "" };
+    renderNpsTable();
+    return;
+  }
   const listRow = npsRows.find((row) => row.seq === seq);
-  card.hidden = false;
-  card.innerHTML = "<p>사업장 상세 정보를 불러오는 중입니다.</p>";
+  npsDetail = { seq, html: "<p>사업장 상세 정보를 불러오는 중입니다.</p>" };
+  renderNpsTable();
+
+  let base;
   try {
     const payload = await fetchNps({ action: "detail", seq });
     const detail = payload.items?.[0];
@@ -795,10 +1027,10 @@ async function showNpsDetail(seq) {
     const industry = [detail.industryName, industryCode && `(${industryCode})`].filter(Boolean).join(" ") || detail.sectionName;
     const row = (label, value) => (value == null ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
     const people = (value) => (value == null ? null : `${value.toLocaleString("ko-KR")}명`);
-    card.innerHTML = `<p class="selection-name">${escapeHtml(detail.name)}</p>
+    base = `<p class="selection-name">${escapeHtml(detail.name)}</p>
       <dl>
         ${row("사업자등록번호", escapeHtml(detail.bizNoPrefix ? `${detail.bizNoPrefix}-****` : "-"))}
-        ${row("소재지", escapeHtml(detail.address || "-"))}
+        ${row("소재지", escapeHtml(displayAddress(detail.address) || "-"))}
         ${row("업종", escapeHtml(industry))}
         ${row("사업장 형태", escapeHtml(detail.styleName))}
         ${row("가입 상태", escapeHtml(detail.statusName))}
@@ -808,32 +1040,36 @@ async function showNpsDetail(seq) {
         ${row("월별 신규 취득자", people(detail.newSubscriberCount))}
         ${row("월별 상실 가입자", people(detail.lostSubscriberCount))}
         ${row("당월 고지금액", `${detail.monthlyNoticeAmount.toLocaleString("ko-KR")}원`)}
-      </dl>
-      <div id="npsHistoryCharts"></div>`;
-    renderNpsHistory(listRow);
+      </dl>`;
   } catch (error) {
-    card.innerHTML = `<p class="summary-empty">${escapeHtml(error.message)}</p>`;
+    if (npsDetail.seq !== seq) return;
+    npsDetail = { seq, html: `<p class="summary-empty">${escapeHtml(error.message)}</p>` };
+    renderNpsTable();
+    return;
   }
-  // 카드가 결과 표 아래에 있어 목록이 길면 화면 밖에 그려진다. 눌렀을 때 보이도록 옮겨준다.
-  card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  if (npsDetail.seq !== seq) return;
+
+  const historyRows = (listRow?.historyRows ?? []).filter((row) => row.seq && row.month);
+  const pending = historyRows.length >= 2 ? '<p class="summary-empty">월별 추이를 불러오는 중입니다.</p>' : "";
+  npsDetail = { seq, html: base + pending };
+  renderNpsTable();
+  document.querySelector("#npsResultBody .detail-row")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  if (!pending) return;
+
+  const charts = await npsHistoryHtml(historyRows);
+  if (npsDetail.seq !== seq) return;
+  npsDetail = { seq, html: base + charts };
+  renderNpsTable();
 }
 
-/** 접어 둔 월별 이력을 불러 상세 카드 아래에 추이 그래프로 그린다. */
-async function renderNpsHistory(listRow) {
-  const target = $("npsHistoryCharts");
-  const historyRows = (listRow?.historyRows ?? []).filter((row) => row.seq && row.month);
-  if (!target || historyRows.length < 2) return;
-
-  target.innerHTML = '<p class="summary-empty">월별 추이를 불러오는 중입니다.</p>';
+/** 접어 둔 월별 이력을 불러 상세 카드 아래에 붙일 추이 그래프 마크업을 만든다. */
+async function npsHistoryHtml(historyRows) {
   try {
     const seqs = historyRows.slice(0, NPS_HISTORY_MAX_POINTS).map((row) => `${row.seq}:${row.month}`).join(",");
     const { series } = await fetchNps({ action: "history", seqs });
     const points = (series || []).filter((point) => point.month).sort((a, b) => a.month.localeCompare(b.month));
-    if (points.length < 2) {
-      target.innerHTML = "";
-      return;
-    }
-    target.innerHTML = `<h3 class="chart-heading">월별 추이 <span class="chart-note">${points.length}개월</span></h3>
+    if (points.length < 2) return "";
+    return `<h3 class="chart-heading">월별 추이 <span class="chart-note">${points.length}개월</span></h3>
       <div class="chart-grid">
         ${trendChart("가입자 수", points, [{ key: "subscriberCount", label: "가입자 수", color: "#3987e5" }], "line", (value) => `${value.toLocaleString("ko-KR")}명`)}
         ${trendChart("당월 고지금액", points, [{ key: "monthlyNoticeAmount", label: "당월 고지금액", color: "#3987e5" }], "line", (value) => `${Math.round(value / 10000).toLocaleString("ko-KR")}만원`)}
@@ -843,7 +1079,7 @@ async function renderNpsHistory(listRow) {
         ], "bar", (value) => `${value.toLocaleString("ko-KR")}명`)}
       </div>`;
   } catch (error) {
-    target.innerHTML = `<p class="summary-empty">월별 추이를 불러오지 못했습니다. ${escapeHtml(error.message)}</p>`;
+    return `<p class="summary-empty">월별 추이를 불러오지 못했습니다. ${escapeHtml(error.message)}</p>`;
   }
 }
 
@@ -1011,52 +1247,88 @@ function downloadCsv(headers, rows, fileName) {
 
 $("npsRunBtn").addEventListener("click", () => runNpsLookup());
 $("npsClearBtn").addEventListener("click", () => {
+  npsDetailToken += 1;
   $("npsNameInput").value = "";
-  $("npsBizNoInput").value = "";
+  $("npsSectionSelect").value = "";
+  $("npsUnknownIndustry").checked = false;
+  $("npsIncludeWithdrawn").checked = false;
+  npsStyleCode = "";
+  setNpsStyleChip("");
   npsRows = [];
-  npsHistoryRowCount = 0;
   npsTruncated = false;
+  npsDetailTruncated = false;
   npsPageNo = 1;
+  npsSearchedName = "";
+  npsDetail = { seq: "", html: "" };
   $("npsResultSection").hidden = true;
   $("npsProgressWrap").hidden = true;
+  $("npsNameNote").hidden = true;
   $("npsCountBadge").textContent = "0개 사업장";
   $("npsDownloadBtn").disabled = true;
+  npsYearRange.reset();
+  npsPeopleRange.reset();
+  fitNpsRanges();
+  fillNpsIndustryOptions();
 });
 $("npsPrevBtn").addEventListener("click", () => showNpsPage(npsPageNo - 1));
 $("npsNextBtn").addEventListener("click", () => showNpsPage(npsPageNo + 1));
-[$("npsNameInput"), $("npsBizNoInput")].forEach((input) => {
-  input.addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
+$("npsNameInput").addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
+$("npsNameInput").addEventListener("input", () => markNpsNameChanged());
+$("npsSectionSelect").addEventListener("change", () => {
+  fillNpsIndustryOptions();
+  applyNpsFilters();
 });
-$("npsFilterTabs").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-filter]");
+$("npsIndustrySelect").addEventListener("change", () => applyNpsFilters());
+$("npsUnknownIndustry").addEventListener("change", (event) => {
+  // 업종 미상만 볼 때는 대분류·상세분류를 고를 여지가 없다.
+  const only = event.target.checked;
+  $("npsSectionSelect").disabled = only;
+  if (only) $("npsSectionSelect").value = "";
+  fillNpsIndustryOptions();
+  if (only) $("npsIndustrySelect").disabled = true;
+  applyNpsFilters();
+});
+$("npsIncludeWithdrawn").addEventListener("change", () => applyNpsFilters());
+$("npsStyleTabs").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-style]");
   if (!button) return;
-  npsFilter = button.dataset.filter;
-  document.querySelectorAll("#npsFilterTabs .filter-chip").forEach((chip) => {
-    const active = chip === button;
+  npsStyleCode = button.dataset.style;
+  setNpsStyleChip(npsStyleCode);
+  applyNpsFilters();
+});
+
+/** 사업장 형태 칩의 선택 표시를 맞춘다. */
+function setNpsStyleChip(styleCode) {
+  document.querySelectorAll("#npsStyleTabs .filter-chip").forEach((chip) => {
+    const active = chip.dataset.style === styleCode;
     chip.classList.toggle("is-active", active);
     chip.setAttribute("aria-pressed", String(active));
   });
-  npsPageNo = 1;
-  renderNpsTable();
-  renderNpsStats();
-  renderNpsPager();
-});
+}
+
 $("npsResultBody").addEventListener("click", (event) => {
   const button = event.target.closest(".detail-btn");
   if (button) showNpsDetail(button.dataset.seq);
 });
 $("npsDownloadBtn").addEventListener("click", () => {
-  if (!npsRows.length) return;
+  const rows = filteredNpsRows();
+  if (!rows.length) return;
   downloadCsv(
-    ["순번", "사업장명", "사업자등록번호(앞6자리)", "소재지(도로명)", "업종코드", "업종대분류", "사업장형태", "가입상태", "자료기준월", "이력개월수"],
-    filteredNpsRows().map((row, index) => [
+    ["순번", "사업장명", "사업자등록번호(앞6자리)", "소재지(도로명)", "업종대분류", "업종상세분류", "업종코드", "사업장형태", "사업장등록일", "가입자수", "가입상태", "자료기준월", "이력개월수"],
+    rows.map((row, index) => [
       index + 1,
-      row.name, row.bizNoPrefix, row.address, isPlaceholderIndustry(row.industryCode) ? "" : row.industryCode,
-      row.sectionName, row.styleName, row.statusName, row.dataCreatedMonth,
-      row.historyCount || 1
+      row.name, row.bizNoPrefix, displayAddress(row.address),
+      hasIndustryDetail(row) ? row.sectionName : "", row.industryName ?? "",
+      isPlaceholderIndustry(row.industryCode) ? "" : row.industryCode,
+      row.styleName, row.registeredDate ? formatYmd(row.registeredDate) : "",
+      typeof row.subscriberCount === "number" ? row.subscriberCount : "",
+      row.statusName, row.dataCreatedMonth, row.historyCount || 1
     ]),
     `국민연금사업장_${new Date().toISOString().slice(0, 10)}.csv`
   );
 });
+
+fillNpsSectionOptions();
+fitNpsRanges();
 
 updateInputCount();

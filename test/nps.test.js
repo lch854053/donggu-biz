@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import handler, { resetVariantPreference } from "../api/nps.js";
 import {
   addressArea,
+  displayAddress,
+  matchesWorkplaceCriteria,
+  ymdYear,
   compactWorkplace,
   compactWorkplaceDetail,
   industrySection,
@@ -94,9 +97,62 @@ test("사업장 항목을 화면과 통계가 함께 쓰는 형태로 정규화�
   assert.equal(workplace.name, "광주동구청");
   assert.equal(workplace.bizNoPrefix, "408815");
   assert.equal(workplace.statusName, "등록");
-  assert.equal(workplace.styleName, "법인사업장");
+  assert.equal(workplace.styleName, "법인");
   assert.equal(workplace.sectionCode, "N");
   assert.equal(workplace.area, "동구 서남로");
+});
+
+test("소재지에서 시 이름을 덜어낸다", () => {
+  assert.equal(displayAddress("광주광역시 동구 서남로"), "동구 서남로");
+  assert.equal(displayAddress("동구 제봉로"), "동구 제봉로");
+  assert.equal(displayAddress(""), "");
+});
+
+test("등록일에서 연도만 꺼낸다", () => {
+  assert.equal(ymdYear("19990401"), 1999);
+  assert.equal(ymdYear("2007-05-01"), 2007);
+  assert.equal(ymdYear(""), null);
+});
+
+const registered = compactWorkplaceDetail({ ...sampleItem, adptDt: "20050301", jnngpCnt: "12", vldtVlKrnNm: "일반 행정" });
+
+test("기본 조건은 가입 상태가 등록인 사업장만 남긴다", () => {
+  assert.equal(matchesWorkplaceCriteria(registered, {}), true);
+  assert.equal(matchesWorkplaceCriteria({ ...registered, statusCode: "2" }, {}), false);
+  assert.equal(matchesWorkplaceCriteria({ ...registered, statusCode: "2" }, { includeWithdrawn: true }), true);
+});
+
+test("사업장 형태·사업장명·업종 대분류로 좁힌다", () => {
+  assert.equal(matchesWorkplaceCriteria(registered, { styleCode: "1" }), true);
+  assert.equal(matchesWorkplaceCriteria(registered, { styleCode: "2" }), false);
+  assert.equal(matchesWorkplaceCriteria(registered, { name: "동구청" }), true);
+  assert.equal(matchesWorkplaceCriteria(registered, { name: "광주은행" }), false);
+  assert.equal(matchesWorkplaceCriteria(registered, { sectionCode: "N" }), true);
+  assert.equal(matchesWorkplaceCriteria(registered, { sectionCode: "D" }), false);
+});
+
+test("업종 미상만 조회는 자리표시 업종코드를 가진 사업장만 남긴다", () => {
+  const unknown = compactWorkplaceDetail({ ...sampleItem, wkplIntpCd: "999999" });
+  assert.equal(matchesWorkplaceCriteria(unknown, { unknownIndustryOnly: true }), true);
+  assert.equal(matchesWorkplaceCriteria(registered, { unknownIndustryOnly: true }), false);
+});
+
+test("상세를 아직 못 받은 사업장은 업종·등록일·가입자 수 조건을 걸었을 때만 빠진다", () => {
+  const listOnly = compactWorkplace({ ...sampleItem, wkplIntpCd: "" });
+  assert.equal(matchesWorkplaceCriteria(listOnly, {}), true);
+  assert.equal(matchesWorkplaceCriteria(listOnly, { sectionCode: "N" }), false);
+  assert.equal(matchesWorkplaceCriteria(listOnly, { unknownIndustryOnly: true }), false);
+  assert.equal(matchesWorkplaceCriteria(listOnly, { registeredFromYear: 1988 }), false);
+  assert.equal(matchesWorkplaceCriteria(listOnly, { subscriberMin: 0 }), false);
+});
+
+test("등록일 연도와 가입자 수 범위로 좁힌다", () => {
+  assert.equal(matchesWorkplaceCriteria(registered, { registeredFromYear: 2000, registeredToYear: 2010 }), true);
+  assert.equal(matchesWorkplaceCriteria(registered, { registeredFromYear: 2006 }), false);
+  assert.equal(matchesWorkplaceCriteria(registered, { registeredToYear: 2004 }), false);
+  assert.equal(matchesWorkplaceCriteria(registered, { subscriberMin: 10, subscriberMax: 20 }), true);
+  assert.equal(matchesWorkplaceCriteria(registered, { subscriberMin: 13 }), false);
+  assert.equal(matchesWorkplaceCriteria(registered, { subscriberMax: 11 }), false);
 });
 
 test("알 수 없는 상태·형태 코드는 원본 코드를 남긴다", () => {
