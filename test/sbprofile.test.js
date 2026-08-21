@@ -5,6 +5,7 @@ import {
   formatMonth,
   formatRatio,
   isRetryableStatus,
+  isSameSnapshotData,
   leadingNumber,
   normalizeProfile,
   parseSbResponse,
@@ -191,4 +192,30 @@ test("5xx와 혼잡 응답만 재시도하고 4xx는 바로 실패시킨다", ()
   assert.equal(isRetryableStatus(408), true);
   assert.equal(isRetryableStatus(401), false);
   assert.equal(isRetryableStatus(404), false);
+});
+
+test("집계가 같으면 수집 시각이 달라도 같은 스냅샷으로 본다", () => {
+  const regions = { donggu: { label: "광주 동구", byMonth: { 202506: { total: 1 } } } };
+  const meta = { months: ["202506"] };
+  assert.equal(
+    isSameSnapshotData(
+      { meta: { ...meta, collectedAt: "2026-01-01T00:00:00.000Z" }, regions },
+      { meta: { ...meta, collectedAt: "2026-08-21T00:00:00.000Z" }, regions }
+    ),
+    true
+  );
+});
+
+test("기준월이 늘거나 집계가 달라지면 다른 스냅샷으로 본다", () => {
+  const regions = { donggu: { label: "광주 동구", byMonth: { 202506: { total: 1 } } } };
+  assert.equal(isSameSnapshotData(
+    { meta: { months: ["202506"] }, regions },
+    { meta: { months: ["202606", "202506"] }, regions }
+  ), false);
+  assert.equal(isSameSnapshotData(
+    { meta: { months: ["202506"] }, regions },
+    { meta: { months: ["202506"] }, regions: { donggu: { label: "광주 동구", byMonth: { 202506: { total: 2 } } } } }
+  ), false);
+  // 파일이 없던 첫 수집
+  assert.equal(isSameSnapshotData(null, { meta: { months: ["202506"] }, regions }), false);
 });
