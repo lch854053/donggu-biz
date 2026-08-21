@@ -34,7 +34,6 @@
       <span>국세청</span>
       <span>소상공인시장진흥공단</span>
       <span>국민연금공단</span>
-      <span>금융위원회</span>
     </div>
   </header>
 
@@ -44,9 +43,6 @@
     </button>
     <button class="primary-tab" id="tab-market" role="tab" aria-selected="false" aria-controls="panel-market" data-panel="market">
       상권분석
-    </button>
-    <button class="primary-tab" id="tab-stats" role="tab" aria-selected="false" aria-controls="panel-stats" data-panel="stats">
-      통계
     </button>
   </nav>
 
@@ -235,61 +231,6 @@
           <div id="marketMap"></div>
         </section>
 
-      </div>
-    </section>
-    <section class="service-panel" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
-      <div class="market-heading">
-        <div>
-          <h2>개인사업자 통계</h2>
-          <p id="statsMeta">금융위원회 개인사업자기본정보로 대표자 연령·성별, 업력, 업종, 종업원 규모 분포를 봅니다.</p>
-        </div>
-        <div class="toolbar-actions">
-          <label class="field field-inline">
-            <span>지역</span>
-            <select id="statsRegion"></select>
-          </label>
-          <label class="field field-inline">
-            <span>기준년월</span>
-            <select id="statsMonth"></select>
-          </label>
-          <button class="button button-export" id="statsDownloadBtn" type="button" disabled>CSV 다운로드</button>
-        </div>
-      </div>
-
-      <div class="market-state" id="statsState" role="status">개인사업자 자료를 불러오는 중입니다.</div>
-
-      <div id="statsWorkspace" hidden>
-        <div class="stat-tiles" id="statTiles"></div>
-        <div class="stats-grid">
-          <section class="stats-card" aria-labelledby="stats-age-title">
-            <h3 id="stats-age-title">대표자 연령대</h3>
-            <div id="statsAges"></div>
-          </section>
-          <section class="stats-card" aria-labelledby="stats-tenure-title">
-            <h3 id="stats-tenure-title">업력 (설립년도 기준)</h3>
-            <div id="statsTenures"></div>
-          </section>
-          <section class="stats-card" aria-labelledby="stats-industry-title">
-            <h3 id="stats-industry-title">업종 중분류별 사업자 수 상위 12개</h3>
-            <div id="statsIndustries"></div>
-          </section>
-          <section class="stats-card" aria-labelledby="stats-employee-title">
-            <h3 id="stats-employee-title">종업원 규모</h3>
-            <div id="statsEmployees"></div>
-          </section>
-          <section class="stats-card" aria-labelledby="stats-sex-title">
-            <h3 id="stats-sex-title">대표자 성별</h3>
-            <div id="statsSexes"></div>
-          </section>
-          <section class="stats-card" aria-labelledby="stats-compare-title">
-            <h3 id="stats-compare-title">광주 동구 · 광주광역시 전체 비교</h3>
-            <div class="table-wrap" id="statsCompare"></div>
-          </section>
-        </div>
-        <div class="data-note">
-          <strong>해석 유의사항</strong>
-          <p>금융위원회 개인사업자기본정보는 정책금융기관과 거래한 개인사업자를 익명처리해 제공하는 자료입니다. 지역 전체 개인사업자가 아니므로 상권분석 탭의 상가업소 수와 같은 뜻으로 읽으면 안 되고, 사업자등록번호가 없어 사업자 상태조회 결과와 연결되지 않습니다. 갱신은 연 1회이고 기준년월마다 자료가 따로 쌓이므로 위 수치는 선택한 기준년월 한 시점의 사업자 수입니다. 업종은 최신 한국표준산업분류 중분류로, 국민연금 사업장 조회의 업종 대분류(옛 분류 기준)와 체계가 다릅니다. 표본이 작은 구간은 교차 해석하지 마십시오.</p>
-        </div>
       </div>
     </section>
   </main>

@@ -7,8 +7,7 @@
     "test": "node --test",
     "update-stores": "node scripts/update-stores.mjs",
     "update-zones": "node scripts/update-mainbiz-zones.mjs",
-    "update-nps": "node scripts/update-nps.mjs",
-    "update-sbprofile": "node scripts/update-sbprofile.mjs"
+    "update-nps": "node scripts/update-nps.mjs"
   },
   "engines": {
     "node": ">=20"
