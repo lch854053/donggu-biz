@@ -10,8 +10,6 @@ import {
   displayAddress,
   hasIndustryDetail,
   hydrateSnapshotWorkplace,
-  industrySection,
-  isPlaceholderIndustry,
   matchesWorkplaceCriteria,
   sortWorkplaces,
   ymdYear
@@ -726,7 +724,7 @@ function renderNpsTable() {
   const rows = npsPageRows();
   const body = $("npsResultBody");
   if (!rows.length) {
-    body.innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 결과가 없습니다.</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="10">해당 조건의 결과가 없습니다.</td></tr>';
     return;
   }
   const offset = (npsPageNo - 1) * NPS_PAGE_SIZE;
@@ -734,7 +732,7 @@ function renderNpsTable() {
     const opened = Boolean(row.seq) && npsDetail.seq === row.seq;
     // 상세 카드는 표 맨 아래가 아니라 누른 행 바로 아래에 한 줄을 끼워 펼친다.
     const card = opened
-      ? `<tr class="detail-row"><td colspan="11"><div class="detail-card">${npsDetail.html}</div></td></tr>`
+      ? `<tr class="detail-row"><td colspan="10"><div class="detail-card">${npsDetail.html}</div></td></tr>`
       : "";
     return `<tr${opened ? ' class="is-open"' : ""}>
     <td class="seq">${offset + index + 1}</td>
@@ -742,7 +740,6 @@ function renderNpsTable() {
     <td class="mono">${escapeHtml(row.bizNoPrefix ? `${row.bizNoPrefix}-****` : "-")}</td>
     <td>${escapeHtml(displayAddress(row.address) || "-")}</td>
     <td>${escapeHtml(hasIndustryDetail(row) ? row.sectionName : "")}</td>
-    <td>${escapeHtml(npsIndustryDetailLabel(row))}</td>
     <td>${escapeHtml(row.styleName)}</td>
     <td class="mono">${escapeHtml(row.registeredDate ? formatYmd(row.registeredDate) : "-")}</td>
     <td class="mono">${typeof row.subscriberCount === "number" ? `${row.subscriberCount.toLocaleString("ko-KR")}명` : "-"}</td>
@@ -750,12 +747,6 @@ function renderNpsTable() {
     <td class="detail-cell"><button class="button button-quiet detail-btn" type="button" data-seq="${escapeHtml(row.seq)}" aria-expanded="${opened}">상세</button></td>
   </tr>${card}`;
   }).join("");
-}
-
-/** 상세분류 열에 쓸 업종명. 업종을 담고 있지 않은 사업장은 하이픈으로 둔다. */
-function npsIndustryDetailLabel(row) {
-  if (row.industryName) return row.industryCode ? `${row.industryName} (${row.industryCode})` : row.industryName;
-  return row.detailLoaded ? "-" : "";
 }
 
 function renderNpsStats() {
@@ -917,15 +908,13 @@ async function showNpsDetail(seq) {
     const payload = await fetchNps({ action: "detail", seq });
     const detail = payload.items?.[0];
     if (!detail) throw new Error("사업장 상세 정보를 찾을 수 없습니다.");
-    const industryCode = isPlaceholderIndustry(detail.industryCode) ? "" : detail.industryCode;
-    const industry = [detail.industryName, industryCode && `(${industryCode})`].filter(Boolean).join(" ") || detail.sectionName;
     const row = (label, value) => (value == null ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
     const people = (value) => (value == null ? null : `${value.toLocaleString("ko-KR")}명`);
     base = `<p class="selection-name">${escapeHtml(detail.name)}</p>
       <dl>
         ${row("사업자등록번호", escapeHtml(detail.bizNoPrefix ? `${detail.bizNoPrefix}-****` : "-"))}
         ${row("소재지", escapeHtml(displayAddress(detail.address) || "-"))}
-        ${row("업종", escapeHtml(industry))}
+        ${row("업종 대분류", escapeHtml(detail.sectionName))}
         ${row("사업장 형태", escapeHtml(detail.styleName))}
         ${row("가입 상태", escapeHtml(detail.statusName))}
         ${row("사업장 등록일", escapeHtml(formatYmd(detail.registeredDate)))}
@@ -1192,12 +1181,11 @@ $("npsDownloadBtn").addEventListener("click", () => {
   const rows = sortedNpsRows();
   if (!rows.length) return;
   downloadXlsx(
-    ["순번", "사업장명", "사업자등록번호(앞6자리)", "소재지(도로명)", "업종대분류", "업종상세분류", "업종코드", "사업장형태", "사업장등록일", "가입자수", "가입상태", "자료기준월", "이력개월수"],
+    ["순번", "사업장명", "사업자등록번호(앞6자리)", "소재지(도로명)", "업종대분류", "사업장형태", "사업장등록일", "가입자수", "가입상태", "자료기준월", "이력개월수"],
     rows.map((row, index) => [
       index + 1,
       row.name, row.bizNoPrefix, displayAddress(row.address),
-      hasIndustryDetail(row) ? row.sectionName : "", row.industryName ?? "",
-      isPlaceholderIndustry(row.industryCode) ? "" : row.industryCode,
+      hasIndustryDetail(row) ? row.sectionName : "",
       row.styleName, row.registeredDate ? formatYmd(row.registeredDate) : "",
       typeof row.subscriberCount === "number" ? row.subscriberCount : "",
       row.statusName, row.dataCreatedMonth, row.historyCount || 1

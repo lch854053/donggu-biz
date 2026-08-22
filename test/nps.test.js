@@ -182,16 +182,14 @@ test("등록일 연도와 가입자 수 범위로 좁힌다", () => {
   assert.equal(matchesWorkplaceCriteria(registered, { subscriberMax: 11 }), false);
 });
 
-test("조회 결과를 상세분류·등록일·가입자 수로 오름차순과 내림차순 정렬한다", () => {
+test("조회 결과를 등록일과 가입자 수로 오름차순과 내림차순 정렬한다", () => {
   const rows = [
-    { name: "가", industryName: "카페", registeredDate: "20200301", subscriberCount: 5 },
-    { name: "나", industryName: "식당", registeredDate: "20210101", subscriberCount: 20 },
-    { name: "다", industryName: "", registeredDate: "20190101", subscriberCount: null }
+    { name: "가", registeredDate: "20200301", subscriberCount: 5 },
+    { name: "나", registeredDate: "20210101", subscriberCount: 20 },
+    { name: "다", registeredDate: "20190101", subscriberCount: null }
   ];
   const names = (sort) => sortWorkplaces(rows, sort).map((row) => row.name);
 
-  assert.deepEqual(names("detail-asc"), ["나", "가", "다"]);
-  assert.deepEqual(names("detail-desc"), ["가", "나", "다"]);
   assert.deepEqual(names("registered-asc"), ["다", "가", "나"]);
   assert.deepEqual(names("registered-desc"), ["나", "가", "다"]);
   assert.deepEqual(names("subscriber-asc"), ["가", "나", "다"]);
