@@ -229,6 +229,8 @@ button { color: inherit; }
 tbody tr.is-open td { background: #1b2334; }
 
 .source-note { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.7; }
+/* 실시간 조회가 아니므로 자료가 언제 것인지 밝히되, 유의사항보다 한 단계 낮춰 적는다. */
+.source-basis { color: var(--text-muted); font-family: var(--mono); font-size: 12px; }
 
 .field-note { margin-top: 6px; display: block; color: var(--text-muted); font-size: 12px; }
 .field-note.is-warn { color: var(--yellow); }
