@@ -354,9 +354,9 @@ function renderValidationResult(item) {
   const code = String(item?.valid ?? "");
   const state = code === "01" ? "is-valid" : code === "02" ? "is-invalid" : "is-error";
   const title = code === "01" ? "일치" : code === "02" ? "불일치" : "확인 불가";
-  const message = item?.valid_msg || "국세청에서 진위확인 결과를 반환하지 않았습니다.";
+  const message = item?.valid_msg ? `<p>${escapeHtml(item.valid_msg)}</p>` : "";
   result.className = `verification-result ${state}`;
-  result.innerHTML = `<strong>${title}</strong><p>${escapeHtml(message)}</p>`;
+  result.innerHTML = `<strong>${title}</strong>${message}`;
 }
 
 function renderValidationError(message) {
