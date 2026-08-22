@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="광주 동구 사업자 상태·국민연금 사업장 조회와 상가 업종·입지 분석, 국민연금 가입 사업장 통계">
+  <meta name="description" content="광주 동구 사업자 상태·국민연금 가입 사업장 조회와 상가 업종·입지 분석, 국민연금 가입 사업장 통계">
   <title>동구 사업자·상권 조회</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -53,7 +53,7 @@
           사업자 상태조회
         </button>
         <button class="sub-tab" id="tab-nps" role="tab" aria-selected="false" aria-controls="subpanel-nps" data-subpanel="nps">
-          국민연금 사업장 조회
+          국민연금 가입 사업장 조회
         </button>
       </nav>
 
@@ -121,7 +121,7 @@
           <div class="station-heading">
             <div>
               <h2 id="nps-input-title">국민연금 가입 사업장 조회</h2>
-              <p class="source-note">출처 : 국민연금공단<br>조회 지역 : 광주 동구<br>유의사항 : 사업자등록번호는 앞 6자리만 제공되며, 주소는 상세주소는 조회되지 않습니다.<br><span class="source-basis" id="npsBasis"></span></p>
+              <p class="source-note">출처 : 국민연금공단 API<br>조회 지역 : 광주 동구<br>유의사항 : 사업자등록번호는 앞 6자리만 제공되며, 상세주소는 조회되지 않습니다.<br><span class="source-basis" id="npsBasis"></span></p>
             </div>
             <span class="count-badge" id="npsCountBadge">0개 사업장</span>
           </div>
