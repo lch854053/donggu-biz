@@ -481,8 +481,11 @@ $("validationClearBtn").addEventListener("click", () => {
 const DONGGU_CENTER = [35.1467, 126.9231];
 let marketInitialized = false;
 let allStores = [];
+let medicalStores = [];
 let visibleStores = [];
 let marketMeta = null;
+let medicalMeta = null;
+let marketDataset = "all";
 let marketMap;
 let markerCluster;
 let storeMarkers = [];
@@ -498,10 +501,11 @@ async function initializeMarket() {
   }
   marketInitialized = true;
   try {
-    const [response, zoneResponse, manualZoneResponse] = await Promise.all([
+    const [response, zoneResponse, manualZoneResponse, medicalResponse] = await Promise.all([
       fetch("data/stores_donggu.json"),
       fetch("data/mainbiz_zones_donggu.geojson").catch(() => null),
-      fetch("data/manual_mainbiz_zones_donggu.geojson").catch(() => null)
+      fetch("data/manual_mainbiz_zones_donggu.geojson").catch(() => null),
+      fetch("data/medical_stores_donggu.json").catch(() => null)
     ]);
     if (!response.ok) throw new Error(`상가정보 파일을 불러오지 못했습니다. HTTP ${response.status}`);
     const payload = await response.json();
@@ -521,8 +525,23 @@ async function initializeMarket() {
         console.error("[manual-mainbiz-zones] invalid JSON", error);
       }
     }
+    let medicalPayload = { stores: [], meta: {} };
+    if (medicalResponse?.ok) {
+      try {
+        medicalPayload = await medicalResponse.json();
+      } catch (error) {
+        console.error("[medical-stores] invalid JSON", error);
+      }
+    }
     allStores = Array.isArray(payload.stores) ? payload.stores : [];
     marketMeta = payload.meta || {};
+    medicalStores = Array.isArray(medicalPayload.stores) ? medicalPayload.stores : [];
+    medicalMeta = medicalPayload.meta || {};
+    const medicalOption = $("marketDataset").querySelector('[value="medical"]');
+    medicalOption.disabled = !medicalStores.length;
+    medicalOption.textContent = medicalStores.length
+      ? `의료기관 자료 (${medicalStores.length.toLocaleString("ko-KR")}개)`
+      : "의료기관 자료 (없음)";
     const visibleVworldPayload = { features: filterVworldZones(zonePayload.features) };
     mainBizZones = mergeZoneFeatures(visibleVworldPayload, manualZonePayload);
     if (!allStores.length) throw new Error("상가정보 파일에 표시할 업소가 없습니다.");
@@ -549,6 +568,16 @@ async function initializeMarket() {
 }
 
 function renderMarketMeta() {
+  $("marketTitle").textContent = marketDataset === "medical" ? "동구 의료기관 현황" : "동구 상가업소 현황";
+  if (marketDataset === "medical") {
+    const sourceDate = String(medicalMeta?.sourceUpdatedAt || "").replace(/-/g, ".");
+    const imported = medicalMeta.importedAt
+      ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(medicalMeta.importedAt))
+      : "미확인";
+    const total = Number(medicalMeta?.totalCount || medicalStores.length).toLocaleString("ko-KR");
+    $("marketMeta").textContent = `${medicalMeta?.source || "의료기관 자료"} · 원본 갱신 ${sourceDate || "미확인"} · 저장소 반입 ${imported} · ${total}개 · 수동 업로드 자료`;
+    return;
+  }
   const month = String(marketMeta.standardMonth || "").replace(/^(\d{4})(\d{2})$/, "$1.$2");
   const generated = marketMeta.generatedAt
     ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(marketMeta.generatedAt))
@@ -573,6 +602,10 @@ function initializeMap() {
 
 function selectedZone() {
   return mainBizZones.find((feature) => feature.properties.no === selectedZoneNo) || null;
+}
+
+function activeMarketStores() {
+  return marketDataset === "medical" ? medicalStores : allStores;
 }
 
 function zoneStyle(feature) {
@@ -626,7 +659,7 @@ function replaceOptions(select, items, placeholder) {
 }
 
 function populateMarketFilters() {
-  replaceOptions($("dongFilter"), [...new Set(allStores.map((store) => store.adminDong).filter(Boolean))]
+  replaceOptions($("dongFilter"), [...new Set(activeMarketStores().map((store) => store.adminDong).filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, "ko")).map((name) => ({ value: name, label: name })), "전체 행정동");
   replaceOptions($("zoneFilter"), mainBizZones.map((feature) => ({
     value: feature.properties.no,
@@ -642,7 +675,7 @@ function currentMarketFilters() {
 
 function buildStoreMarkers() {
   const icon = L.divIcon({ className: "store-dot", iconSize: [12, 12] });
-  storeMarkers = allStores.map((store) => {
+  storeMarkers = activeMarketStores().map((store) => {
     const marker = L.marker([store.latitude, store.longitude], { icon, title: store.name });
     marker.store = store;
     marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(store.name)}${store.branch ? ` ${escapeHtml(store.branch)}` : ""}</strong><span>${escapeHtml(store.smallName || store.largeName)}</span><span>${escapeHtml(store.address)}</span></div>`);
@@ -655,7 +688,7 @@ function buildStoreMarkers() {
 }
 
 function applyMarketFilters() {
-  visibleStores = filterStores(allStores, currentMarketFilters());
+  visibleStores = filterStores(activeMarketStores(), currentMarketFilters());
   markerCluster.clearLayers();
   if ($("dongFilter").value || selectedZoneNo) {
     const visibleIds = new Set(visibleStores.map((store) => store.id));
@@ -664,8 +697,8 @@ function applyMarketFilters() {
   renderSelectionOverview();
 }
 
-function summaryRows(counts, total, limit = 6) {
-  if (!counts.length) return '<p class="summary-empty">조건에 맞는 업소가 없습니다.</p>';
+function summaryRows(counts, total, limit = 6, emptyLabel = "업소") {
+  if (!counts.length) return `<p class="summary-empty">조건에 맞는 ${emptyLabel}가 없습니다.</p>`;
   const max = counts[0].count || 1;
   return counts.slice(0, limit).map(({ name, count }) => `<div class="summary-row">
     <div class="summary-label"><span>${escapeHtml(name)}</span><strong>${count.toLocaleString("ko-KR")}</strong></div>
@@ -676,19 +709,21 @@ function summaryRows(counts, total, limit = 6) {
 function renderSelectionOverview() {
   const zone = selectedZone();
   const adminDong = $("dongFilter").value;
+  const entityLabel = marketDataset === "medical" ? "기관" : "점포";
   if (!zone && !adminDong) {
-    $("selectionOverview").innerHTML = "<p>행정동 또는 주요상권을 선택하면 점포 수와 상위 업종 소분류를 확인할 수 있습니다.</p>";
+    $("selectionOverview").innerHTML = `<p>행정동 또는 주요상권을 선택하면 ${entityLabel} 수와 상위 업종 소분류를 확인할 수 있습니다.</p>`;
     return;
   }
   const name = zone?.properties?.name || adminDong;
   const area = zone ? Number(zone.properties.areaSqm || 0) / 1e6 : null;
+  const countLabel = marketDataset === "medical" ? "기관 수" : "점포 수";
   $("selectionOverview").innerHTML = `<p class="selection-name">${escapeHtml(name)}</p>
     <dl>
       ${area === null ? "" : `<div><dt>경계 면적</dt><dd>${area.toFixed(3)}㎢</dd></div>`}
-      <div><dt>점포 수</dt><dd>${visibleStores.length.toLocaleString("ko-KR")}개</dd></div>
+      <div><dt>${countLabel}</dt><dd>${visibleStores.length.toLocaleString("ko-KR")}개</dd></div>
     </dl>
     <p class="selection-category-title">상위 업종 소분류 10개</p>
-    <div class="selection-categories">${summaryRows(countBy(visibleStores, "smallName"), visibleStores.length, 10)}</div>`;
+    <div class="selection-categories">${summaryRows(countBy(visibleStores, "smallName"), visibleStores.length, 10, entityLabel)}</div>`;
 }
 
 function selectZone(number, fitBounds) {
@@ -703,6 +738,17 @@ function selectZone(number, fitBounds) {
   if (fitBounds && layer) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
 }
 
+$("marketDataset").addEventListener("change", (event) => {
+  marketDataset = event.target.value;
+  selectedZoneNo = "";
+  $("dongFilter").value = "";
+  $("zoneFilter").value = "";
+  populateMarketFilters();
+  buildStoreMarkers();
+  applyMarketFilters();
+  renderMarketMeta();
+  marketMap?.setView(DONGGU_CENTER, 14);
+});
 $("dongFilter").addEventListener("change", (event) => {
   const selection = buildLocationSelection("dong", event.target.value);
   selectedZoneNo = selection.zoneNo;

@@ -13,7 +13,21 @@
 ### 소상공인 조회
 
 - 광주 동구 상가업소 지도와 상호 배타적인 행정동·주요상권 조회
+- 전체 상가업소와 별도 연 1회 수동 갱신하는 의료기관 자료를 자료 범위로 전환
 - 선택한 행정동 또는 주요상권의 상위 10개 업종 소분류 분석
+
+## 의료기관 자료 갱신
+
+의료기관 자료는 API를 실시간 호출하지 않고 `data/medical_stores_donggu.csv` 원본과 정규화한 `data/medical_stores_donggu.json`을 함께 보관합니다. 새 파일을 받으면 원본 CSV를 교체하고, 파일에 표시된 최신 갱신일을 인자로 넣어 변환합니다.
+
+```bash
+npm run update-medical-stores -- --source-updated-at 2025-08-26
+npm test
+```
+
+변환 스크립트는 시도코드 `29`·시군구코드 `29110`만 남기고, 상가업소번호 중복과 좌표 누락을 검사합니다. `sourceUpdatedAt`은 원본 자료의 갱신일이고 `importedAt`은 이 저장소에 변환한 시각입니다. 갱신 뒤에는 두 데이터 파일을 함께 커밋해야 화면의 `의료기관 자료` 범위가 바뀝니다.
+
+GitHub Actions `Remind Dong-gu medical data refresh`가 매년 **9월 1일 09:00(KST)**에 같은 연도의 열린 갱신 Issue가 없을 때 알림을 만듭니다. 필요하면 Actions의 `Run workflow`로 즉시 실행할 수 있습니다.
 
 ## 국민연금 사업장 조건검색
 
