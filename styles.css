@@ -203,6 +203,18 @@ button { color: inherit; }
 .pager .button { min-height: 36px; padding: 6px 12px; }
 .pager span { color: var(--text-secondary); font-size: 12px; }
 
+.sort-control { display: flex; align-items: center; gap: 7px; }
+.sort-control > span { color: var(--text-secondary); font-size: 12px; white-space: nowrap; }
+.sort-control select {
+  min-height: 36px;
+  padding: 6px 28px 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font-size: 12px;
+}
+
 /* 열이 좁아도 "상 / 세"로 끊기지 않게 붙여 둔다. */
 .detail-cell { white-space: nowrap; }
 .detail-btn { min-height: 32px; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
@@ -231,6 +243,7 @@ tbody tr.is-open td { background: #1b2334; }
 .source-note { margin-top: 6px; color: var(--text-secondary); font-size: 12px; line-height: 1.7; }
 /* 실시간 조회가 아니므로 자료가 언제 것인지 밝히되, 유의사항보다 한 단계 낮춰 적는다. */
 .source-basis { color: var(--text-muted); font-family: var(--mono); font-size: 12px; }
+.query-note { margin: 0; padding: 0 20px 14px; color: var(--yellow); font-size: 12px; line-height: 1.6; }
 
 .field-note { margin-top: 6px; display: block; color: var(--text-muted); font-size: 12px; }
 .field-note.is-warn { color: var(--yellow); }

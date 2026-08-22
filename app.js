@@ -13,6 +13,7 @@ import {
   industrySection,
   isPlaceholderIndustry,
   matchesWorkplaceCriteria,
+  sortWorkplaces,
   ymdYear
 } from "./lib/nps.js";
 
@@ -569,6 +570,9 @@ let npsPageNo = 1;
 let npsBusy = false;
 let npsStyleCode = "";
 let npsDetail = { seq: "", html: "" };
+let npsAppliedCriteria = null;
+let npsCriteriaDirty = false;
+let npsSort = "";
 
 // 업종 대분류 선택기에서 "업종 미상"을 가리키는 값. 분류표의 대분류 코드와 겹치지 않게 둔다.
 const NPS_UNKNOWN_SECTION_VALUE = "unknown";
@@ -665,7 +669,7 @@ const npsYearRange = createRangeControl({
   maxLabelId: "npsYearMaxLabel",
   readoutId: "npsYearReadout",
   format: (year) => `${year}년`,
-  onChange: () => applyNpsFilters()
+  onChange: markNpsCriteriaDirty
 });
 
 const npsPeopleRange = createRangeControl({
@@ -676,10 +680,10 @@ const npsPeopleRange = createRangeControl({
   maxLabelId: "npsPeopleMaxLabel",
   readoutId: "npsPeopleReadout",
   format: (people) => `${people.toLocaleString("ko-KR")}명`,
-  onChange: () => applyNpsFilters()
+  onChange: markNpsCriteriaDirty
 });
 
-/** 지금 화면에 걸린 조회 조건. 모두 스냅샷을 그 자리에서 좁히는 데 쓴다. */
+/** 입력 중인 조건을 조회 실행 시점에 결과에 적용한다. */
 function npsCriteria() {
   const section = $("npsSectionSelect").value;
   const years = npsYearRange.value();
@@ -698,12 +702,16 @@ function npsCriteria() {
 }
 
 function filteredNpsRows() {
-  const criteria = npsCriteria();
+  const criteria = npsAppliedCriteria || {};
   return npsRows.filter((row) => matchesWorkplaceCriteria(row, criteria));
 }
 
+function sortedNpsRows() {
+  return sortWorkplaces(filteredNpsRows(), npsSort);
+}
+
 function npsPageRows() {
-  const rows = filteredNpsRows();
+  const rows = sortedNpsRows();
   const offset = (npsPageNo - 1) * NPS_PAGE_SIZE;
   return rows.slice(offset, offset + NPS_PAGE_SIZE);
 }
@@ -777,10 +785,15 @@ function renderNps() {
   renderNpsPager();
 }
 
-/** 조건을 바꾸면 자료를 다시 읽지 않고 그 자리에서 다시 걸러 보여준다. */
-function applyNpsFilters() {
-  npsPageNo = 1;
-  renderNps();
+/** 조회 결과는 마지막 실행 조건을 유지하고, 새 조건은 다음 조회 때 적용한다. */
+function markNpsCriteriaDirty() {
+  npsCriteriaDirty = true;
+  renderNpsCriteriaState();
+}
+
+function renderNpsCriteriaState() {
+  const pending = Boolean(npsAppliedCriteria && npsCriteriaDirty);
+  $("npsCriteriaNote").hidden = !pending;
 }
 
 function showNpsPage(pageNo) {
@@ -866,8 +879,11 @@ async function runNpsLookup() {
     npsPageNo = 1;
     renderNpsBasis(snapshot);
     fitNpsRanges();
+    npsAppliedCriteria = npsCriteria();
+    npsCriteriaDirty = false;
     $("npsResultSection").hidden = false;
     renderNps();
+    renderNpsCriteriaState();
     $("npsProgressFill").style.width = "100%";
     $("npsProgressText").textContent = `사업장 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`;
     showToast(`사업장 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`);
@@ -1112,15 +1128,17 @@ function formatYmd(value) {
   return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6)}`;
 }
 
-function downloadCsv(headers, rows, fileName) {
-  const csv = `﻿${[headers, ...rows].map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n")}`;
-  const link = document.createElement("a");
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-  showToast("CSV 파일을 내려받았습니다.");
+function downloadXlsx(headers, rows, fileName) {
+  const xlsx = window.XLSX;
+  if (!xlsx) {
+    showToast("XLSX 다운로드 기능을 불러오지 못했습니다. 페이지를 새로고침해 주세요.");
+    return;
+  }
+  const workbook = xlsx.utils.book_new();
+  const worksheet = xlsx.utils.aoa_to_sheet([headers, ...rows]);
+  xlsx.utils.book_append_sheet(workbook, worksheet, "사업장");
+  xlsx.writeFile(workbook, fileName);
+  showToast("XLSX 파일을 내려받았습니다.");
 }
 
 $("npsRunBtn").addEventListener("click", () => runNpsLookup());
@@ -1134,21 +1152,27 @@ $("npsClearBtn").addEventListener("click", () => {
   npsDetail = { seq: "", html: "" };
   npsYearRange.reset();
   npsPeopleRange.reset();
-  if (npsRows.length) renderNps();
+  if (npsAppliedCriteria) markNpsCriteriaDirty();
 });
 $("npsPrevBtn").addEventListener("click", () => showNpsPage(npsPageNo - 1));
 $("npsNextBtn").addEventListener("click", () => showNpsPage(npsPageNo + 1));
-// 조회가 스냅샷 하나로 끝나므로 사업장명도 다른 조건과 똑같이 즉시 반영된다.
-$("npsNameInput").addEventListener("input", () => applyNpsFilters());
+$("npsNameInput").addEventListener("input", markNpsCriteriaDirty);
 $("npsNameInput").addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
-$("npsSectionSelect").addEventListener("change", () => applyNpsFilters());
-$("npsIncludeWithdrawn").addEventListener("change", () => applyNpsFilters());
+$("npsSectionSelect").addEventListener("change", markNpsCriteriaDirty);
+$("npsIncludeWithdrawn").addEventListener("change", markNpsCriteriaDirty);
 $("npsStyleTabs").addEventListener("click", (event) => {
   const button = event.target.closest("[data-style]");
   if (!button) return;
   npsStyleCode = button.dataset.style;
   setNpsStyleChip(npsStyleCode);
-  applyNpsFilters();
+  markNpsCriteriaDirty();
+});
+
+$("npsSortSelect").addEventListener("change", (event) => {
+  npsSort = event.target.value;
+  npsPageNo = 1;
+  npsDetail = { seq: "", html: "" };
+  if (npsRows.length) renderNps();
 });
 
 /** 사업장 형태 칩의 선택 표시를 맞춘다. */
@@ -1165,9 +1189,9 @@ $("npsResultBody").addEventListener("click", (event) => {
   if (button) showNpsDetail(button.dataset.seq);
 });
 $("npsDownloadBtn").addEventListener("click", () => {
-  const rows = filteredNpsRows();
+  const rows = sortedNpsRows();
   if (!rows.length) return;
-  downloadCsv(
+  downloadXlsx(
     ["순번", "사업장명", "사업자등록번호(앞6자리)", "소재지(도로명)", "업종대분류", "업종상세분류", "업종코드", "사업장형태", "사업장등록일", "가입자수", "가입상태", "자료기준월", "이력개월수"],
     rows.map((row, index) => [
       index + 1,
@@ -1178,7 +1202,7 @@ $("npsDownloadBtn").addEventListener("click", () => {
       typeof row.subscriberCount === "number" ? row.subscriberCount : "",
       row.statusName, row.dataCreatedMonth, row.historyCount || 1
     ]),
-    `국민연금사업장_${new Date().toISOString().slice(0, 10)}.csv`
+    `국민연금사업장_${new Date().toISOString().slice(0, 10)}.xlsx`
   );
 });
 

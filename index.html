@@ -17,7 +17,7 @@
   <!--
   THESIS: 사업자 한 건의 상태와 동구 전체 상가의 맥락을 같은 업무대 위에서 확인한다. 장식적인 대시보드 대신 조회와 판단이 바로 이어지는 관제 화면을 만든다.
   OWN-WORLD: 청흑색 무광 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 기존 업무 도구 언어를 확장한다.
-  STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·업종 분석, 국민연금 사업장 통계 또는 CSV 내보내기로 업무를 끝낸다.
+  STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·업종 분석, 국민연금 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상권 탭은 좌측 선택·상세 레일과 지도가 한 화면에 놓인다.
   FORM: 통합 관제형, 구조 후보 5번, seed 859829d4.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
@@ -165,8 +165,9 @@
           <div class="action-row">
             <button class="button button-primary" id="npsRunBtn" type="button">조회 시작</button>
             <button class="button button-quiet" id="npsClearBtn" type="button">초기화</button>
-            <button class="button button-export" id="npsDownloadBtn" type="button" disabled>CSV 다운로드</button>
+            <button class="button button-export" id="npsDownloadBtn" type="button" disabled>XLSX 다운로드</button>
           </div>
+          <p class="query-note" id="npsCriteriaNote" hidden aria-live="polite">조건이 변경되었습니다. 다시 조회 시작을 눌러 결과에 적용하세요.</p>
           <div class="progress-wrap" id="npsProgressWrap" hidden>
             <div class="progress-track"><div class="progress-fill" id="npsProgressFill"></div></div>
             <p id="npsProgressText" aria-live="polite">대기 중</p>
@@ -180,6 +181,18 @@
               <div class="result-stats" id="npsStatsRow"></div>
             </div>
             <div class="toolbar-actions">
+              <label class="sort-control" for="npsSortSelect">
+                <span>정렬 기준</span>
+                <select id="npsSortSelect">
+                  <option value="">조회 순서</option>
+                  <option value="detail-asc">상세분류 오름차순</option>
+                  <option value="detail-desc">상세분류 내림차순</option>
+                  <option value="registered-asc">사업자 등록일 오름차순</option>
+                  <option value="registered-desc">사업자 등록일 내림차순</option>
+                  <option value="subscriber-asc">가입자 수 오름차순</option>
+                  <option value="subscriber-desc">가입자 수 내림차순</option>
+                </select>
+              </label>
               <div class="pager" id="npsPager" hidden>
                 <button class="button button-secondary" id="npsPrevBtn" type="button">이전</button>
                 <span id="npsPageLabel" class="mono">1</span>
@@ -247,6 +260,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <script type="module" src="app.js"></script>
 </body>
 </html>
