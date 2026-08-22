@@ -28,6 +28,53 @@ test("lookup rejects malformed numbers before calling the upstream API", async (
   assert.match(res.body.error, /10자리 숫자 문자열/);
 });
 
+test("validation rejects incomplete business information before calling the upstream API", async () => {
+  const res = responseRecorder();
+  await handler({
+    method: "POST",
+    headers: { host: "localhost:3000" },
+    body: { action: "validate", businesses: [{ b_no: "1208800767", p_nm: "홍길동" }] }
+  }, res);
+  assert.equal(res.statusCode, 400);
+  assert.match(res.body.error, /개업일자/);
+});
+
+test("validation forwards the NTS request shape to the validate endpoint", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NTS_API_KEY;
+  let requestUrl;
+  let requestBody;
+  global.fetch = async (url, options) => {
+    requestUrl = String(url);
+    requestBody = JSON.parse(options.body);
+    return Response.json({ status_code: "OK", data: [{ valid: "01", valid_msg: "확인" }] });
+  };
+  process.env.NTS_API_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    await handler({
+      method: "POST",
+      headers: { host: "localhost:3000" },
+      body: {
+        action: "validate",
+        businesses: [{ b_no: "1208800767", start_dt: "20200101", p_nm: "홍길동", b_nm: "동구상사" }]
+      }
+    }, res);
+    assert.match(requestUrl, /\/nts-businessman\/v1\/validate\?/);
+    assert.match(requestUrl, /returnType=JSON/);
+    assert.deepEqual(requestBody, {
+      businesses: [{ b_no: "1208800767", start_dt: "20200101", p_nm: "홍길동", b_nm: "동구상사" }]
+    });
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.data[0].valid, "01");
+  } finally {
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NTS_API_KEY;
+    else process.env.NTS_API_KEY = originalKey;
+  }
+});
+
 test("lookup does not grant CORS to a foreign origin", async () => {
   const res = responseRecorder();
   await handler({ method: "OPTIONS", headers: { host: "donggu-biz.vercel.app", origin: "https://example.com" } }, res);

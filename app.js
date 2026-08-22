@@ -299,6 +299,120 @@ $("businessFilterTabs").addEventListener("click", (event) => {
   renderBusinessTable();
 });
 
+let validationBusy = false;
+
+function validationFormValues() {
+  const bNo = $("validationBizNo").value.replace(/[^0-9]/g, "");
+  const owner = $("validationOwner").value.trim();
+  const startDate = $("validationStartDate").value.replace(/[^0-9]/g, "");
+  const businessName = $("validationBusinessName").value.trim();
+
+  if (!bNo) {
+    showToast("사업자등록번호를 입력해 주세요.");
+    $("validationBizNo").focus();
+    return null;
+  }
+  if (!validateBizNo(bNo)) {
+    showToast("사업자등록번호는 올바른 10자리 숫자여야 합니다.");
+    $("validationBizNo").focus();
+    return null;
+  }
+  if (!owner) {
+    showToast("대표자명을 입력해 주세요.");
+    $("validationOwner").focus();
+    return null;
+  }
+  if (startDate.length !== 8) {
+    showToast("개업일자를 입력해 주세요.");
+    $("validationStartDate").focus();
+    return null;
+  }
+
+  return {
+    b_no: bNo,
+    start_dt: startDate,
+    p_nm: owner,
+    ...(businessName ? { b_nm: businessName } : {})
+  };
+}
+
+async function callBusinessValidation(business) {
+  const response = await fetch("/api/lookup", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "validate", businesses: [business] })
+  });
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || `HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+function renderValidationResult(item) {
+  const result = $("validationResult");
+  const code = String(item?.valid ?? "");
+  const state = code === "01" ? "is-valid" : code === "02" ? "is-invalid" : "is-error";
+  const title = code === "01" ? "일치" : code === "02" ? "불일치" : "확인 불가";
+  const message = item?.valid_msg || "국세청에서 진위확인 결과를 반환하지 않았습니다.";
+  result.className = `verification-result ${state}`;
+  result.innerHTML = `<strong>${title}</strong><p>${escapeHtml(message)}</p>`;
+}
+
+function renderValidationError(message) {
+  const result = $("validationResult");
+  result.className = "verification-result is-error";
+  result.innerHTML = `<strong>진위확인을 완료하지 못했습니다.</strong><p>${escapeHtml(message)}</p>`;
+}
+
+async function runBusinessValidation() {
+  if (validationBusy) return;
+  const business = validationFormValues();
+  if (!business) return;
+
+  validationBusy = true;
+  $("validationRunBtn").disabled = true;
+  $("validationClearBtn").disabled = true;
+  $("validationResultSection").hidden = false;
+  $("validationResultSection").setAttribute("aria-busy", "true");
+  $("validationResult").className = "verification-result is-pending";
+  $("validationResult").innerHTML = "<p>국세청 등록정보와 대조하는 중입니다.</p>";
+
+  try {
+    const payload = await callBusinessValidation(business);
+    const result = payload?.data?.[0];
+    if (!result) throw new Error("진위확인 결과를 받지 못했습니다.");
+    renderValidationResult(result);
+    showToast("사업자등록정보 진위확인이 완료되었습니다.");
+  } catch (error) {
+    renderValidationError(error.message);
+    showToast(error.message);
+  } finally {
+    validationBusy = false;
+    $("validationRunBtn").disabled = false;
+    $("validationClearBtn").disabled = false;
+    $("validationResultSection").removeAttribute("aria-busy");
+  }
+}
+
+$("validationRunBtn").addEventListener("click", runBusinessValidation);
+$("validationClearBtn").addEventListener("click", () => {
+  $("validationBizNo").value = "";
+  $("validationOwner").value = "";
+  $("validationStartDate").value = "";
+  $("validationBusinessName").value = "";
+  $("validationResultSection").hidden = true;
+  $("validationResult").replaceChildren();
+});
+[
+  $("validationBizNo"),
+  $("validationOwner"),
+  $("validationStartDate"),
+  $("validationBusinessName")
+].forEach((input) => input.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") runBusinessValidation();
+}));
+
 // Commercial district analysis
 const DONGGU_CENTER = [35.1467, 126.9231];
 let marketInitialized = false;

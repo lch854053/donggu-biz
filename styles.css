@@ -103,7 +103,6 @@ button { color: inherit; }
 .station-heading h2,
 .station-heading p,
 .result-toolbar h2,
-.business-guide h2,
 .rail-heading h3,
 .data-note p { margin: 0; }
 
@@ -330,13 +329,10 @@ main { padding: 28px clamp(18px, 3vw, 40px) 72px; }
 
 
 .business-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
-  gap: 16px;
+  display: block;
 }
 
 .input-station,
-.business-guide,
 .result-section {
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -424,14 +420,6 @@ textarea:focus { box-shadow: inset 0 0 0 2px var(--accent); }
 .progress-fill { width: 0; height: 100%; background: var(--accent); }
 .progress-wrap p { margin: 7px 0 0; color: var(--text-secondary); font: 12px/1.4 var(--mono); }
 
-.business-guide { padding: 20px; }
-.business-guide h2 { font-size: 15px; }
-.business-guide dl { margin: 16px 0; }
-.business-guide dl div { padding: 10px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 16px; }
-.business-guide dt { color: var(--text-secondary); font-size: 15px; }
-.business-guide dd { margin: 0; text-align: right; font: 12px/1.5 var(--mono); }
-.business-guide p { color: var(--text-secondary); font-size: 15px; }
-
 .result-section { margin-top: 18px; padding: 18px; }
 .result-toolbar { margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-end; gap: 18px; }
 .result-stats { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 7px 14px; }
@@ -441,6 +429,25 @@ textarea:focus { box-shadow: inset 0 0 0 2px var(--accent); }
 .result-note p { margin-top: 4px; color: var(--yellow); font-size: 12px; line-height: 1.6; }
 .toolbar-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 .filter-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.verification-result {
+  min-height: 88px;
+  padding: 18px 20px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.verification-result strong { display: block; font-size: 20px; }
+.verification-result p { margin: 6px 0 0; color: var(--text-secondary); }
+.verification-result.is-valid { border-color: var(--green); background: var(--green-bg); }
+.verification-result.is-valid strong { color: var(--green); }
+.verification-result.is-invalid { border-color: var(--yellow); background: var(--yellow-bg); }
+.verification-result.is-invalid strong { color: var(--yellow); }
+.verification-result.is-error { border-color: var(--red); background: var(--red-bg); }
+.verification-result.is-error strong { color: var(--red); }
+.verification-result.is-pending { border-color: var(--accent); }
+.verification-result.is-pending p { color: var(--accent-strong); }
 
 .filter-chip {
   min-height: 36px;
@@ -591,8 +598,6 @@ tbody tr:hover td { background: #191f2d; }
   .primary-tabs { padding: 0 12px; }
   .primary-tab { flex: 1; padding: 0 8px; }
   main { padding: 20px 12px 56px; }
-  .business-layout { grid-template-columns: 1fr; }
-  .business-guide { display: none; }
   .result-toolbar { align-items: stretch; flex-direction: column; }
   .toolbar-actions { justify-content: flex-start; }
   .sub-tabs { overflow-x: auto; }
