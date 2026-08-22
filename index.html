@@ -128,10 +128,16 @@
               <span>대표자명</span>
               <input id="validationOwner" type="text" maxlength="50" autocomplete="name" placeholder="홍길동">
             </label>
-            <label class="field">
+            <div class="field">
               <span>개업일자</span>
-              <input id="validationStartDate" type="date" autocomplete="off">
-            </label>
+              <div class="date-inputs" role="group" aria-label="개업일자">
+                <input id="validationStartYear" class="date-segment date-year" type="text" inputmode="numeric" maxlength="4" placeholder="YYYY" autocomplete="off" aria-label="개업일자 연도">
+                <span aria-hidden="true">.</span>
+                <input id="validationStartMonth" class="date-segment date-month" type="text" inputmode="numeric" maxlength="2" placeholder="MM" autocomplete="off" aria-label="개업일자 월">
+                <span aria-hidden="true">.</span>
+                <input id="validationStartDay" class="date-segment date-day" type="text" inputmode="numeric" maxlength="2" placeholder="DD" autocomplete="off" aria-label="개업일자 일">
+              </div>
+            </div>
           </div>
           <div class="action-row">
             <button class="button button-primary" id="validationRunBtn" type="button">진위확인</button>

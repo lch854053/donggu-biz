@@ -198,6 +198,11 @@ button { color: inherit; }
   font-size: 15px;
 }
 
+.date-inputs { display: flex; align-items: center; gap: 7px; }
+.date-inputs input { flex: none; width: 3.8em; text-align: center; }
+.date-inputs .date-year { width: 6.2em; }
+.date-inputs > span { color: var(--text-muted); }
+
 .pager { display: flex; align-items: center; gap: 8px; }
 .pager .button { min-height: 36px; padding: 6px 12px; }
 .pager span { color: var(--text-secondary); font-size: 12px; }

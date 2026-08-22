@@ -300,11 +300,63 @@ $("businessFilterTabs").addEventListener("click", (event) => {
 });
 
 let validationBusy = false;
+const validationDateSegments = [
+  $("validationStartYear"),
+  $("validationStartMonth"),
+  $("validationStartDay")
+];
+
+function focusValidationDateSegment(input) {
+  input.focus();
+  input.select();
+}
+
+function fillValidationDateSegments(startIndex, digits) {
+  let remaining = digits;
+  let lastIndex = startIndex;
+  for (let index = startIndex; index < validationDateSegments.length && remaining; index += 1) {
+    const input = validationDateSegments[index];
+    const size = Number(input.maxLength);
+    input.value = remaining.slice(0, size);
+    remaining = remaining.slice(size);
+    lastIndex = index;
+  }
+  const next = validationDateSegments[lastIndex + 1];
+  if (next && validationDateSegments[lastIndex].value.length === Number(validationDateSegments[lastIndex].maxLength)) {
+    focusValidationDateSegment(next);
+  } else {
+    focusValidationDateSegment(validationDateSegments[lastIndex]);
+  }
+}
+
+validationDateSegments.forEach((input, index) => {
+  const previous = validationDateSegments[index - 1];
+  const next = validationDateSegments[index + 1];
+  input.addEventListener("input", () => {
+    input.value = input.value.replace(/[^0-9]/g, "").slice(0, input.maxLength);
+    if (next && input.value.length === input.maxLength) focusValidationDateSegment(next);
+  });
+  input.addEventListener("paste", (event) => {
+    const digits = event.clipboardData?.getData("text").replace(/[^0-9]/g, "") || "";
+    if (digits.length <= input.maxLength) return;
+    event.preventDefault();
+    fillValidationDateSegments(index, digits);
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Backspace" && !input.value && previous) {
+      focusValidationDateSegment(previous);
+    } else if (event.key === "ArrowLeft" && previous && input.selectionStart === 0) {
+      focusValidationDateSegment(previous);
+    } else if (event.key === "ArrowRight" && next && input.selectionStart === input.value.length) {
+      focusValidationDateSegment(next);
+    }
+  });
+});
 
 function validationFormValues() {
   const bNo = $("validationBizNo").value.replace(/[^0-9]/g, "");
   const owner = $("validationOwner").value.trim();
-  const startDate = $("validationStartDate").value.replace(/[^0-9]/g, "");
+  const startDate = validationDateSegments.map((input) => input.value).join("");
 
   if (!bNo) {
     showToast("사업자등록번호를 입력해 주세요.");
@@ -322,8 +374,8 @@ function validationFormValues() {
     return null;
   }
   if (startDate.length !== 8) {
-    showToast("개업일자를 입력해 주세요.");
-    $("validationStartDate").focus();
+    showToast("개업일자를 연 4자리, 월 2자리, 일 2자리로 입력해 주세요.");
+    validationDateSegments.find((input) => input.value.length < input.maxLength)?.focus();
     return null;
   }
 
@@ -413,14 +465,14 @@ $("validationRunBtn").addEventListener("click", runBusinessValidation);
 $("validationClearBtn").addEventListener("click", () => {
   $("validationBizNo").value = "";
   $("validationOwner").value = "";
-  $("validationStartDate").value = "";
+  validationDateSegments.forEach((input) => { input.value = ""; });
   $("validationResultSection").hidden = true;
   $("validationResult").replaceChildren();
 });
 [
   $("validationBizNo"),
   $("validationOwner"),
-  $("validationStartDate")
+  ...validationDateSegments
 ].forEach((input) => input.addEventListener("keydown", (event) => {
   if (event.key === "Enter") runBusinessValidation();
 }));
