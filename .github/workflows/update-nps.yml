@@ -36,12 +36,14 @@ jobs:
       - run: npm test
       - name: Commit updated snapshot
         run: |
-          if git diff --quiet -- data/nps_donggu.json; then
+          # 스냅샷이 아직 저장소에 없을 때는 추적되지 않는 파일이라 git diff에 잡히지 않는다.
+          # 먼저 add 한 뒤 색인과 비교해야 첫 수집분도 커밋된다.
+          git add data/nps_donggu.json
+          if git diff --cached --quiet -- data/nps_donggu.json; then
             echo "집계가 그대로라 커밋할 것이 없습니다."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/nps_donggu.json
           git commit -m "Update Dong-gu NPS workplace snapshot"
           git push
