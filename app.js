@@ -567,8 +567,10 @@ const NPS_HISTORY_MAX_POINTS = 24;
  * 없다. 동구 조회 결과가 더 이른 해를 담고 있으면 그만큼 아래로 넓힌다.
  */
 const NPS_YEAR_FLOOR = 1988;
-// 가입자 수 슬라이더의 상한은 조회 결과에서 정한다. 결과가 작아도 이보다 좁히지는 않는다.
-const NPS_PEOPLE_CEILING_MIN = 50;
+// 가입자 수 슬라이더의 상한은 조회 결과에서 정하되 이보다 좁히지 않는다. 동구에는
+// (주)광주은행처럼 1,500명이 넘는 사업장이 있어, 상세를 다 채우기 전에도 그 사업장이
+// 슬라이더 밖으로 밀려나지 않을 만큼 넉넉히 잡는다.
+const NPS_PEOPLE_CEILING_MIN = 2000;
 
 let npsRows = [];
 let npsTruncated = false;
@@ -580,6 +582,9 @@ let npsStyleCode = "";
 let npsSearchedName = "";
 let npsDetailToken = 0;
 let npsDetail = { seq: "", html: "" };
+
+// 업종 대분류 선택기에서 "업종 미상"을 가리키는 값. 분류표의 대분류 코드와 겹치지 않게 둔다.
+const NPS_UNKNOWN_SECTION_VALUE = "unknown";
 
 async function fetchNps(params) {
   const search = new URLSearchParams(Object.entries(params).filter(([, value]) => value !== "" && value != null));
@@ -689,15 +694,15 @@ const npsPeopleRange = createRangeControl({
 
 /** 지금 화면에 걸린 조회 조건. 사업장명은 서버 조회와 화면 좁히기에 함께 쓴다. */
 function npsCriteria() {
+  const section = $("npsSectionSelect").value;
   const years = npsYearRange.value();
   const people = npsPeopleRange.value();
   return {
     name: $("npsNameInput").value.trim(),
     includeWithdrawn: $("npsIncludeWithdrawn").checked,
     styleCode: npsStyleCode,
-    sectionCode: $("npsSectionSelect").value,
-    unknownIndustryOnly: $("npsUnknownIndustry").checked,
-    industryName: $("npsIndustrySelect").value,
+    sectionCode: section === NPS_UNKNOWN_SECTION_VALUE ? "" : section,
+    unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE,
     registeredFromYear: years.full ? null : years.from,
     registeredToYear: years.full ? null : years.to,
     subscriberMin: people.full ? null : people.from,
@@ -765,9 +770,28 @@ function renderNpsStats() {
   $("npsStatsRow").innerHTML = `
     <span class="stat-item">사업장<strong>${rows.length.toLocaleString("ko-KR")}</strong></span>
     <span class="stat-item">등록<strong>${registered.toLocaleString("ko-KR")}</strong></span>
-    <span class="stat-item">탈퇴<strong>${withdrawn.toLocaleString("ko-KR")}</strong></span>
-    ${npsTruncated ? '<span class="stat-item">수집 상한에 걸려 일부만 집계<strong>조건을 좁혀 주세요</strong></span>' : ""}
-    ${npsDetailTruncated ? '<span class="stat-item">업종·등록일·가입자 수는 상한까지만 채웠습니다<strong>조건을 좁혀 주세요</strong></span>' : ""}`;
+    <span class="stat-item">탈퇴<strong>${withdrawn.toLocaleString("ko-KR")}</strong></span>`;
+  renderNpsLimitNotes();
+}
+
+/**
+ * 상한 안내. 라벨과 숫자를 붙여 읽는 지표 자리에 문장을 끼워 넣으면 "일부만 집계조건을
+ * 좁혀 주세요"처럼 붙어 읽히므로, 지표 줄이 아니라 그 아래 문장 자리에 적는다.
+ *
+ * 좁히라는 말만 적으면 어느 조건을 좁혀야 하는지 알 수 없다. 국민연금 API로 넘어가는
+ * 조건은 사업장명뿐이고 나머지는 받아 온 결과 안에서만 좁히므로, 수집 상한은 사업장명을
+ * 넣어야 풀린다는 것까지 적는다.
+ */
+function renderNpsLimitNotes() {
+  const notes = [];
+  if (npsTruncated) {
+    notes.push(`동구 전체의 월별 이력이 수집 상한(${(NPS_PAGE_SIZE * NPS_MAX_COLLECT_PAGES).toLocaleString("ko-KR")}건)보다 많아 앞부분만 받았습니다. 국민연금 API로 넘어가는 조건은 사업장명뿐이고 업종·형태·등록일·가입자 수는 받아 온 결과 안에서만 좁히므로, 찾는 사업장이 있다면 사업장명을 넣어 다시 조회해 주세요.`);
+  }
+  if (npsDetailTruncated) {
+    notes.push(`업종·사업장 등록일·가입자 수는 사업장마다 상세조회를 한 번씩 불러 채우는 값이라 이번 조회에서는 ${NPS_DETAIL_MAX_ROWS.toLocaleString("ko-KR")}개까지만 채웠습니다. 채우지 못한 사업장은 이 세 조건으로 거를 때 결과에서 빠집니다.`);
+  }
+  $("npsResultNote").innerHTML = notes.map((note) => `<p>${escapeHtml(note)}</p>`).join("");
+  $("npsResultNote").hidden = !notes.length;
 }
 
 function renderNpsPager() {
@@ -800,31 +824,14 @@ function showNpsPage(pageNo) {
   renderNpsPager();
 }
 
-/** 업종 대분류 목록은 분류표에서, 상세분류 목록은 조회 결과에 실제로 있는 업종명에서 만든다. */
+/**
+ * 업종 대분류 목록. 분류표의 대분류에 "업종 미상"을 한 항목으로 덧붙인다. 업종을 담고
+ * 있지 않은 자리표시 코드(000000·999999)를 가진 사업장이 갈 곳이 필요하기 때문이다.
+ */
 function fillNpsSectionOptions() {
-  const select = $("npsSectionSelect");
-  select.innerHTML = ['<option value="">전체</option>',
-    ...INDUSTRY_SECTIONS.map(({ code, name }) => `<option value="${code}">${escapeHtml(name)}</option>`)].join("");
-}
-
-function fillNpsIndustryOptions() {
-  const select = $("npsIndustrySelect");
-  // 업종 미상만 볼 때는 대분류가 잠기므로 상세분류 목록도 대분류로 좁히지 않는다.
-  const sectionCode = $("npsUnknownIndustry").checked ? "" : $("npsSectionSelect").value;
-  const names = new Set();
-  for (const row of npsRows) {
-    if (!row.industryName) continue;
-    if (sectionCode && industrySection(row.industryCode).code !== sectionCode) continue;
-    names.add(row.industryName);
-  }
-  const kept = names.has(select.value) ? select.value : "";
-  select.innerHTML = ['<option value="">전체</option>',
-    ...[...names].sort((a, b) => a.localeCompare(b, "ko")).map((name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)].join("");
-  select.value = kept;
-  select.disabled = !names.size;
-  $("npsIndustryNote").textContent = names.size
-    ? `조회 결과에 있는 업종 ${names.size.toLocaleString("ko-KR")}종`
-    : "조회 결과에 있는 업종만 나열됩니다.";
+  $("npsSectionSelect").innerHTML = ['<option value="">전체</option>',
+    ...INDUSTRY_SECTIONS.map(({ code, name }) => `<option value="${code}">${escapeHtml(name)}</option>`),
+    `<option value="${NPS_UNKNOWN_SECTION_VALUE}">업종 미상</option>`].join("");
 }
 
 /** 조회 결과가 담고 있는 등록 연도와 가입자 수에 맞춰 슬라이더 범위를 다시 잡는다. */
@@ -927,7 +934,6 @@ async function fillNpsDetails() {
   const targets = remaining.slice(0, NPS_DETAIL_MAX_ROWS);
   npsDetailTruncated = remaining.length > targets.length;
   fitNpsRanges();
-  fillNpsIndustryOptions();
   renderNps();
   setNpsProgress(pending.length - targets.length, pending.length);
 
@@ -946,7 +952,6 @@ async function fillNpsDetails() {
     }));
     if (token !== npsDetailToken) return;
     fitNpsRanges();
-    fillNpsIndustryOptions();
     renderNps();
     setNpsProgress(pending.length - targets.length + offset + batch.length, pending.length);
   }
@@ -977,7 +982,6 @@ async function runNpsLookup() {
     npsPageNo = 1;
     markNpsNameChanged();
     fitNpsRanges();
-    fillNpsIndustryOptions();
     $("npsResultSection").hidden = false;
     renderNps();
     setNpsProgress(0, npsRows.length || 1);
@@ -1250,7 +1254,6 @@ $("npsClearBtn").addEventListener("click", () => {
   npsDetailToken += 1;
   $("npsNameInput").value = "";
   $("npsSectionSelect").value = "";
-  $("npsUnknownIndustry").checked = false;
   $("npsIncludeWithdrawn").checked = false;
   npsStyleCode = "";
   setNpsStyleChip("");
@@ -1268,26 +1271,12 @@ $("npsClearBtn").addEventListener("click", () => {
   npsYearRange.reset();
   npsPeopleRange.reset();
   fitNpsRanges();
-  fillNpsIndustryOptions();
 });
 $("npsPrevBtn").addEventListener("click", () => showNpsPage(npsPageNo - 1));
 $("npsNextBtn").addEventListener("click", () => showNpsPage(npsPageNo + 1));
 $("npsNameInput").addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
 $("npsNameInput").addEventListener("input", () => markNpsNameChanged());
-$("npsSectionSelect").addEventListener("change", () => {
-  fillNpsIndustryOptions();
-  applyNpsFilters();
-});
-$("npsIndustrySelect").addEventListener("change", () => applyNpsFilters());
-$("npsUnknownIndustry").addEventListener("change", (event) => {
-  // 업종 미상만 볼 때는 대분류·상세분류를 고를 여지가 없다.
-  const only = event.target.checked;
-  $("npsSectionSelect").disabled = only;
-  if (only) $("npsSectionSelect").value = "";
-  fillNpsIndustryOptions();
-  if (only) $("npsIndustrySelect").disabled = true;
-  applyNpsFilters();
-});
+$("npsSectionSelect").addEventListener("change", () => applyNpsFilters());
 $("npsIncludeWithdrawn").addEventListener("change", () => applyNpsFilters());
 $("npsStyleTabs").addEventListener("click", (event) => {
   const button = event.target.closest("[data-style]");

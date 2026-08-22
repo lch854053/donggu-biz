@@ -422,6 +422,8 @@ textarea:focus { box-shadow: inset 0 0 0 2px var(--accent); }
 .result-stats { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 7px 14px; }
 .stat-item { color: var(--text-secondary); font-size: 15px; }
 .stat-item strong { margin-left: 4px; color: var(--text); font-family: var(--mono); }
+.result-note { margin-top: 8px; max-width: 92ch; }
+.result-note p { margin-top: 4px; color: var(--yellow); font-size: 12px; line-height: 1.6; }
 .toolbar-actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; }
 .filter-tabs { display: flex; flex-wrap: wrap; gap: 4px; }
 
