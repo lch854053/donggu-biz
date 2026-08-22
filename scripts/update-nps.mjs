@@ -121,8 +121,8 @@ if (failed > items.length / 4) throw new Error(`상세조회 실패가 너무 �
 /**
  * 스냅샷은 브라우저가 조회할 때마다 통째로 내려받는다. 화면이 실제로 읽는 값만 남겨
  * 파일을 작게 유지한다 — 같은 사업장인지 가리는 이름·등록번호 앞자리·주소와, 목록
- * 조회에 없어 채워야 하는 업종·등록일·가입자 수다. 월별 이력의 seq 목록은 화면이
- * 그때그때 받은 조회 결과에서 다시 만들므로 담지 않는다.
+ * 조회에 없어 채워야 하는 업종·등록일·가입자 수다. 월별 추이 그래프는 달마다의 seq로
+ * 그리므로 그 목록도 함께 담는다.
  */
 function snapshotItem(workplace) {
   return {
@@ -138,7 +138,8 @@ function snapshotItem(workplace) {
     registeredDate: workplace.registeredDate ?? "",
     withdrawnDate: workplace.withdrawnDate ?? "",
     subscriberCount: workplace.subscriberCount ?? null,
-    historyCount: workplace.historyCount ?? 1
+    historyCount: workplace.historyCount ?? 1,
+    historyRows: workplace.historyRows ?? []
   };
 }
 

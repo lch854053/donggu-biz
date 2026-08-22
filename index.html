@@ -121,7 +121,7 @@
           <div class="station-heading">
             <div>
               <h2 id="nps-input-title">국민연금 가입 사업장 조회</h2>
-              <p class="source-note">출처 : 국민연금공단<br>조회 지역 : 광주 동구<br>유의사항 : 사업자등록번호는 앞 6자리만 제공되며, 주소는 상세주소는 조회되지 않습니다.</p>
+              <p class="source-note">출처 : 국민연금공단<br>조회 지역 : 광주 동구<br>유의사항 : 사업자등록번호는 앞 6자리만 제공되며, 주소는 상세주소는 조회되지 않습니다.<br><span class="source-basis" id="npsBasis"></span></p>
             </div>
             <span class="count-badge" id="npsCountBadge">0개 사업장</span>
           </div>
@@ -129,7 +129,6 @@
             <label class="field">
               <span>사업장명</span>
               <input id="npsNameInput" type="search" autocomplete="off" placeholder="공란이면 동구 전체 조회">
-              <span class="field-note is-warn" id="npsNameNote" hidden>사업장명이 바뀌었습니다. 조회 시작을 눌러 다시 조회하세요.</span>
             </label>
             <label class="field">
               <span>업종 대분류</span>
@@ -179,7 +178,6 @@
             <div>
               <h2 id="nps-result-title">조회 결과</h2>
               <div class="result-stats" id="npsStatsRow"></div>
-              <div class="result-note" id="npsResultNote" hidden></div>
             </div>
             <div class="toolbar-actions">
               <div class="pager" id="npsPager" hidden>

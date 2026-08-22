@@ -4,6 +4,7 @@ import handler, { resetVariantPreference } from "../api/nps.js";
 import {
   addressArea,
   displayAddress,
+  hydrateSnapshotWorkplace,
   matchesWorkplaceCriteria,
   ymdYear,
   compactWorkplace,
@@ -100,6 +101,31 @@ test("사업장 항목을 화면과 통계가 함께 쓰는 형태로 정규화�
   assert.equal(workplace.styleName, "법인");
   assert.equal(workplace.sectionCode, "N");
   assert.equal(workplace.area, "동구 서남로");
+});
+
+test("스냅샷 항목은 상태·형태 이름과 업종 대분류를 코드에서 다시 판정해 편다", () => {
+  const workplace = hydrateSnapshotWorkplace({
+    seq: "20240101", dataCreatedMonth: "202606", name: "광주동구청", bizNoPrefix: "408815",
+    address: "광주광역시 동구 서남로", statusCode: "1", styleCode: "1",
+    industryCode: "751100", industryName: "일반 행정", registeredDate: "19980401",
+    subscriberCount: 320, historyCount: 12, historyRows: [{ seq: "1", month: "202606" }]
+  });
+  assert.equal(workplace.statusName, "등록");
+  assert.equal(workplace.styleName, "법인");
+  assert.equal(workplace.sectionCode, "N");
+  assert.equal(workplace.area, "동구 서남로");
+  assert.equal(workplace.subscriberCount, 320);
+  assert.equal(workplace.historyRows.length, 1);
+  // 스냅샷은 상세조회까지 마친 자료라 업종 조건을 걸어도 빠지지 않아야 한다.
+  assert.equal(workplace.detailLoaded, true);
+  assert.equal(matchesWorkplaceCriteria(workplace, { sectionCode: "N" }), true);
+});
+
+test("스냅샷의 자리표시 업종코드는 업종명을 비우고 미상으로 남긴다", () => {
+  const workplace = hydrateSnapshotWorkplace({ name: "광주은행어린이집", industryCode: "999999", industryName: "BIZ_NO미존재사업장" });
+  assert.equal(workplace.industryName, "");
+  assert.equal(workplace.sectionName, "업종 미상");
+  assert.equal(matchesWorkplaceCriteria(workplace, { unknownIndustryOnly: true, includeWithdrawn: true }), true);
 });
 
 test("소재지에서 시 이름을 덜어낸다", () => {
