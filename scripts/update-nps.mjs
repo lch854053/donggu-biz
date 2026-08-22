@@ -10,7 +10,10 @@ import { NPS_MAX_ROWS, NPS_VARIANTS, normalizeServiceKey, npsRequestUrl } from "
 
 const REGION = { label: "광주광역시 동구", sido: "29", sggu: "110" };
 const MAX_PAGES = 500;
-const MAX_RETRIES = 3;
+// 공공데이터포털은 몇 분씩 연결이 되지 않을 때가 있다. 월 1회 배치이므로 서두를 이유가
+// 없다. 한 요청을 두 번 시도하고 마는 대신 대기를 늘려 가며 끈질기게 기다린다.
+const MAX_RETRIES = 6;
+const MAX_RETRY_WAIT_MS = 30000;
 const REQUEST_TIMEOUT_MS = 20000;
 const DETAIL_CONCURRENCY = 4;
 const DETAIL_PAUSE_MS = 60;
@@ -24,7 +27,10 @@ const tempPath = resolve(root, "data/.nps-donggu.tmp");
 
 const sleep = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 
-/** 본문을 파싱해 돌려준다. 네트워크 오류와 게이트웨이 오류 모두 재시도한다. */
+/**
+ * 본문을 파싱해 돌려준다. 네트워크 오류와 게이트웨이 오류 모두 재시도하되, 대기를
+ * 두 배씩 늘린다. 어디서 몇 번째로 막혔는지 로그에 남겨야 다음 실패를 읽을 수 있다.
+ */
 async function request(url) {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
@@ -37,7 +43,9 @@ async function request(url) {
       return parseNpsBody(body);
     } catch (error) {
       if (attempt === MAX_RETRIES) throw error;
-      await sleep(attempt * 1000);
+      const wait = Math.min(MAX_RETRY_WAIT_MS, 1000 * 2 ** attempt);
+      console.warn(`[nps] 요청 실패 ${attempt}/${MAX_RETRIES} (${error.message}), ${wait / 1000}초 뒤 다시 시도합니다.`);
+      await sleep(wait);
     }
   }
 }
@@ -52,12 +60,26 @@ function searchUrl(pageNo, variant) {
   });
 }
 
-/** 파라미터 표기·코드 형식 조합 중 실제로 결과가 나오는 것을 첫 페이지로 찾아낸다. */
+/**
+ * 파라미터 표기·코드 형식 조합 중 실제로 결과가 나오는 것을 첫 페이지로 찾아낸다.
+ * 한 조합이 오류로 끝나도 멈추지 않는다. 상대가 잠깐 막혀 있는 것이라면 다음 조합을
+ * 시도하는 동안 열릴 수 있고, 정말 안 열리면 마지막에 사유를 모아 알린다.
+ */
 async function pickVariant() {
+  const failures = [];
   for (const variant of NPS_VARIANTS) {
-    const page = await request(searchUrl(1, variant));
-    if (page.items.length) return { variant, page };
-    console.log(`[nps] ${variant.style}/${variant.region} 조합은 0건, 다음 조합을 시도합니다.`);
+    const label = `${variant.style}/${variant.region}`;
+    try {
+      const page = await request(searchUrl(1, variant));
+      if (page.items.length) return { variant, page };
+      console.log(`[nps] ${label} 조합은 0건, 다음 조합을 시도합니다.`);
+    } catch (error) {
+      failures.push(`${label}: ${error.message}`);
+      console.warn(`[nps] ${label} 조합 실패 (${error.message}), 다음 조합을 시도합니다.`);
+    }
+  }
+  if (failures.length === NPS_VARIANTS.length) {
+    throw new Error(`국민연금 API에 닿지 못했습니다. ${failures.join(" / ")}`);
   }
   throw new Error("어떤 파라미터 조합으로도 사업장을 찾지 못했습니다.");
 }
