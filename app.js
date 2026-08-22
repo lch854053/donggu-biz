@@ -647,8 +647,8 @@ function buildStoreMarkers() {
     marker.store = store;
     marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(store.name)}${store.branch ? ` ${escapeHtml(store.branch)}` : ""}</strong><span>${escapeHtml(store.smallName || store.largeName)}</span><span>${escapeHtml(store.address)}</span></div>`);
     marker.on({
-      mouseover() { if (selectedZoneNo) marker.openPopup(); },
-      mouseout() { if (selectedZoneNo) marker.closePopup(); }
+      mouseover() { if (selectedZoneNo || $("dongFilter").value) marker.openPopup(); },
+      mouseout() { if (selectedZoneNo || $("dongFilter").value) marker.closePopup(); }
     });
     return marker;
   });
