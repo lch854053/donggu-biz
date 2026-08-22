@@ -305,15 +305,14 @@ function validationFormValues() {
   const bNo = $("validationBizNo").value.replace(/[^0-9]/g, "");
   const owner = $("validationOwner").value.trim();
   const startDate = $("validationStartDate").value.replace(/[^0-9]/g, "");
-  const businessName = $("validationBusinessName").value.trim();
 
   if (!bNo) {
     showToast("사업자등록번호를 입력해 주세요.");
     $("validationBizNo").focus();
     return null;
   }
-  if (!validateBizNo(bNo)) {
-    showToast("사업자등록번호는 올바른 10자리 숫자여야 합니다.");
+  if (!/^\d{10}$/.test(bNo)) {
+    showToast("사업자등록번호는 10자리 숫자로 입력해 주세요.");
     $("validationBizNo").focus();
     return null;
   }
@@ -331,8 +330,7 @@ function validationFormValues() {
   return {
     b_no: bNo,
     start_dt: startDate,
-    p_nm: owner,
-    ...(businessName ? { b_nm: businessName } : {})
+    p_nm: owner
   };
 }
 
@@ -349,14 +347,18 @@ async function callBusinessValidation(business) {
   return response.json();
 }
 
-function renderValidationResult(item) {
+function renderValidationResult(item, statusRow, statusError) {
   const result = $("validationResult");
   const code = String(item?.valid ?? "");
   const state = code === "01" ? "is-valid" : code === "02" ? "is-invalid" : "is-error";
   const title = code === "01" ? "일치" : code === "02" ? "불일치" : "확인 불가";
   const message = item?.valid_msg ? `<p>${escapeHtml(item.valid_msg)}</p>` : "";
+  const statusDetails = code === "01" ? `<dl class="verification-status">
+    <div><dt>과세 유형</dt><dd>${badge("tax", statusRow?.tax_type, statusRow?.tax_type_cd)}</dd></div>
+    <div><dt>사업자 상태</dt><dd>${badge("status", statusRow?.b_stt, statusRow?.b_stt_cd)}</dd></div>
+  </dl>${statusError ? `<p class="verification-note">사업자 상태를 불러오지 못했습니다.</p>` : ""}` : "";
   result.className = `verification-result ${state}`;
-  result.innerHTML = `<strong>${title}</strong>${message}`;
+  result.innerHTML = `<strong>${title}</strong>${message}${statusDetails}`;
 }
 
 function renderValidationError(message) {
@@ -382,8 +384,20 @@ async function runBusinessValidation() {
     const payload = await callBusinessValidation(business);
     const result = payload?.data?.[0];
     if (!result) throw new Error("진위확인 결과를 받지 못했습니다.");
-    renderValidationResult(result);
-    showToast("사업자등록정보 진위확인이 완료되었습니다.");
+    let statusRow;
+    let statusError = "";
+    if (String(result.valid) === "01") {
+      try {
+        statusRow = (await callBusinessProxy([business.b_no]))[0];
+        if (!statusRow) statusError = "상태조회 결과가 없습니다.";
+      } catch (error) {
+        statusError = error.message;
+      }
+    }
+    renderValidationResult(result, statusRow, statusError);
+    showToast(statusError
+      ? "진위확인은 완료했지만 사업자 상태를 불러오지 못했습니다."
+      : "사업자등록정보 진위확인이 완료되었습니다.");
   } catch (error) {
     renderValidationError(error.message);
     showToast(error.message);
@@ -400,15 +414,13 @@ $("validationClearBtn").addEventListener("click", () => {
   $("validationBizNo").value = "";
   $("validationOwner").value = "";
   $("validationStartDate").value = "";
-  $("validationBusinessName").value = "";
   $("validationResultSection").hidden = true;
   $("validationResult").replaceChildren();
 });
 [
   $("validationBizNo"),
   $("validationOwner"),
-  $("validationStartDate"),
-  $("validationBusinessName")
+  $("validationStartDate")
 ].forEach((input) => input.addEventListener("keydown", (event) => {
   if (event.key === "Enter") runBusinessValidation();
 }));
