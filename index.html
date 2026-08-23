@@ -7,7 +7,7 @@
   <title>동구 사업자·상권 조회</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css" crossorigin="anonymous" referrerpolicy="no-referrer">
@@ -16,7 +16,7 @@
 <body>
   <!--
   THESIS: 사업자 한 건의 상태와 동구 전체 상가의 맥락을 같은 업무대 위에서 확인한다. 장식적인 대시보드 대신 조회와 판단이 바로 이어지는 관제 화면을 만든다.
-  OWN-WORLD: 청흑색 무광 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 기존 업무 도구 언어를 확장한다.
+  OWN-WORLD: 흰 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 공공 업무 도구 언어를 사용한다.
    STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·업종 분석, 4대보험 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상권 탭은 좌측 선택·상세 레일과 지도가 한 화면에 놓인다.
   FORM: 통합 관제형, 구조 후보 5번, seed 859829d4.
@@ -25,16 +25,17 @@
   <a class="skip-link" href="#main-content">본문으로 건너뛰기</a>
 
   <header class="site-header">
-    <div class="brand-mark" aria-hidden="true">DG</div>
+    <svg class="gu-logo" viewBox="0 0 56 56" role="img" aria-label="동구">
+      <path d="M28 4A24 24 0 0 0 4 28h11a13 13 0 0 1 13-13V4Z" fill="#f3a629"/>
+      <path d="M28 4v11a13 13 0 0 1 13 13h11A24 24 0 0 0 28 4Z" fill="#e45b52"/>
+      <path d="M52 28H41a13 13 0 0 1-13 13v11a24 24 0 0 0 24-24Z" fill="#3287bd"/>
+      <path d="M28 52V41a13 13 0 0 1-13-13H4a24 24 0 0 0 24 24Z" fill="#55a66f"/>
+      <circle cx="28" cy="28" r="7" fill="#fff"/>
+    </svg>
+    <div class="brand-divider" aria-hidden="true"></div>
     <div class="brand-copy">
-      <h1>동구 사업자·상권 조회</h1>
-      <p>사업자 상태와 지역 상가정보를 한곳에서 확인합니다.</p>
-    </div>
-    <div class="source-status" aria-label="연계 데이터 출처">
-      <span>국세청</span>
-      <span>소상공인시장진흥공단</span>
-      <span>국민연금공단</span>
-      <span>근로복지공단</span>
+      <p class="brand-eyebrow">전남광주통합특별시 동구</p>
+      <h1>사업자·상권 <span>조회</span></h1>
     </div>
   </header>
 
@@ -260,10 +261,6 @@
               <p>행정동 또는 주요상권을 선택하면 상세 현황을 확인할 수 있습니다.</p>
             </div>
           </section>
-          <div class="data-note">
-            <strong>해석 유의사항</strong>
-            <p>VWorld 및 수동 등록 주요상권은 동구 전체 상권을 의미하지 않습니다. 상가정보에는 매출·임대료·유동인구·사업자등록번호가 없으며 표시 건수는 수익성이나 영업 상태를 의미하지 않습니다.</p>
-          </div>
         </aside>
 
         <section class="map-stage" aria-label="상가업소·의료기관 지도">
