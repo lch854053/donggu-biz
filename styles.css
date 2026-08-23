@@ -239,6 +239,12 @@ button { color: inherit; }
 .detail-card dd { margin: 0; text-align: right; font: 12px/1.5 var(--mono); overflow-wrap: anywhere; }
 .detail-section + .detail-section { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .detail-section h3 { margin: 0 0 8px; color: var(--text-secondary); font-size: 15px; }
+.insurance-business-summary { margin-bottom: 12px !important; }
+.insurance-workplace-groups { display: grid; gap: 12px; }
+.insurance-workplace-group { padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-raised); }
+.insurance-workplace-group h4 { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; color: var(--text-secondary); font-size: 15px; }
+.insurance-workplace-number { color: var(--text); font-size: 15px; }
+.insurance-workplace-group dl { margin-top: 6px !important; }
 
 .insurance-metric,
 .insurance-industry { min-width: 104px; display: grid; gap: 2px; }

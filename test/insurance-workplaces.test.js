@@ -8,10 +8,11 @@ import {
   sortInsuranceWorkplaces
 } from "../lib/insurance-workplaces.js";
 
-const [npsSnapshot, employmentSnapshot, indexHtml] = await Promise.all([
+const [npsSnapshot, employmentSnapshot, indexHtml, appJs] = await Promise.all([
   readFile(new URL("../data/nps_donggu.json", import.meta.url), "utf8").then(JSON.parse),
   readFile(new URL("../data/employment_insurance_donggu.json", import.meta.url), "utf8").then(JSON.parse),
-  readFile(new URL("../index.html", import.meta.url), "utf8")
+  readFile(new URL("../index.html", import.meta.url), "utf8"),
+  readFile(new URL("../app.js", import.meta.url), "utf8")
 ]);
 
 const nps = {
@@ -86,6 +87,29 @@ test("grouped insurance rows remain searchable by every source record", () => {
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { query: "92110258797" }), true);
 });
 
+test("links Jeil Construction despite legal and project-name differences", () => {
+  const groups = mergeEmploymentInsuranceRows(employmentSnapshot.items);
+  const [row] = combineInsuranceWorkplaces(
+    npsSnapshot.items.filter((item) => item.seq === "5942657"),
+    groups.filter((item) => item.businessRegistrationNumber === "1248609636")
+  );
+
+  assert.equal(row.source, "combined");
+  assert.equal(row.nps.name, "제일건설 주식회사");
+  assert.equal(row.employmentInsurance.name, "제일건설(주)/건설일괄");
+  assert.deepEqual(row.employmentInsurance.workplaceManagementNumbers, ["12486096366", "90700137121"]);
+});
+
+test("the current snapshot keeps the exact links and adds normalized-name links", () => {
+  const groups = mergeEmploymentInsuranceRows(employmentSnapshot.items);
+  const rows = combineInsuranceWorkplaces(npsSnapshot.items, groups);
+  const linked = rows.filter((row) => row.nps && row.employmentInsurance);
+
+  assert.equal(linked.length, 1499);
+  assert.equal(rows.filter((row) => row.nps && !row.employmentInsurance).length, 823);
+  assert.equal(rows.filter((row) => !row.nps && row.employmentInsurance).length, 5030);
+});
+
 test("sorts combined rows by either insurance source without mutating input", () => {
   const rows = combineInsuranceWorkplaces([nps], [employment, { ...employment, id: "ei-2", name: "가나다", businessRegistrationNumber: "1234567890", employmentWorkerCount: 20 }]);
   const sorted = sortInsuranceWorkplaces(rows, "employment-desc");
@@ -115,4 +139,7 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.doesNotMatch(indexHtml, /npsBasis/);
   assert.doesNotMatch(indexHtml, /고용·산재보험 가입 현황/);
   assert.doesNotMatch(indexHtml, /tab-employment-insurance|subpanel-employment-insurance/);
+  assert.match(appJs, /const managementGroups = new Map\(\)/);
+  assert.match(appJs, /class="insurance-workplace-group"/);
+  assert.match(appJs, /사업장관리번호 <span class="insurance-workplace-number mono"/);
 });

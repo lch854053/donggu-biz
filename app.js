@@ -1202,35 +1202,51 @@ function employmentInsuranceDetailHtml(row) {
   if (!row) return "";
   const detailRow = (label, value) => (value == null || value === "" ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
   const sourceRows = insuranceSourceRows(row);
-  const addresses = [...new Set(sourceRows.map((sourceRow) => sourceRow.address).filter(Boolean))];
-  const postalCodes = [...new Set(sourceRows.map((sourceRow) => sourceRow.postalCode).filter(Boolean))];
-  const managementNumbers = [...new Set(sourceRows.flatMap((sourceRow) => sourceRow.workplaceManagementNumbers || []).filter(Boolean))];
-  const coverageDetails = [];
-  for (const kind of ["employment", "industrial"]) {
-    const label = kind === "employment" ? "고용보험" : "산재보험";
-    const countField = kind === "employment" ? "employmentWorkerCount" : "industrialWorkerCount";
-    const dateField = kind === "employment" ? "employmentEstablishedDate" : "industrialEstablishedDate";
-    const statusField = kind === "employment" ? "employmentStatus" : "industrialStatus";
-    const rows = insuranceCoverageRows(row, kind).sort((left, right) => (right[countField] ?? -1) - (left[countField] ?? -1));
-    for (const sourceRow of rows) {
-      const management = sourceRow.workplaceManagementNumber ? ` (${escapeHtml(sourceRow.workplaceManagementNumber)})` : "";
-      coverageDetails.push(detailRow(`${label} 상시근로자`, `${employmentInsuranceCountLabel(sourceRow[countField])}${management}`));
-      coverageDetails.push(detailRow(`${label} 성립일자`, sourceRow[dateField] ? `${escapeHtml(formatYmd(sourceRow[dateField]))}${management}` : `미기재${management}`));
-      coverageDetails.push(detailRow(`${label} 사업 구분`, sourceRow[statusField] ? `${employmentInsuranceStatusBadge(sourceRow[statusField])}${management}` : `미기재${management}`));
-      const industryCode = sourceRow.employmentIndustryCode11 || sourceRow.employmentIndustryCode;
-      const industryName = sourceRow.employmentIndustryName11 || sourceRow.employmentIndustryName;
-      if (industryCode || industryName) coverageDetails.push(detailRow(`${label} 업종`, `${escapeHtml([industryCode, industryName].filter(Boolean).join(" "))}${management}`));
-    }
+  const managementGroups = new Map();
+  for (const sourceRow of sourceRows) {
+    const management = String(sourceRow.workplaceManagementNumber ?? "").trim();
+    const key = management || `source:${sourceRow.id}`;
+    const group = managementGroups.get(key) || [];
+    group.push(sourceRow);
+    managementGroups.set(key, group);
   }
+  const managementSections = [...managementGroups.entries()].map(([management, rows]) => {
+    const groupedRow = { sourceRows: rows };
+    const details = [];
+    const addresses = [...new Set(rows.map((sourceRow) => sourceRow.address).filter(Boolean))];
+    const postalCodes = [...new Set(rows.map((sourceRow) => sourceRow.postalCode).filter(Boolean))];
+    const typeNames = [...new Set(rows.map((sourceRow) => sourceRow.insuranceTypeName || insuranceTypeName(sourceRow.insuranceType)).filter(Boolean))];
+    addresses.forEach((address) => details.push(detailRow("사업장 주소", escapeHtml(address))));
+    postalCodes.forEach((postalCode) => details.push(detailRow("우편번호", escapeHtml(postalCode))));
+    if (typeNames.length) details.push(detailRow("보험 구분", escapeHtml(typeNames.join(" · "))));
+
+    for (const kind of ["employment", "industrial"]) {
+      const label = kind === "employment" ? "고용보험" : "산재보험";
+      const countField = kind === "employment" ? "employmentWorkerCount" : "industrialWorkerCount";
+      const dateField = kind === "employment" ? "employmentEstablishedDate" : "industrialEstablishedDate";
+      const statusField = kind === "employment" ? "employmentStatus" : "industrialStatus";
+      for (const sourceRow of insuranceCoverageRows(groupedRow, kind)) {
+        details.push(detailRow(`${label} 상시근로자`, employmentInsuranceCountLabel(sourceRow[countField])));
+        details.push(detailRow(`${label} 성립일자`, sourceRow[dateField] ? escapeHtml(formatYmd(sourceRow[dateField])) : "미기재"));
+        details.push(detailRow(`${label} 사업 구분`, sourceRow[statusField] ? employmentInsuranceStatusBadge(sourceRow[statusField]) : "미기재"));
+        const industryCode = sourceRow.employmentIndustryCode11 || sourceRow.employmentIndustryCode;
+        const industryName = sourceRow.employmentIndustryName11 || sourceRow.employmentIndustryName;
+        if (industryCode || industryName) details.push(detailRow(`${label} 업종`, escapeHtml([industryCode, industryName].filter(Boolean).join(" "))));
+      }
+    }
+
+    return `<section class="insurance-workplace-group">
+      <h4>사업장관리번호 <span class="insurance-workplace-number mono">${escapeHtml(management || "미기재")}</span></h4>
+      <dl>${details.join("")}</dl>
+    </section>`;
+  }).join("");
+
   return `<section class="detail-section">
     <h3>고용·산재보험 자료 ${employmentInsuranceTypeBadge(row)}</h3>
-    <dl>
-      ${addresses.map((address) => detailRow("사업장 주소", escapeHtml(address))).join("")}
-      ${postalCodes.map((postalCode) => detailRow("우편번호", escapeHtml(postalCode))).join("")}
+    <dl class="insurance-business-summary">
       ${detailRow("사업자등록번호", escapeHtml(row.businessRegistrationNumber || "-"))}
-      ${coverageDetails.join("")}
-      ${managementNumbers.map((management) => detailRow("사업장관리번호", escapeHtml(management))).join("")}
     </dl>
+    <div class="insurance-workplace-groups">${managementSections}</div>
   </section>`;
 }
 
