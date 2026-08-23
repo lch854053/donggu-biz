@@ -19,6 +19,7 @@ import {
 } from "./lib/employment-insurance.js";
 import {
   combineInsuranceWorkplaces,
+  insuranceIndustrySectionCodes,
   matchesInsuranceWorkplaceCriteria,
   sortInsuranceWorkplaces
 } from "./lib/insurance-workplaces.js";
@@ -903,12 +904,23 @@ function insuranceStatusBadges(row) {
 function insuranceIndustryCell(row) {
   const nps = row.nps;
   const employment = row.employmentInsurance;
-  const npsIndustry = nps && hasIndustryDetail(nps) ? nps.sectionName : "";
+  const supplementarySections = !nps?.sectionCode
+    ? [...insuranceIndustrySectionCodes(row)]
+      .map((code) => INDUSTRY_SECTIONS.find((section) => section.code === code)?.name)
+      .filter(Boolean)
+    : [];
+  const primaryIndustries = nps?.sectionCode
+    ? [nps.sectionName]
+    : supplementarySections.length
+      ? supplementarySections
+      : nps && hasIndustryDetail(nps)
+        ? [nps.sectionName || "업종 미상"]
+        : [];
   const employmentIndustries = [...new Set(insuranceSourceRows(employment)
     .map((sourceRow) => [sourceRow.employmentIndustryCode11 || sourceRow.employmentIndustryCode, sourceRow.employmentIndustryName11 || sourceRow.employmentIndustryName].filter(Boolean).join(" "))
     .filter(Boolean))];
-  if (!npsIndustry && !employmentIndustries.length) return '<span class="muted">-</span>';
-  return `<div class="insurance-industry">${npsIndustry ? `<strong>${escapeHtml(npsIndustry)}</strong>` : ""}${employmentIndustries.map((industry) => `<small>${escapeHtml(industry)}</small>`).join("")}</div>`;
+  if (!primaryIndustries.length && !employmentIndustries.length) return '<span class="muted">-</span>';
+  return `<div class="insurance-industry">${primaryIndustries.map((industry) => `<strong>${escapeHtml(industry)}</strong>`).join("")}${employmentIndustries.map((industry) => `<small>${escapeHtml(industry)}</small>`).join("")}</div>`;
 }
 
 function renderNpsTable() {
@@ -983,8 +995,8 @@ function showNpsPage(pageNo) {
 }
 
 /**
- * 업종 대분류 목록. 분류표의 대분류에 "업종 미상"을 한 항목으로 덧붙인다. 업종을 담고
- * 있지 않은 자리표시 코드(000000·999999)를 가진 사업장이 갈 곳이 필요하기 때문이다.
+ * 업종 대분류 목록. 국민연금 분류표의 대분류에 고용·산재 업종도 같은 의미로 매핑하고,
+ * 두 자료 모두 업종을 담지 않은 사업장이 갈 "업종 미상"을 한 항목으로 덧붙인다.
  */
 function fillNpsSectionOptions() {
   $("npsSectionSelect").innerHTML = ['<option value="">전체</option>',

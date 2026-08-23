@@ -1,9 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { hydrateSnapshotWorkplace } from "../lib/nps.js";
 import { mergeEmploymentInsuranceRows } from "../lib/employment-insurance.js";
 import {
   combineInsuranceWorkplaces,
+  insuranceIndustrySectionCodes,
   matchesInsuranceWorkplaceCriteria,
   sortInsuranceWorkplaces
 } from "../lib/insurance-workplaces.js";
@@ -97,6 +99,37 @@ test("industry section filtering includes employment-only workplaces", () => {
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "O" }), false);
 });
 
+test("employment industry supplements an unknown NPS industry", () => {
+  const unknownNps = { ...nps, sectionCode: "", sectionName: "업종 미상", industryCode: "999999" };
+  const healthEmployment = {
+    ...employment,
+    id: "ei-health",
+    employmentIndustryCode11: "86105",
+    employmentIndustryName11: "요양 병원",
+    employmentIndustryCode: "86105",
+    employmentIndustryName: "요양 병원"
+  };
+  const [row] = combineInsuranceWorkplaces([unknownNps], [healthEmployment]);
+
+  assert.deepEqual([...insuranceIndustrySectionCodes(row)], ["P"]);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "P" }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { unknownIndustryOnly: true }), false);
+});
+
+test("the current snapshot supplements an unknown NPS industry from employment data", () => {
+  const npsRows = npsSnapshot.items
+    .filter((item) => item.name === "로뎀의집")
+    .map(hydrateSnapshotWorkplace);
+  const employmentRows = mergeEmploymentInsuranceRows(employmentSnapshot.items)
+    .filter((item) => item.name === "로뎀의집");
+  const [row] = combineInsuranceWorkplaces(npsRows, employmentRows);
+
+  assert.equal(row.nps.sectionCode, "");
+  assert.equal(row.employmentInsurance.sourceRows[0].employmentIndustryCode11, "87131");
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "P" }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { unknownIndustryOnly: true }), false);
+});
+
 test("links Jeil Construction despite legal and project-name differences", () => {
   const groups = mergeEmploymentInsuranceRows(employmentSnapshot.items);
   const [row] = combineInsuranceWorkplaces(
@@ -160,6 +193,7 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(appJs, /사업장관리번호 <span class="insurance-workplace-number mono"/);
   assert.match(appJs, /employment\?\.businessRegistrationNumber/);
   assert.match(appJs, /insurancePostalCodeValues\(employment\)/);
+  assert.match(appJs, /insuranceIndustrySectionCodes\(row\)/);
   assert.match(appJs, /국민연금 월별 추이/);
   assert.match(appJs, /<h3>고용·산재보험 정보/);
   assert.doesNotMatch(appJs, /통합 사업장/);
