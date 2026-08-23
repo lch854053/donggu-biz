@@ -772,6 +772,7 @@ let insuranceRows = [];
 let npsPageNo = 1;
 let npsBusy = false;
 let npsDetail = { key: "", seq: "", html: "" };
+let npsBusinessStatus = { key: "", state: "idle", data: null, error: "" };
 let npsAppliedCriteria = null;
 let npsCriteriaDirty = false;
 let npsSort = "";
@@ -932,7 +933,7 @@ function renderNpsTable() {
     const opened = npsDetail.key === row.key;
     // 상세 카드는 표 맨 아래가 아니라 누른 행 바로 아래에 한 줄을 끼워 펼친다.
     const card = opened
-      ? `<tr class="detail-row"><td colspan="11"><div class="detail-card">${npsDetail.html}</div></td></tr>`
+      ? `<tr class="detail-row"><td colspan="11"><div class="detail-card">${npsDetail.html}${businessStatusHtml(row)}</div></td></tr>`
       : "";
     const nps = row.nps;
     const employment = row.employmentInsurance;
@@ -1043,6 +1044,7 @@ async function runNpsLookup() {
   }
   npsBusy = true;
   npsDetail = { key: "", seq: "", html: "" };
+  npsBusinessStatus = { key: "", state: "idle", data: null, error: "" };
   $("npsRunBtn").disabled = true;
   $("npsProgressWrap").hidden = false;
   $("npsProgressFill").style.width = "35%";
@@ -1140,6 +1142,65 @@ function employmentInsuranceDetailHtml(row, { sharedWithNps = false } = {}) {
   </section>`;
 }
 
+function businessNumberForStatus(row) {
+  const candidates = [
+    row.employmentInsurance?.businessRegistrationNumber,
+    ...insuranceSourceRows(row.employmentInsurance).map((sourceRow) => sourceRow.businessRegistrationNumber)
+  ];
+  return candidates
+    .map((value) => String(value ?? "").replace(/[^0-9]/g, ""))
+    .find((value) => /^\d{10}$/.test(value)) || "";
+}
+
+function businessStatusHtml(row) {
+  const businessNumber = businessNumberForStatus(row);
+  const status = npsBusinessStatus.key === row.key ? npsBusinessStatus : { state: "idle", data: null, error: "" };
+  const loading = status.state === "loading";
+  const buttonLabel = loading ? "확인 중..." : status.state === "success" ? "다시 확인" : "사업자 상태 확인";
+  const buttonDisabled = !businessNumber || loading ? " disabled" : "";
+  const button = `<button class="button button-secondary business-status-button" type="button" data-business-status="${escapeHtml(row.key)}"${buttonDisabled}>${buttonLabel}</button>`;
+  let result = "";
+
+  if (!businessNumber) {
+    result = '<p class="field-note">고용·산재 자료에 전체 사업자등록번호가 없어 국세청 실시간 조회를 할 수 없습니다.</p>';
+  } else if (status.state === "error") {
+    result = `<p class="summary-empty" role="alert">${escapeHtml(status.error)}</p>`;
+  } else if (status.state === "success") {
+    const data = status.data || {};
+    const detailRow = (label, value) => `<div><dt>${label}</dt><dd>${value}</dd></div>`;
+    result = `<div class="business-status-result" role="status" aria-live="polite"><dl>
+      ${detailRow("과세 유형", badge("tax", data.tax_type, data.tax_type_cd))}
+      ${detailRow("사업자 상태", badge("status", data.b_stt, data.b_stt_cd))}
+      ${detailRow("폐업일", escapeHtml(data.end_dt ? formatYmd(data.end_dt) : "-"))}
+    </dl></div>`;
+  }
+
+  return `<section class="detail-section business-status-section">
+    <h3>사업자 상태</h3>
+    <div class="business-status-actions">${button}${businessNumber ? '<span class="field-note">국세청 실시간 조회</span>' : ""}</div>
+    ${result}
+  </section>`;
+}
+
+async function verifyBusinessStatus(rowKey) {
+  const row = insuranceRows.find((item) => item.key === rowKey);
+  const businessNumber = row && businessNumberForStatus(row);
+  if (!row || !businessNumber) return;
+
+  npsBusinessStatus = { key: rowKey, state: "loading", data: null, error: "" };
+  renderNpsTable();
+  try {
+    const [data] = await callBusinessProxy([businessNumber]);
+    if (!data) throw new Error("국세청에서 사업자 상태 정보를 찾을 수 없습니다.");
+    if (npsDetail.key !== rowKey) return;
+    npsBusinessStatus = { key: rowKey, state: "success", data, error: "" };
+  } catch (error) {
+    if (npsDetail.key !== rowKey) return;
+    npsBusinessStatus = { key: rowKey, state: "error", data: null, error: error.message };
+  }
+  renderNpsTable();
+}
+
 /**
  * 상세 카드. 누른 행 바로 아래 한 줄을 끼워 펼치고, 같은 행을 다시 누르면 접는다.
  * 표는 상세를 채우는 동안에도 다시 그려지므로 카드 내용은 상태로 들고 있는다.
@@ -1147,6 +1208,7 @@ function employmentInsuranceDetailHtml(row, { sharedWithNps = false } = {}) {
 async function showNpsDetail(rowKey) {
   if (npsDetail.key === rowKey) {
     npsDetail = { key: "", seq: "", html: "" };
+    npsBusinessStatus = { key: "", state: "idle", data: null, error: "" };
     renderNpsTable();
     return;
   }
@@ -1155,6 +1217,7 @@ async function showNpsDetail(rowKey) {
   const nps = listRow.nps;
   const employment = listRow.employmentInsurance;
   const seq = nps?.seq || "";
+  npsBusinessStatus = { key: rowKey, state: "idle", data: null, error: "" };
   if (!nps) {
     npsDetail = { key: rowKey, seq: "", html: employmentInsuranceDetailHtml(employment) };
     renderNpsTable();
@@ -1426,6 +1489,7 @@ $("npsClearBtn").addEventListener("click", () => {
   $("npsIncludeWithdrawn").checked = false;
   npsPageNo = 1;
   npsDetail = { key: "", seq: "", html: "" };
+  npsBusinessStatus = { key: "", state: "idle", data: null, error: "" };
   if (npsAppliedCriteria) markNpsCriteriaDirty();
 });
 $("npsPrevBtn").addEventListener("click", () => showNpsPage(npsPageNo - 1));
@@ -1441,10 +1505,16 @@ $("npsSortSelect").addEventListener("change", (event) => {
   npsSort = event.target.value;
   npsPageNo = 1;
   npsDetail = { key: "", seq: "", html: "" };
+  npsBusinessStatus = { key: "", state: "idle", data: null, error: "" };
   if (npsRows.length) renderNps();
 });
 
 $("npsResultBody").addEventListener("click", (event) => {
+  const statusButton = event.target.closest("[data-business-status]");
+  if (statusButton) {
+    verifyBusinessStatus(statusButton.dataset.businessStatus);
+    return;
+  }
   const button = event.target.closest(".detail-btn");
   if (button) showNpsDetail(button.dataset.rowKey);
 });

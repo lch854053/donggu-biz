@@ -241,7 +241,8 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(indexHtml, /<span>업종 대분류<\/span>/);
   assert.match(indexHtml, /사업자등록번호 검색/);
   assert.match(indexHtml, /id="npsBusinessNumberInput"/);
-  assert.match(indexHtml, /국민연금만 표시되거나 고용·산재만 표시/);
+  assert.match(indexHtml, /6자리 이상 입력/);
+  assert.match(indexHtml, /국민연금만 표시되거나 고용·산재만 표시되거나 가입 데이터가 조회되지 않는 것은 미가입을 뜻하지 않습니다/);
   assert.doesNotMatch(indexHtml, /자료 구분|사업장 형태|사업 구분 \(고용·산재\)/);
   assert.doesNotMatch(indexHtml, /업종 대분류 \(국민연금\)/);
   assert.doesNotMatch(indexHtml, /보험 구분 \(고용·산재\)|사업장 등록일/);
@@ -252,6 +253,8 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(appJs, /사업장관리번호 <span class="insurance-workplace-number mono"/);
   assert.match(appJs, /employment\?\.businessRegistrationNumber/);
   assert.match(appJs, /insurancePostalCodeValues\(employment\)/);
+  assert.match(appJs, /사업자 상태 확인/);
+  assert.match(appJs, /callBusinessProxy\(\[businessNumber\]\)/);
   assert.match(appJs, /businessNumber: \$\("npsBusinessNumberInput"\)/);
   assert.doesNotMatch(appJs, /npsSourceSelect|npsStyleTabs|npsInsuranceStatusSelect|npsStyleCode/);
   assert.match(appJs, /insuranceIndustrySectionCodes\(row\)/);
