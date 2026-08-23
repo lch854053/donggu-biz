@@ -116,6 +116,35 @@ test("employment industry supplements an unknown NPS industry", () => {
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { unknownIndustryOnly: true }), false);
 });
 
+test("known NPS industry takes precedence over a different employment industry", () => {
+  const qEmployment = {
+    ...employment,
+    id: "ei-leisure",
+    employmentIndustryCode11: "91229",
+    employmentIndustryName11: "기타 오락장 운영업",
+    employmentIndustryCode: "91229",
+    employmentIndustryName: "기타 오락장 운영업"
+  };
+  const [row] = combineInsuranceWorkplaces([{ ...nps, sectionCode: "H", sectionName: "숙박 및 음식점업" }], [qEmployment]);
+
+  assert.deepEqual([...insuranceIndustrySectionCodes(row)], ["H"]);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "H" }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "Q" }), false);
+});
+
+test("the current snapshot does not leak a different employment industry into NPS filtering", () => {
+  const npsRows = npsSnapshot.items
+    .filter((item) => item.name === "데블다이스(주)")
+    .map(hydrateSnapshotWorkplace);
+  const employmentRows = mergeEmploymentInsuranceRows(employmentSnapshot.items)
+    .filter((item) => item.name === "데블다이스(주)");
+  const [row] = combineInsuranceWorkplaces(npsRows, employmentRows);
+
+  assert.equal(row.nps.sectionCode, "H");
+  assert.deepEqual([...insuranceIndustrySectionCodes(row)], ["H"]);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "Q" }), false);
+});
+
 test("the current snapshot supplements an unknown NPS industry from employment data", () => {
   const npsRows = npsSnapshot.items
     .filter((item) => item.name === "로뎀의집")
@@ -128,6 +157,22 @@ test("the current snapshot supplements an unknown NPS industry from employment d
   assert.equal(row.employmentInsurance.sourceRows[0].employmentIndustryCode11, "87131");
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "P" }), true);
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { unknownIndustryOnly: true }), false);
+});
+
+test("an unknown NPS company keeps every employment industry section it has", () => {
+  const npsRows = npsSnapshot.items
+    .filter((item) => item.name === "광주동구지역자활센터")
+    .map(hydrateSnapshotWorkplace);
+  const employmentRows = mergeEmploymentInsuranceRows(employmentSnapshot.items)
+    .filter((item) => item.name === "광주동구지역자활센터");
+  const [row] = combineInsuranceWorkplaces(npsRows, employmentRows);
+  const sections = insuranceIndustrySectionCodes(row);
+
+  assert.equal(row.nps.sectionCode, "");
+  assert.ok(sections.has("Q"));
+  assert.ok(sections.has("H"));
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "Q" }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "H" }), true);
 });
 
 test("links Jeil Construction despite legal and project-name differences", () => {
