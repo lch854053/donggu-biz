@@ -178,7 +178,7 @@
               </select>
             </label>
             <label class="field">
-              <span>업종 대분류 (국민연금)</span>
+              <span>업종 대분류</span>
               <select id="npsSectionSelect"><option value="">전체</option></select>
             </label>
             <div class="field">
@@ -191,15 +191,6 @@
               <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 국민연금 탈퇴 사업장 포함</label>
             </div>
             <label class="field">
-              <span>보험 구분 (고용·산재)</span>
-              <select id="npsInsuranceTypeSelect">
-                <option value="">전체</option>
-                <option value="0">고용·산재</option>
-                <option value="1">산재</option>
-                <option value="2">고용</option>
-              </select>
-            </label>
-            <label class="field">
               <span>사업 구분 (고용·산재)</span>
               <select id="npsInsuranceStatusSelect">
                 <option value="">전체</option>
@@ -210,24 +201,6 @@
                 <option value="유기">유기</option>
               </select>
             </label>
-            <div class="field range-field">
-              <span>사업장 등록일 <b class="range-readout" id="npsYearReadout">전체</b></span>
-              <div class="range-dual" id="npsYearRange">
-                <i class="range-fill" aria-hidden="true"></i>
-                <input type="range" id="npsYearFrom" aria-label="사업장 등록일 시작 연도">
-                <input type="range" id="npsYearTo" aria-label="사업장 등록일 종료 연도">
-              </div>
-              <div class="range-bounds"><span id="npsYearMinLabel"></span><span id="npsYearMaxLabel"></span></div>
-            </div>
-            <div class="field range-field">
-              <span>가입자 수 <b class="range-readout" id="npsPeopleReadout">전체</b></span>
-              <div class="range-dual" id="npsPeopleRange">
-                <i class="range-fill" aria-hidden="true"></i>
-                <input type="range" id="npsPeopleFrom" aria-label="가입자 수 하한">
-                <input type="range" id="npsPeopleTo" aria-label="가입자 수 상한">
-              </div>
-              <div class="range-bounds"><span id="npsPeopleMinLabel"></span><span id="npsPeopleMaxLabel"></span></div>
-            </div>
           </div>
           <div class="action-row">
             <button class="button button-primary" id="npsRunBtn" type="button">조회 시작</button>
@@ -251,13 +224,10 @@
                 <span>정렬 기준</span>
                 <select id="npsSortSelect">
                   <option value="">조회 순서</option>
-                  <option value="name-asc">사업장명 오름차순</option>
                   <option value="registered-asc">국민연금 등록일 오름차순</option>
                   <option value="registered-desc">국민연금 등록일 내림차순</option>
                   <option value="subscriber-asc">국민연금 가입자 수 오름차순</option>
                   <option value="subscriber-desc">국민연금 가입자 수 내림차순</option>
-                  <option value="employment-desc">고용보험 근로자 많은 순</option>
-                  <option value="industrial-desc">산재보험 근로자 많은 순</option>
                 </select>
               </label>
               <div class="pager" id="npsPager" hidden>

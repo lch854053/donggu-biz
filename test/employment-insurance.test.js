@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
   excelSerialDate,
+  employmentIndustrySectionCode,
   matchesEmploymentInsuranceCriteria,
   sortEmploymentInsuranceRows,
   mergeEmploymentInsuranceRows
@@ -31,6 +32,15 @@ test("employment insurance helpers convert dates and filter searchable fields", 
   assert.equal(matchesEmploymentInsuranceCriteria(row, { query: "없는 사업장" }), false);
   assert.equal(matchesEmploymentInsuranceCriteria(row, { insuranceType: "1" }), false);
   assert.equal(matchesEmploymentInsuranceCriteria(row, { status: "계속" }), true);
+});
+
+test("maps employment insurance 11th-industry codes to the shared section filter", () => {
+  assert.equal(employmentIndustrySectionCode("41121"), "F");
+  assert.equal(employmentIndustrySectionCode("56111"), "H");
+  assert.equal(employmentIndustrySectionCode("85110"), "O");
+  assert.equal(employmentIndustrySectionCode("86203"), "P");
+  assert.equal(employmentIndustrySectionCode("999999"), "");
+  assert.equal(employmentIndustrySectionCode(""), "");
 });
 
 test("employment insurance sort keeps source rows untouched", () => {

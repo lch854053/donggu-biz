@@ -87,6 +87,16 @@ test("grouped insurance rows remain searchable by every source record", () => {
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { query: "92110258797" }), true);
 });
 
+test("industry section filtering includes employment-only workplaces", () => {
+  const groups = mergeEmploymentInsuranceRows(employmentSnapshot.items);
+  const group = groups.find((item) => item.sourceRows.some((sourceRow) => String(sourceRow.employmentIndustryCode11 || sourceRow.employmentIndustryCode).startsWith("41")));
+  const [row] = combineInsuranceWorkplaces([], [group]);
+
+  assert.equal(row.nps, null);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "F" }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { sectionCode: "O" }), false);
+});
+
 test("links Jeil Construction despite legal and project-name differences", () => {
   const groups = mergeEmploymentInsuranceRows(employmentSnapshot.items);
   const [row] = combineInsuranceWorkplaces(
@@ -140,6 +150,10 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.doesNotMatch(indexHtml, /npsBasis/);
   assert.doesNotMatch(indexHtml, /고용·산재보험 가입 현황/);
   assert.doesNotMatch(indexHtml, /tab-employment-insurance|subpanel-employment-insurance/);
+  assert.match(indexHtml, /<span>업종 대분류<\/span>/);
+  assert.doesNotMatch(indexHtml, /업종 대분류 \(국민연금\)/);
+  assert.doesNotMatch(indexHtml, /보험 구분 \(고용·산재\)|사업장 등록일/);
+  assert.doesNotMatch(indexHtml, /사업장명 오름차순|고용보험 근로자 많은 순|산재보험 근로자 많은 순/);
   assert.doesNotMatch(indexHtml, /npsStatsRow|class="hint"/);
   assert.match(appJs, /const managementGroups = new Map\(\)/);
   assert.match(appJs, /class="insurance-workplace-group"/);
@@ -149,4 +163,5 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(appJs, /국민연금 월별 추이/);
   assert.match(appJs, /<h3>고용·산재보험 정보/);
   assert.doesNotMatch(appJs, /통합 사업장/);
+  assert.doesNotMatch(appJs, /npsInsuranceTypeSelect|npsYearRange|npsPeopleRange/);
 });

@@ -763,16 +763,6 @@ $("resetMarketBtn").addEventListener("click", () => {
 // 이 서비스는 광주 동구만 다룬다. 조회도 스냅샷도 같은 지역 하나를 본다.
 
 const NPS_PAGE_SIZE = 100;
-
-/**
- * 등록일 슬라이더의 기본 범위. 국민연금 사업장 당연적용은 1988년 10인 이상 사업장에서
- * 시작해 1992년 5인 이상, 1999년 전 사업장으로 넓어졌으므로 그 전으로 등록된 사업장은
- * 없다. 동구 자료가 더 이른 해를 담고 있으면 그만큼 아래로 넓힌다.
- */
-const NPS_YEAR_FLOOR = 1988;
-// 가입자 수 슬라이더의 상한은 자료에서 정하되 이보다 좁히지 않는다. 동구에는 (주)광주은행
-// 처럼 1,500명이 넘는 사업장이 있다.
-const NPS_PEOPLE_CEILING_MIN = 2000;
 const NPS_HISTORY_MAX_POINTS = 24;
 
 let npsRows = [];
@@ -806,103 +796,9 @@ async function fetchNps(params) {
   return payload;
 }
 
-/**
- * 값 두 개를 잡는 슬라이더. 두 손잡이를 겹쳐 놓고 서로를 넘어가지 못하게 잡아 준다.
- * 양 끝에 그대로 있으면 "전체"로 보고 조건을 걸지 않는다 — 아직 상세를 받지 못해
- * 값이 비어 있는 사업장이 슬라이더를 건드리지도 않았는데 사라지면 안 되기 때문이다.
- */
-function createRangeControl({ wrapId, fromId, toId, minLabelId, maxLabelId, readoutId, format, onChange }) {
-  const wrap = $(wrapId);
-  const fill = wrap.querySelector(".range-fill");
-  const from = $(fromId);
-  const to = $(toId);
-  let bounds = { min: 0, max: 1 };
-  let touched = false;
-
-  function paint() {
-    const span = bounds.max - bounds.min || 1;
-    const left = (Number(from.value) - bounds.min) / span * 100;
-    const right = (Number(to.value) - bounds.min) / span * 100;
-    fill.style.left = `${left}%`;
-    fill.style.width = `${Math.max(0, right - left)}%`;
-    $(readoutId).textContent = isFull() ? "전체" : `${format(Number(from.value))} ~ ${format(Number(to.value))}`;
-  }
-
-  function isFull() {
-    return Number(from.value) <= bounds.min && Number(to.value) >= bounds.max;
-  }
-
-  function handle(event) {
-    touched = true;
-    // 두 손잡이가 서로를 지나치면 값이 뒤집힌다. 밀어붙인 쪽을 상대편에서 멈춘다.
-    if (event.target === from && Number(from.value) > Number(to.value)) from.value = to.value;
-    if (event.target === to && Number(to.value) < Number(from.value)) to.value = from.value;
-    paint();
-    onChange();
-  }
-
-  from.addEventListener("input", handle);
-  to.addEventListener("input", handle);
-
-  return {
-    /** 조회 결과에 맞춰 범위를 다시 잡는다. 사용자가 손대지 않았으면 양 끝으로 벌린다. */
-    setBounds(min, max) {
-      bounds = { min, max: Math.max(max, min + 1) };
-      for (const input of [from, to]) {
-        input.min = String(bounds.min);
-        input.max = String(bounds.max);
-        input.step = "1";
-      }
-      if (touched) {
-        from.value = String(Math.min(Math.max(Number(from.value), bounds.min), bounds.max));
-        to.value = String(Math.min(Math.max(Number(to.value), bounds.min), bounds.max));
-      } else {
-        from.value = String(bounds.min);
-        to.value = String(bounds.max);
-      }
-      $(minLabelId).textContent = format(bounds.min);
-      $(maxLabelId).textContent = format(bounds.max);
-      paint();
-    },
-    value() {
-      return { from: Number(from.value), to: Number(to.value), full: isFull() };
-    },
-    reset() {
-      touched = false;
-      from.value = String(bounds.min);
-      to.value = String(bounds.max);
-      paint();
-    }
-  };
-}
-
-const npsYearRange = createRangeControl({
-  wrapId: "npsYearRange",
-  fromId: "npsYearFrom",
-  toId: "npsYearTo",
-  minLabelId: "npsYearMinLabel",
-  maxLabelId: "npsYearMaxLabel",
-  readoutId: "npsYearReadout",
-  format: (year) => `${year}년`,
-  onChange: markNpsCriteriaDirty
-});
-
-const npsPeopleRange = createRangeControl({
-  wrapId: "npsPeopleRange",
-  fromId: "npsPeopleFrom",
-  toId: "npsPeopleTo",
-  minLabelId: "npsPeopleMinLabel",
-  maxLabelId: "npsPeopleMaxLabel",
-  readoutId: "npsPeopleReadout",
-  format: (people) => `${people.toLocaleString("ko-KR")}명`,
-  onChange: markNpsCriteriaDirty
-});
-
 /** 입력 중인 조건을 조회 실행 시점에 결과에 적용한다. */
 function npsCriteria() {
   const section = $("npsSectionSelect").value;
-  const years = npsYearRange.value();
-  const people = npsPeopleRange.value();
   return {
     query: $("npsNameInput").value.trim(),
     source: $("npsSourceSelect").value,
@@ -910,11 +806,6 @@ function npsCriteria() {
     styleCode: npsStyleCode,
     sectionCode: section === NPS_UNKNOWN_SECTION_VALUE ? "" : section,
     unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE,
-    registeredFromYear: years.full ? null : years.from,
-    registeredToYear: years.full ? null : years.to,
-    subscriberMin: people.full ? null : people.from,
-    subscriberMax: people.full ? null : people.to,
-    insuranceType: $("npsInsuranceTypeSelect").value,
     insuranceStatus: $("npsInsuranceStatusSelect").value
   };
 }
@@ -1101,17 +992,6 @@ function fillNpsSectionOptions() {
     `<option value="${NPS_UNKNOWN_SECTION_VALUE}">업종 미상</option>`].join("");
 }
 
-/** 자료가 담고 있는 등록 연도와 가입자 수에 맞춰 슬라이더 범위를 잡는다. */
-function fitNpsRanges() {
-  const thisYear = new Date().getFullYear();
-  const years = npsRows.map((row) => ymdYear(row.registeredDate)).filter((year) => year != null);
-  npsYearRange.setBounds(Math.min(NPS_YEAR_FLOOR, ...years), Math.max(thisYear, ...years));
-
-  const counts = npsRows.map((row) => row.subscriberCount).filter((value) => typeof value === "number");
-  const ceiling = Math.max(NPS_PEOPLE_CEILING_MIN, ...counts);
-  npsPeopleRange.setBounds(0, ceiling);
-}
-
 /**
  * 조회는 미리 받아둔 국민연금·고용·산재보험 스냅샷으로 끝낸다. 국민연금 목록은
  * 상세조회까지 마친 월별 스냅샷을 쓰고, 고용·산재 자료는 연말 원본을 정규화한
@@ -1160,7 +1040,6 @@ async function runNpsLookup() {
     employmentInsuranceRows = employment.items;
     insuranceRows = combineInsuranceWorkplaces(npsRows, employmentInsuranceRows);
     npsPageNo = 1;
-    fitNpsRanges();
     npsAppliedCriteria = npsCriteria();
     npsCriteriaDirty = false;
     $("npsResultSection").hidden = false;
@@ -1529,15 +1408,12 @@ $("npsClearBtn").addEventListener("click", () => {
   $("npsNameInput").value = "";
   $("npsSourceSelect").value = "";
   $("npsSectionSelect").value = "";
-  $("npsInsuranceTypeSelect").value = "";
   $("npsInsuranceStatusSelect").value = "";
   $("npsIncludeWithdrawn").checked = false;
   npsStyleCode = "";
   setNpsStyleChip("");
   npsPageNo = 1;
   npsDetail = { key: "", seq: "", html: "" };
-  npsYearRange.reset();
-  npsPeopleRange.reset();
   if (npsAppliedCriteria) markNpsCriteriaDirty();
 });
 $("npsPrevBtn").addEventListener("click", () => showNpsPage(npsPageNo - 1));
@@ -1546,7 +1422,6 @@ $("npsNameInput").addEventListener("input", markNpsCriteriaDirty);
 $("npsNameInput").addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
 $("npsSourceSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsSectionSelect").addEventListener("change", markNpsCriteriaDirty);
-$("npsInsuranceTypeSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsInsuranceStatusSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsIncludeWithdrawn").addEventListener("change", markNpsCriteriaDirty);
 $("npsStyleTabs").addEventListener("click", (event) => {
@@ -1623,6 +1498,5 @@ $("npsDownloadBtn").addEventListener("click", () => {
 });
 
 fillNpsSectionOptions();
-fitNpsRanges();
 
 updateInputCount();
