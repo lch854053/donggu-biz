@@ -160,7 +160,7 @@
           <div class="station-heading">
             <div>
               <h2 id="nps-input-title">4대보험 사업장 조회</h2>
-              <p class="source-note">출처 : 국민연금공단·근로복지공단 자료 (연 1회 갱신)<br>조회 지역 : 광주 동구<br>자료 범위 : 국민연금·고용·산재보험 (건강보험 자료는 제공하지 않습니다.)</p>
+              <p class="source-note">출처 : 국민연금공단·근로복지공단 자료 (연 1회 갱신)<br>조회 지역 : 광주 동구<br>자료 범위 : 국민연금·고용·산재보험 (건강보험 자료는 제공하지 않습니다.)<span class="field-note is-warn">국민연금만 표시되거나 고용·산재만 표시되는 것은 다른 보험의 미가입을 뜻하지 않습니다. 자료 기준일·식별정보 차이로 연결되지 않았거나 해당 기관 자료에 포함되지 않은 경우일 수 있습니다.</span></p>
             </div>
             <span class="count-badge" id="npsCountBadge">0개 사업장</span>
           </div>
@@ -170,37 +170,18 @@
               <input id="npsNameInput" type="search" autocomplete="off" placeholder="예: 충장로, 음식점, 광주은행">
             </label>
             <label class="field">
-              <span>자료 구분</span>
-              <select id="npsSourceSelect">
-                <option value="">전체 자료</option>
-                <option value="nps">국민연금 가입 사업장</option>
-                <option value="employment">고용·산재보험 가입 사업장</option>
-              </select>
+              <span>사업자등록번호 검색</span>
+              <input id="npsBusinessNumberInput" type="search" inputmode="numeric" autocomplete="off" aria-describedby="npsBusinessNumberNote" placeholder="숫자 6자리 이상">
+              <small class="field-note" id="npsBusinessNumberNote">국민연금은 앞 6자리, 고용·산재는 전체 번호를 검색합니다.</small>
             </label>
             <label class="field">
               <span>업종 대분류</span>
               <select id="npsSectionSelect"><option value="">전체</option></select>
             </label>
             <div class="field">
-              <span>사업장 형태</span>
-              <div class="filter-tabs" id="npsStyleTabs" role="group" aria-label="사업장 형태">
-                <button class="filter-chip is-active" type="button" data-style="" aria-pressed="true">전체</button>
-                <button class="filter-chip" type="button" data-style="2" aria-pressed="false">개인</button>
-                <button class="filter-chip" type="button" data-style="1" aria-pressed="false">법인</button>
-              </div>
+              <span>국민연금 가입 상태</span>
               <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 국민연금 탈퇴 사업장 포함</label>
             </div>
-            <label class="field">
-              <span>사업 구분 (고용·산재)</span>
-              <select id="npsInsuranceStatusSelect">
-                <option value="">전체</option>
-                <option value="계속">계속</option>
-                <option value="일괄유기">일괄유기</option>
-                <option value="일괄계속">일괄계속</option>
-                <option value="계속(일괄전환)">계속(일괄전환)</option>
-                <option value="유기">유기</option>
-              </select>
-            </label>
           </div>
           <div class="action-row">
             <button class="button button-primary" id="npsRunBtn" type="button">조회 시작</button>

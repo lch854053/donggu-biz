@@ -771,7 +771,6 @@ let npsSnapshot = null;
 let insuranceRows = [];
 let npsPageNo = 1;
 let npsBusy = false;
-let npsStyleCode = "";
 let npsDetail = { key: "", seq: "", html: "" };
 let npsAppliedCriteria = null;
 let npsCriteriaDirty = false;
@@ -802,12 +801,10 @@ function npsCriteria() {
   const section = $("npsSectionSelect").value;
   return {
     query: $("npsNameInput").value.trim(),
-    source: $("npsSourceSelect").value,
+    businessNumber: $("npsBusinessNumberInput").value.trim(),
     includeWithdrawn: $("npsIncludeWithdrawn").checked,
-    styleCode: npsStyleCode,
     sectionCode: section === NPS_UNKNOWN_SECTION_VALUE ? "" : section,
-    unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE,
-    insuranceStatus: $("npsInsuranceStatusSelect").value
+    unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE
   };
 }
 
@@ -1038,6 +1035,12 @@ async function loadEmploymentInsuranceSnapshot() {
 
 async function runNpsLookup() {
   if (npsBusy) return;
+  const businessNumber = $("npsBusinessNumberInput").value.trim();
+  if (businessNumber && businessNumber.replace(/[^0-9]/g, "").length < 6) {
+    showToast("사업자등록번호는 숫자 6자리 이상 입력하세요.");
+    $("npsBusinessNumberInput").focus();
+    return;
+  }
   npsBusy = true;
   npsDetail = { key: "", seq: "", html: "" };
   $("npsRunBtn").disabled = true;
@@ -1418,12 +1421,9 @@ function downloadXlsx(headers, rows, fileName) {
 $("npsRunBtn").addEventListener("click", () => runNpsLookup());
 $("npsClearBtn").addEventListener("click", () => {
   $("npsNameInput").value = "";
-  $("npsSourceSelect").value = "";
+  $("npsBusinessNumberInput").value = "";
   $("npsSectionSelect").value = "";
-  $("npsInsuranceStatusSelect").value = "";
   $("npsIncludeWithdrawn").checked = false;
-  npsStyleCode = "";
-  setNpsStyleChip("");
   npsPageNo = 1;
   npsDetail = { key: "", seq: "", html: "" };
   if (npsAppliedCriteria) markNpsCriteriaDirty();
@@ -1432,17 +1432,10 @@ $("npsPrevBtn").addEventListener("click", () => showNpsPage(npsPageNo - 1));
 $("npsNextBtn").addEventListener("click", () => showNpsPage(npsPageNo + 1));
 $("npsNameInput").addEventListener("input", markNpsCriteriaDirty);
 $("npsNameInput").addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
-$("npsSourceSelect").addEventListener("change", markNpsCriteriaDirty);
+$("npsBusinessNumberInput").addEventListener("input", markNpsCriteriaDirty);
+$("npsBusinessNumberInput").addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
 $("npsSectionSelect").addEventListener("change", markNpsCriteriaDirty);
-$("npsInsuranceStatusSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsIncludeWithdrawn").addEventListener("change", markNpsCriteriaDirty);
-$("npsStyleTabs").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-style]");
-  if (!button) return;
-  npsStyleCode = button.dataset.style;
-  setNpsStyleChip(npsStyleCode);
-  markNpsCriteriaDirty();
-});
 
 $("npsSortSelect").addEventListener("change", (event) => {
   npsSort = event.target.value;
@@ -1450,15 +1443,6 @@ $("npsSortSelect").addEventListener("change", (event) => {
   npsDetail = { key: "", seq: "", html: "" };
   if (npsRows.length) renderNps();
 });
-
-/** 사업장 형태 칩의 선택 표시를 맞춘다. */
-function setNpsStyleChip(styleCode) {
-  document.querySelectorAll("#npsStyleTabs .filter-chip").forEach((chip) => {
-    const active = chip.dataset.style === styleCode;
-    chip.classList.toggle("is-active", active);
-    chip.setAttribute("aria-pressed", String(active));
-  });
-}
 
 $("npsResultBody").addEventListener("click", (event) => {
   const button = event.target.closest(".detail-btn");
