@@ -7,6 +7,7 @@
     "test": "node --test",
     "update-stores": "node scripts/update-stores.mjs",
     "update-medical-stores": "node scripts/import-medical-stores.mjs",
+    "update-employment-insurance": "node scripts/import-employment-insurance.mjs",
     "update-zones": "node scripts/update-mainbiz-zones.mjs",
     "update-nps": "node scripts/update-nps.mjs"
   },

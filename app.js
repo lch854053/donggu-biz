@@ -14,6 +14,12 @@ import {
   sortWorkplaces,
   ymdYear
 } from "./lib/nps.js";
+import {
+  EMPLOYMENT_INSURANCE_SNAPSHOT_URL,
+  insuranceTypeName,
+  matchesEmploymentInsuranceCriteria,
+  sortEmploymentInsuranceRows
+} from "./lib/employment-insurance.js";
 
 const $ = (id) => document.getElementById(id);
 const escapeHtml = (value) => String(value ?? "").replace(/[&<>'"]/g, (char) => ({
@@ -777,6 +783,15 @@ let npsAppliedCriteria = null;
 let npsCriteriaDirty = false;
 let npsSort = "";
 
+const EMPLOYMENT_INSURANCE_PAGE_SIZE = 100;
+let employmentInsuranceRows = [];
+let employmentInsuranceSnapshot = null;
+let employmentInsurancePageNo = 1;
+let employmentInsuranceBusy = false;
+let employmentInsuranceAppliedCriteria = null;
+let employmentInsuranceCriteriaDirty = false;
+let employmentInsuranceSort = "";
+
 // 업종 대분류 선택기에서 "업종 미상"을 가리키는 값. 분류표의 대분류 코드와 겹치지 않게 둔다.
 const NPS_UNKNOWN_SECTION_VALUE = "unknown";
 
@@ -1094,6 +1109,181 @@ async function runNpsLookup() {
   }
 }
 
+// Employment and industrial accident insurance workplace lookup
+function employmentInsuranceCriteria() {
+  return {
+    query: $("employmentInsuranceSearchInput").value.trim(),
+    insuranceType: $("employmentInsuranceTypeSelect").value,
+    status: $("employmentInsuranceStatusSelect").value
+  };
+}
+
+function filteredEmploymentInsuranceRows() {
+  return employmentInsuranceRows.filter((row) => matchesEmploymentInsuranceCriteria(
+    row,
+    employmentInsuranceAppliedCriteria || {}
+  ));
+}
+
+function sortedEmploymentInsuranceRows() {
+  return sortEmploymentInsuranceRows(filteredEmploymentInsuranceRows(), employmentInsuranceSort);
+}
+
+function employmentInsurancePageRows() {
+  const rows = sortedEmploymentInsuranceRows();
+  const offset = (employmentInsurancePageNo - 1) * EMPLOYMENT_INSURANCE_PAGE_SIZE;
+  return rows.slice(offset, offset + EMPLOYMENT_INSURANCE_PAGE_SIZE);
+}
+
+function employmentInsuranceTypeBadge(row) {
+  const className = row.insuranceType === "0" ? "badge-green" : row.insuranceType === "1" ? "badge-yellow" : "badge-gray";
+  return `<span class="badge ${className}">${escapeHtml(row.insuranceTypeName || insuranceTypeName(row.insuranceType))}</span>`;
+}
+
+function employmentInsuranceStatusBadge(value) {
+  if (!value) return '<span class="badge badge-gray">-</span>';
+  const className = value === "계속" ? "badge-green" : "badge-gray";
+  return `<span class="badge ${className}">${escapeHtml(value)}</span>`;
+}
+
+function employmentInsuranceCountLabel(value) {
+  return typeof value === "number" ? `${value.toLocaleString("ko-KR")}명` : "-";
+}
+
+function employmentInsuranceEstablishmentLabel(row) {
+  const dates = [
+    row.employmentEstablishedDate ? `고용 ${formatYmd(row.employmentEstablishedDate)}` : "",
+    row.industrialEstablishedDate ? `산재 ${formatYmd(row.industrialEstablishedDate)}` : ""
+  ].filter(Boolean);
+  return dates.length ? dates.join(" / ") : "-";
+}
+
+function renderEmploymentInsuranceTable() {
+  const rows = employmentInsurancePageRows();
+  const body = $("employmentInsuranceResultBody");
+  if (!rows.length) {
+    body.innerHTML = '<tr class="empty-row"><td colspan="12">해당 조건의 결과가 없습니다.</td></tr>';
+    return;
+  }
+  const offset = (employmentInsurancePageNo - 1) * EMPLOYMENT_INSURANCE_PAGE_SIZE;
+  body.innerHTML = rows.map((row, index) => {
+    const industryCode = row.employmentIndustryCode11 || row.employmentIndustryCode;
+    const industryName = row.employmentIndustryName11 || row.employmentIndustryName;
+    const industry = [industryCode, industryName].filter(Boolean).join(" ") || "-";
+    return `<tr>
+      <td class="seq">${offset + index + 1}</td>
+      <td>${escapeHtml(row.name)}</td>
+      <td>${employmentInsuranceTypeBadge(row)}</td>
+      <td>${escapeHtml(row.address || "-")}</td>
+      <td>${escapeHtml(industry)}</td>
+      <td class="mono">${employmentInsuranceCountLabel(row.employmentWorkerCount)}</td>
+      <td class="mono">${employmentInsuranceCountLabel(row.industrialWorkerCount)}</td>
+      <td>${employmentInsuranceStatusBadge(row.employmentStatus)}</td>
+      <td>${employmentInsuranceStatusBadge(row.industrialStatus)}</td>
+      <td class="mono">${escapeHtml(employmentInsuranceEstablishmentLabel(row))}</td>
+      <td class="mono">${escapeHtml(row.businessRegistrationNumber || "-")}</td>
+      <td class="mono">${escapeHtml(row.workplaceManagementNumber || "-")}</td>
+    </tr>`;
+  }).join("");
+}
+
+function renderEmploymentInsuranceStats() {
+  const rows = filteredEmploymentInsuranceRows();
+  const employment = rows.filter((row) => ["0", "2"].includes(row.insuranceType)).length;
+  const industrial = rows.filter((row) => ["0", "1"].includes(row.insuranceType)).length;
+  const continuing = rows.filter((row) => [row.employmentStatus, row.industrialStatus].includes("계속")).length;
+  $("employmentInsuranceStatsRow").innerHTML = `
+    <span class="stat-item">전체<strong>${rows.length.toLocaleString("ko-KR")}</strong></span>
+    <span class="stat-item">고용보험<strong>${employment.toLocaleString("ko-KR")}</strong></span>
+    <span class="stat-item">산재보험<strong>${industrial.toLocaleString("ko-KR")}</strong></span>
+    <span class="stat-item">계속<strong>${continuing.toLocaleString("ko-KR")}</strong></span>`;
+}
+
+function renderEmploymentInsurancePager() {
+  const lastPage = Math.max(1, Math.ceil(filteredEmploymentInsuranceRows().length / EMPLOYMENT_INSURANCE_PAGE_SIZE));
+  $("employmentInsurancePager").hidden = lastPage <= 1;
+  $("employmentInsurancePageLabel").textContent = `${employmentInsurancePageNo} / ${lastPage}`;
+  $("employmentInsurancePrevBtn").disabled = employmentInsurancePageNo <= 1 || employmentInsuranceBusy;
+  $("employmentInsuranceNextBtn").disabled = employmentInsurancePageNo >= lastPage || employmentInsuranceBusy;
+}
+
+function renderEmploymentInsurance() {
+  const shown = filteredEmploymentInsuranceRows().length;
+  $("employmentInsuranceCountBadge").textContent = `${shown.toLocaleString("ko-KR")}개 사업장`;
+  $("employmentInsuranceDownloadBtn").disabled = !shown;
+  renderEmploymentInsuranceTable();
+  renderEmploymentInsuranceStats();
+  renderEmploymentInsurancePager();
+}
+
+function renderEmploymentInsuranceCriteriaState() {
+  $("employmentInsuranceCriteriaNote").hidden = !(employmentInsuranceAppliedCriteria && employmentInsuranceCriteriaDirty);
+}
+
+function markEmploymentInsuranceCriteriaDirty() {
+  employmentInsuranceCriteriaDirty = true;
+  renderEmploymentInsuranceCriteriaState();
+}
+
+async function loadEmploymentInsuranceSnapshot() {
+  if (employmentInsuranceSnapshot) return employmentInsuranceSnapshot;
+  const response = await fetch(EMPLOYMENT_INSURANCE_SNAPSHOT_URL, { cache: "no-cache" });
+  if (!response.ok) throw new Error(`고용·산재보험 자료를 불러오지 못했습니다. (HTTP ${response.status})`);
+  const payload = await response.json();
+  employmentInsuranceSnapshot = {
+    meta: payload.meta || {},
+    items: (payload.items || []).filter((item) => item.name)
+  };
+  return employmentInsuranceSnapshot;
+}
+
+function renderEmploymentInsuranceBasis(snapshot) {
+  const sourceDate = formatIsoDate(snapshot.meta.sourceUpdatedAt);
+  const importedDate = formatIsoDate(snapshot.meta.importedAt);
+  const parts = [sourceDate && `원본 기준 ${sourceDate}`, importedDate && `${importedDate} 변환`].filter(Boolean);
+  $("employmentInsuranceBasis").textContent = parts.length ? `조회 기준 : ${parts.join(" · ")}` : "";
+}
+
+async function runEmploymentInsuranceLookup() {
+  if (employmentInsuranceBusy) return;
+  employmentInsuranceBusy = true;
+  $("employmentInsuranceRunBtn").disabled = true;
+  $("employmentInsuranceProgressWrap").hidden = false;
+  $("employmentInsuranceProgressFill").style.width = "35%";
+  $("employmentInsuranceProgressText").textContent = "동구 사업장 자료를 읽는 중입니다.";
+  renderEmploymentInsurancePager();
+
+  try {
+    const snapshot = await loadEmploymentInsuranceSnapshot();
+    employmentInsuranceRows = snapshot.items;
+    employmentInsurancePageNo = 1;
+    employmentInsuranceAppliedCriteria = employmentInsuranceCriteria();
+    employmentInsuranceCriteriaDirty = false;
+    renderEmploymentInsuranceBasis(snapshot);
+    $("employmentInsuranceResultSection").hidden = false;
+    renderEmploymentInsurance();
+    renderEmploymentInsuranceCriteriaState();
+    $("employmentInsuranceProgressFill").style.width = "100%";
+    $("employmentInsuranceProgressText").textContent = `사업장 ${filteredEmploymentInsuranceRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`;
+    showToast(`사업장 ${filteredEmploymentInsuranceRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`);
+  } catch (error) {
+    $("employmentInsuranceProgressFill").style.width = "0%";
+    $("employmentInsuranceProgressText").textContent = error.message;
+    showToast(error.message);
+  } finally {
+    employmentInsuranceBusy = false;
+    $("employmentInsuranceRunBtn").disabled = false;
+    renderEmploymentInsurancePager();
+  }
+}
+
+function showEmploymentInsurancePage(pageNo) {
+  const lastPage = Math.max(1, Math.ceil(filteredEmploymentInsuranceRows().length / EMPLOYMENT_INSURANCE_PAGE_SIZE));
+  employmentInsurancePageNo = Math.min(Math.max(pageNo, 1), lastPage);
+  renderEmploymentInsuranceTable();
+  renderEmploymentInsurancePager();
+}
+
 /**
  * 상세 카드. 누른 행 바로 아래 한 줄을 끼워 펼치고, 같은 행을 다시 누르면 접는다.
  * 표는 상세를 채우는 동안에도 다시 그려지므로 카드 내용은 상태로 들고 있는다.
@@ -1396,6 +1586,56 @@ $("npsDownloadBtn").addEventListener("click", () => {
       row.statusName, row.dataCreatedMonth, row.historyCount || 1
     ]),
     `국민연금사업장_${new Date().toISOString().slice(0, 10)}.xlsx`
+  );
+});
+
+$("employmentInsuranceRunBtn").addEventListener("click", () => runEmploymentInsuranceLookup());
+$("employmentInsuranceClearBtn").addEventListener("click", () => {
+  $("employmentInsuranceSearchInput").value = "";
+  $("employmentInsuranceTypeSelect").value = "";
+  $("employmentInsuranceStatusSelect").value = "";
+  $("employmentInsuranceSortSelect").value = "";
+  employmentInsuranceSort = "";
+  employmentInsurancePageNo = 1;
+  if (employmentInsuranceAppliedCriteria) markEmploymentInsuranceCriteriaDirty();
+  if (employmentInsuranceRows.length) renderEmploymentInsurance();
+});
+$("employmentInsuranceSearchInput").addEventListener("input", markEmploymentInsuranceCriteriaDirty);
+$("employmentInsuranceSearchInput").addEventListener("keydown", (event) => {
+  if (event.key === "Enter") runEmploymentInsuranceLookup();
+});
+$("employmentInsuranceTypeSelect").addEventListener("change", markEmploymentInsuranceCriteriaDirty);
+$("employmentInsuranceStatusSelect").addEventListener("change", markEmploymentInsuranceCriteriaDirty);
+$("employmentInsurancePrevBtn").addEventListener("click", () => showEmploymentInsurancePage(employmentInsurancePageNo - 1));
+$("employmentInsuranceNextBtn").addEventListener("click", () => showEmploymentInsurancePage(employmentInsurancePageNo + 1));
+$("employmentInsuranceSortSelect").addEventListener("change", (event) => {
+  employmentInsuranceSort = event.target.value;
+  employmentInsurancePageNo = 1;
+  if (employmentInsuranceRows.length) renderEmploymentInsurance();
+});
+$("employmentInsuranceDownloadBtn").addEventListener("click", () => {
+  const rows = sortedEmploymentInsuranceRows();
+  if (!rows.length) return;
+  downloadXlsx(
+    ["순번", "사업장명", "보험구분", "우편번호", "소재지", "업종코드", "업종명", "고용 성립일자", "산재 성립일자", "고용 상시근로자수", "산재 상시근로자수", "고용 사업구분", "산재 사업구분", "사업자등록번호", "사업장관리번호"],
+    rows.map((row, index) => [
+      index + 1,
+      row.name,
+      row.insuranceTypeName || insuranceTypeName(row.insuranceType),
+      row.postalCode,
+      row.address,
+      row.employmentIndustryCode11 || row.employmentIndustryCode,
+      row.employmentIndustryName11 || row.employmentIndustryName,
+      row.employmentEstablishedDate || "",
+      row.industrialEstablishedDate || "",
+      row.employmentWorkerCount ?? "",
+      row.industrialWorkerCount ?? "",
+      row.employmentStatus || "",
+      row.industrialStatus || "",
+      row.businessRegistrationNumber || "",
+      row.workplaceManagementNumber || ""
+    ]),
+    `고용산재보험사업장_${new Date().toISOString().slice(0, 10)}.xlsx`
   );
 });
 

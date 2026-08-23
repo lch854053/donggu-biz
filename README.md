@@ -9,6 +9,7 @@
 - **사업자 상태조회**: 사업자등록번호 계속·휴업·폐업 상태 일괄조회, 상태별 필터와 CSV 다운로드
 - **사업자등록정보 진위확인**: 사업자등록번호·개업일자·대표자명을 국세청 등록정보와 대조하고 일치 시 과세 유형·사업자 상태를 표시
 - **국민연금 가입 사업장 조회**: 광주 동구의 국민연금 가입 사업장을 사업장명·업종 대분류·사업장 형태·등록일·가입자 수로 조건검색, 사업장별 가입자 수·신규 취득·상실·당월 고지금액 상세조회
+- **고용·산재보험 가입 현황**: 광주 동구 사업장을 사업장명·주소·업종·보험 구분·사업 구분으로 검색하고 고용·산재 상시근로자 수, 성립일자와 사업장 식별정보를 확인
 
 ### 소상공인 조회
 
@@ -28,6 +29,21 @@ npm test
 변환 스크립트는 시도코드 `29`·시군구코드 `29110`만 남기고, 상가업소번호 중복과 좌표 누락을 검사합니다. `sourceUpdatedAt`은 원본 자료의 갱신일이고 `importedAt`은 이 저장소에 변환한 시각입니다. 갱신 뒤에는 두 데이터 파일을 함께 커밋해야 통합 목록의 의료기관 항목이 바뀝니다.
 
 GitHub Actions `Remind Dong-gu medical data refresh`가 매년 **9월 1일 09:00(KST)**에 같은 연도의 열린 갱신 Issue가 없을 때 알림을 만듭니다. 필요하면 Actions의 `Run workflow`로 즉시 실행할 수 있습니다.
+
+## 고용·산재보험 자료 갱신
+
+고용·산재보험 자료는 API를 실시간 호출하지 않고 CP949 원본 `data/employment_insurance_donggu.csv`와 정규화한 `data/employment_insurance_donggu.json`을 함께 보관합니다. 현재 스냅샷은 **2025년 12월 31일 기준**이며, 광주 동구 사업장 6,924건을 담고 있습니다.
+
+새 파일을 받으면 원본 CSV를 교체하고, 파일의 기준일을 인자로 넣어 변환합니다.
+
+```bash
+npm run update-employment-insurance -- --source-updated-at 2025-12-31
+npm test
+```
+
+변환 스크립트는 17개 필수 컬럼, 행별 열 개수, 연번 중복, 보험구분 값과 날짜·상시근로자 수 형식을 검사합니다. 성립일자는 원본 Excel 날짜 serial에서 ISO 날짜로 변환합니다. `data/employment_insurance_donggu.csv`와 `data/employment_insurance_donggu.json`을 함께 커밋해야 화면의 자료가 바뀝니다.
+
+GitHub Actions `Remind Dong-gu employment insurance data refresh`가 매년 **12월 31일 09:00(KST)**에 연말 갱신 확인 Issue를 만듭니다. 필요하면 Actions의 `Run workflow`로 즉시 실행할 수 있습니다.
 
 ## 국민연금 사업장 조건검색
 
