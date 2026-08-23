@@ -14,7 +14,8 @@ import {
 } from "./lib/nps.js";
 import {
   EMPLOYMENT_INSURANCE_SNAPSHOT_URL,
-  insuranceTypeName
+  insuranceTypeName,
+  mergeEmploymentInsuranceRows
 } from "./lib/employment-insurance.js";
 import {
   combineInsuranceWorkplaces,
@@ -949,10 +950,9 @@ function insuranceSourceBadge(row) {
 function insuranceWorkerCell(row, kind) {
   const employment = row.employmentInsurance;
   if (!employment) return '<span class="muted">-</span>';
-  const count = kind === "employment" ? employment.employmentWorkerCount : employment.industrialWorkerCount;
   const date = kind === "employment" ? employment.employmentEstablishedDate : employment.industrialEstablishedDate;
   const status = kind === "employment" ? employment.employmentStatus : employment.industrialStatus;
-  return `<div class="insurance-metric"><strong>${employmentInsuranceCountLabel(count)}</strong><span>${status ? escapeHtml(status) : "사업 구분 미기재"}</span><small>${date ? `성립 ${escapeHtml(formatYmd(date))}` : "성립일자 미기재"}</small></div>`;
+  return `<div class="insurance-metric"><strong>${insuranceWorkerCountLabel(employment, kind)}</strong><span>${status ? escapeHtml(status) : "사업 구분 미기재"}</span><small>${date ? `성립 ${escapeHtml(formatYmd(date))}` : "성립일자 미기재"}</small></div>`;
 }
 
 function insuranceStatusBadges(row) {
@@ -1109,33 +1109,9 @@ async function loadEmploymentInsuranceSnapshot() {
   const payload = await response.json();
   employmentInsuranceSnapshot = {
     meta: payload.meta || {},
-    items: (payload.items || []).filter((item) => item.name)
+    items: mergeEmploymentInsuranceRows((payload.items || []).filter((item) => item.name))
   };
   return employmentInsuranceSnapshot;
-}
-
-/** 자료가 언제 것인지 보조로 적는다. 실시간 조회가 아니므로 기준을 밝혀야 읽는 쪽이 판단할 수 있다. */
-function renderNpsBasis(nps, employment) {
-  const month = nps.dataCreatedMonth ? monthLabel(nps.dataCreatedMonth) : "";
-  const npsCollected = formatIsoDate(nps.collectedAt);
-  const employmentSourceDate = formatIsoDate(employment.meta.sourceUpdatedAt);
-  const employmentImported = formatIsoDate(employment.meta.importedAt);
-  const parts = [
-    month && `국민연금 ${month} 자료`,
-    npsCollected && `${npsCollected} 갱신`,
-    employmentSourceDate && `고용·산재 원본 기준 ${employmentSourceDate}`,
-    employmentImported && `${employmentImported} 변환`
-  ].filter(Boolean);
-  $("npsBasis").textContent = parts.length ? `조회 기준 : ${parts.join(" · ")}` : "";
-}
-
-/** ISO 시각을 yyyy.mm.dd로 줄인다. 값이 없으면 빈 문자열. */
-function formatIsoDate(value) {
-  const time = Date.parse(String(value ?? ""));
-  if (!Number.isFinite(time)) return "";
-  const date = new Date(time);
-  const pad = (number) => String(number).padStart(2, "0");
-  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
 }
 
 async function runNpsLookup() {
@@ -1154,7 +1130,6 @@ async function runNpsLookup() {
     employmentInsuranceRows = employment.items;
     insuranceRows = combineInsuranceWorkplaces(npsRows, employmentInsuranceRows);
     npsPageNo = 1;
-    renderNpsBasis(nps, employment);
     fitNpsRanges();
     npsAppliedCriteria = npsCriteria();
     npsCriteriaDirty = false;
@@ -1190,6 +1165,27 @@ function employmentInsuranceCountLabel(value) {
   return typeof value === "number" ? `${value.toLocaleString("ko-KR")}명` : "-";
 }
 
+function insuranceWorkerCountValue(row, kind) {
+  const covered = kind === "employment"
+    ? ["0", "2"].includes(row?.insuranceType)
+    : ["0", "1"].includes(row?.insuranceType);
+  if (!covered) return null;
+  return kind === "employment" ? row.employmentWorkerCount : row.industrialWorkerCount;
+}
+
+function insuranceWorkerCountLabel(row, kind) {
+  return employmentInsuranceCountLabel(insuranceWorkerCountValue(row, kind));
+}
+
+function insuranceManagementDetailRows(row, detailRow) {
+  const numbers = row.workplaceManagementNumbers || (row.workplaceManagementNumber ? [row.workplaceManagementNumber] : []);
+  if (numbers.length <= 1) return detailRow("사업장관리번호", escapeHtml(numbers[0] || "-"));
+  return [
+    detailRow("고용보험 사업장관리번호", escapeHtml(row.employmentWorkplaceManagementNumber || numbers[0])),
+    detailRow("산재보험 사업장관리번호", escapeHtml(row.industrialWorkplaceManagementNumber || numbers[1]))
+  ].join("");
+}
+
 function employmentInsuranceDetailHtml(row) {
   if (!row) return "";
   const detailRow = (label, value) => (value == null || value === "" ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
@@ -1203,12 +1199,12 @@ function employmentInsuranceDetailHtml(row) {
       ${detailRow("업종", escapeHtml([industryCode, industryName].filter(Boolean).join(" ") || "-"))}
       ${detailRow("고용보험 성립일자", row.employmentEstablishedDate ? escapeHtml(formatYmd(row.employmentEstablishedDate)) : "-")}
       ${detailRow("산재보험 성립일자", row.industrialEstablishedDate ? escapeHtml(formatYmd(row.industrialEstablishedDate)) : "-")}
-      ${detailRow("고용보험 상시근로자", employmentInsuranceCountLabel(row.employmentWorkerCount))}
-      ${detailRow("산재보험 상시근로자", employmentInsuranceCountLabel(row.industrialWorkerCount))}
+      ${detailRow("고용보험 상시근로자", insuranceWorkerCountLabel(row, "employment"))}
+      ${detailRow("산재보험 상시근로자", insuranceWorkerCountLabel(row, "industrial"))}
       ${detailRow("고용보험 사업 구분", row.employmentStatus ? employmentInsuranceStatusBadge(row.employmentStatus) : "-")}
       ${detailRow("산재보험 사업 구분", row.industrialStatus ? employmentInsuranceStatusBadge(row.industrialStatus) : "-")}
       ${detailRow("사업자등록번호", escapeHtml(row.businessRegistrationNumber || "-"))}
-      ${detailRow("사업장관리번호", escapeHtml(row.workplaceManagementNumber || "-"))}
+      ${insuranceManagementDetailRows(row, detailRow)}
     </dl>
   </section>`;
 }
@@ -1527,7 +1523,7 @@ $("npsDownloadBtn").addEventListener("click", () => {
       "국민연금 업종대분류", "고용·산재 업종코드", "고용·산재 업종명", "국민연금 사업장형태",
       "국민연금 등록일", "국민연금 가입자수", "국민연금 가입상태", "보험구분",
       "고용 성립일자", "산재 성립일자", "고용 상시근로자수", "산재 상시근로자수",
-      "고용 사업구분", "산재 사업구분", "사업장관리번호", "국민연금 기준월", "이력개월수"
+      "고용 사업구분", "산재 사업구분", "고용보험 사업장관리번호", "산재보험 사업장관리번호", "국민연금 기준월", "이력개월수"
     ],
     rows.map((row, index) => {
       const nps = row.nps;
@@ -1549,11 +1545,12 @@ $("npsDownloadBtn").addEventListener("click", () => {
         employment?.insuranceTypeName || (employment ? insuranceTypeName(employment.insuranceType) : ""),
         employment?.employmentEstablishedDate ? formatYmd(employment.employmentEstablishedDate) : "",
         employment?.industrialEstablishedDate ? formatYmd(employment.industrialEstablishedDate) : "",
-        employment?.employmentWorkerCount ?? "",
-        employment?.industrialWorkerCount ?? "",
+        insuranceWorkerCountValue(employment, "employment") ?? "",
+        insuranceWorkerCountValue(employment, "industrial") ?? "",
         employment?.employmentStatus || "",
         employment?.industrialStatus || "",
-        employment?.workplaceManagementNumber || "",
+        employment?.employmentWorkplaceManagementNumber || "",
+        employment?.industrialWorkplaceManagementNumber || "",
         nps?.dataCreatedMonth || "",
         nps?.historyCount || ""
       ];

@@ -4,7 +4,8 @@ import { readFile } from "node:fs/promises";
 import {
   excelSerialDate,
   matchesEmploymentInsuranceCriteria,
-  sortEmploymentInsuranceRows
+  sortEmploymentInsuranceRows,
+  mergeEmploymentInsuranceRows
 } from "../lib/employment-insurance.js";
 
 const snapshot = JSON.parse(await readFile(new URL("../data/employment_insurance_donggu.json", import.meta.url), "utf8"));
@@ -38,4 +39,41 @@ test("employment insurance sort keeps source rows untouched", () => {
   assert.notEqual(sorted, rows);
   assert.deepEqual(rows.map((row) => row.id), snapshot.items.slice(0, 3).map((row) => row.id));
   assert.ok(sorted[0].employmentWorkerCount >= sorted[1].employmentWorkerCount);
+});
+
+test("merges paired employment and industrial management numbers", () => {
+  const [merged] = mergeEmploymentInsuranceRows([
+    {
+      id: "employment", insuranceType: "2", insuranceTypeName: "고용", name: "회사",
+      postalCode: "61470", address: "광주 동구 제봉로 1", businessRegistrationNumber: "1234567890",
+      workplaceManagementNumber: "12345678900", employmentWorkerCount: 10,
+      employmentStatus: "계속", employmentEstablishedDate: "2020-01-01"
+    },
+    {
+      id: "industrial", insuranceType: "1", insuranceTypeName: "산재", name: "회사",
+      postalCode: "61470", address: "광주 동구 제봉로 1", businessRegistrationNumber: "1234567890",
+      workplaceManagementNumber: "12345678906", industrialWorkerCount: 8,
+      industrialStatus: "계속", industrialEstablishedDate: "2020-02-01"
+    }
+  ]);
+
+  assert.equal(merged.insuranceType, "0");
+  assert.equal(merged.employmentWorkerCount, 10);
+  assert.equal(merged.industrialWorkerCount, 8);
+  assert.deepEqual(merged.workplaceManagementNumbers, ["12345678900", "12345678906"]);
+  assert.equal(merged.employmentWorkplaceManagementNumber, "12345678900");
+  assert.equal(merged.industrialWorkplaceManagementNumber, "12345678906");
+});
+
+test("keeps a different management base as a separate workplace", () => {
+  const bankRows = snapshot.items.filter((row) => row.businessRegistrationNumber === "4088608817");
+  const merged = mergeEmploymentInsuranceRows(bankRows);
+  const paired = merged.find((row) => row.insuranceType === "0" && row.employmentWorkerCount === 1764);
+  const separate = merged.find((row) => row.workplaceManagementNumber === "92110258797");
+
+  assert.equal(merged.length, 2);
+  assert.equal(paired.industrialWorkerCount, 1762);
+  assert.deepEqual(paired.workplaceManagementNumbers, ["40881001820", "40881001826"]);
+  assert.equal(separate.insuranceType, "1");
+  assert.equal(separate.industrialWorkerCount, 1765);
 });

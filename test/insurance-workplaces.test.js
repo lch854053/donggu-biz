@@ -101,6 +101,9 @@ test("current snapshots keep every source record in the integrated result", () =
 
 test("the insurance lookup uses one renamed tab", () => {
   assert.match(indexHtml, /4대보험 사업장 조회/);
+  assert.match(indexHtml, /출처 : 국민연금공단·근로복지공단 자료 \(연 1회 갱신\)/);
+  assert.match(indexHtml, /자료 범위 : 국민연금·고용·산재보험 \(건강보험 자료는 제공하지 않습니다\.\)/);
+  assert.doesNotMatch(indexHtml, /npsBasis/);
   assert.doesNotMatch(indexHtml, /고용·산재보험 가입 현황/);
   assert.doesNotMatch(indexHtml, /tab-employment-insurance|subpanel-employment-insurance/);
 });
