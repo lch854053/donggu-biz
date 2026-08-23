@@ -481,11 +481,9 @@ $("validationClearBtn").addEventListener("click", () => {
 const DONGGU_CENTER = [35.1467, 126.9231];
 let marketInitialized = false;
 let allStores = [];
-let medicalStores = [];
 let visibleStores = [];
 let marketMeta = null;
 let medicalMeta = null;
-let marketDataset = "all";
 let marketMap;
 let markerCluster;
 let storeMarkers = [];
@@ -533,15 +531,11 @@ async function initializeMarket() {
         console.error("[medical-stores] invalid JSON", error);
       }
     }
-    allStores = Array.isArray(payload.stores) ? payload.stores : [];
+    const baseStores = Array.isArray(payload.stores) ? payload.stores : [];
     marketMeta = payload.meta || {};
-    medicalStores = Array.isArray(medicalPayload.stores) ? medicalPayload.stores : [];
+    const medicalStores = Array.isArray(medicalPayload.stores) ? medicalPayload.stores : [];
+    allStores = [...baseStores, ...medicalStores];
     medicalMeta = medicalPayload.meta || {};
-    const medicalOption = $("marketDataset").querySelector('[value="medical"]');
-    medicalOption.disabled = !medicalStores.length;
-    medicalOption.textContent = medicalStores.length
-      ? `의료기관 자료 (${medicalStores.length.toLocaleString("ko-KR")}개)`
-      : "의료기관 자료 (없음)";
     const visibleVworldPayload = { features: filterVworldZones(zonePayload.features) };
     mainBizZones = mergeZoneFeatures(visibleVworldPayload, manualZonePayload);
     if (!allStores.length) throw new Error("상가정보 파일에 표시할 업소가 없습니다.");
@@ -568,21 +562,19 @@ async function initializeMarket() {
 }
 
 function renderMarketMeta() {
-  $("marketTitle").textContent = marketDataset === "medical" ? "동구 의료기관 현황" : "동구 상가업소 현황";
-  if (marketDataset === "medical") {
-    const sourceDate = String(medicalMeta?.sourceUpdatedAt || "").replace(/-/g, ".");
-    const imported = medicalMeta.importedAt
-      ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(medicalMeta.importedAt))
-      : "미확인";
-    const total = Number(medicalMeta?.totalCount || medicalStores.length).toLocaleString("ko-KR");
-    $("marketMeta").textContent = `${medicalMeta?.source || "의료기관 자료"} · 원본 갱신 ${sourceDate || "미확인"} · 저장소 반입 ${imported} · ${total}개 · 수동 업로드 자료`;
-    return;
-  }
+  $("marketTitle").textContent = "동구 상가업소·의료기관 현황";
   const month = String(marketMeta.standardMonth || "").replace(/^(\d{4})(\d{2})$/, "$1.$2");
   const generated = marketMeta.generatedAt
     ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(marketMeta.generatedAt))
     : "미확인";
-  $("marketMeta").textContent = `${marketMeta.source || "상가정보 API"} · 기준월 ${month || "미확인"} · 갱신일 ${generated} · 사업자 상태와 별도 데이터`;
+  const medicalUpdated = String(medicalMeta?.sourceUpdatedAt || "").replace(/-/g, ".");
+  const sources = [marketMeta?.source, medicalMeta?.source].filter(Boolean).join(" · ");
+  const dates = [
+    month ? `상가정보 기준월 ${month}` : "",
+    `상가정보 갱신일 ${generated}`,
+    medicalUpdated ? `의료기관 원본 갱신 ${medicalUpdated}` : ""
+  ].filter(Boolean).join(" · ");
+  $("marketMeta").textContent = `${sources || "상가정보 API"} · ${dates} · 통합 ${allStores.length.toLocaleString("ko-KR")}개`;
 }
 
 function initializeMap() {
@@ -605,7 +597,7 @@ function selectedZone() {
 }
 
 function activeMarketStores() {
-  return marketDataset === "medical" ? medicalStores : allStores;
+  return allStores;
 }
 
 function zoneStyle(feature) {
@@ -709,14 +701,14 @@ function summaryRows(counts, total, limit = 6, emptyLabel = "업소") {
 function renderSelectionOverview() {
   const zone = selectedZone();
   const adminDong = $("dongFilter").value;
-  const entityLabel = marketDataset === "medical" ? "기관" : "점포";
+  const entityLabel = "업소";
   if (!zone && !adminDong) {
     $("selectionOverview").innerHTML = `<p>행정동 또는 주요상권을 선택하면 ${entityLabel} 수와 상위 업종 소분류를 확인할 수 있습니다.</p>`;
     return;
   }
   const name = zone?.properties?.name || adminDong;
   const area = zone ? Number(zone.properties.areaSqm || 0) / 1e6 : null;
-  const countLabel = marketDataset === "medical" ? "기관 수" : "점포 수";
+  const countLabel = "업소 수";
   $("selectionOverview").innerHTML = `<p class="selection-name">${escapeHtml(name)}</p>
     <dl>
       ${area === null ? "" : `<div><dt>경계 면적</dt><dd>${area.toFixed(3)}㎢</dd></div>`}
@@ -738,17 +730,6 @@ function selectZone(number, fitBounds) {
   if (fitBounds && layer) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
 }
 
-$("marketDataset").addEventListener("change", (event) => {
-  marketDataset = event.target.value;
-  selectedZoneNo = "";
-  $("dongFilter").value = "";
-  $("zoneFilter").value = "";
-  populateMarketFilters();
-  buildStoreMarkers();
-  applyMarketFilters();
-  renderMarketMeta();
-  marketMap?.setView(DONGGU_CENTER, 14);
-});
 $("dongFilter").addEventListener("change", (event) => {
   const selection = buildLocationSelection("dong", event.target.value);
   selectedZoneNo = selection.zoneNo;

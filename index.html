@@ -249,7 +249,7 @@
     <section class="service-panel" id="panel-market" role="tabpanel" aria-labelledby="tab-market" hidden>
       <div class="market-heading">
         <div>
-          <h2 id="marketTitle">동구 상가업소 현황</h2>
+          <h2 id="marketTitle">동구 상가업소·의료기관 현황</h2>
           <p id="marketMeta">상가정보를 불러오는 중입니다.</p>
         </div>
       </div>
@@ -262,13 +262,6 @@
             <h3 id="market-filter-title">조회 조건</h3>
             <button class="button button-quiet rail-reset" id="resetMarketBtn" type="button">조회 초기화</button>
           </div>
-          <label class="field">
-            <span>자료 범위</span>
-            <select id="marketDataset">
-              <option value="all">전체 상가업소</option>
-              <option value="medical">의료기관 자료</option>
-            </select>
-          </label>
           <label class="field">
             <span>행정동</span>
             <select id="dongFilter"><option value="">전체 행정동</option></select>
@@ -291,7 +284,7 @@
           </div>
         </aside>
 
-        <section class="map-stage" aria-label="상가업소 지도">
+        <section class="map-stage" aria-label="상가업소·의료기관 지도">
           <div id="marketMap"></div>
         </section>
 
