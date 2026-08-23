@@ -237,6 +237,17 @@ button { color: inherit; }
 .detail-card dl div { padding: 8px 0; border-top: 1px solid var(--line); display: flex; justify-content: space-between; gap: 14px; }
 .detail-card dt { color: var(--text-secondary); font-size: 12px; }
 .detail-card dd { margin: 0; text-align: right; font: 12px/1.5 var(--mono); overflow-wrap: anywhere; }
+.detail-section + .detail-section { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.detail-section h3 { margin: 0 0 8px; color: var(--text-secondary); font-size: 15px; }
+
+.insurance-metric,
+.insurance-industry { min-width: 104px; display: grid; gap: 2px; }
+.insurance-metric strong { color: var(--text); font: 600 12px/1.4 var(--mono); }
+.insurance-metric span,
+.insurance-industry strong { color: var(--text-secondary); font-size: 12px; }
+.insurance-metric small,
+.insurance-industry small { color: var(--text-muted); font: 12px/1.4 var(--mono); }
+.muted { color: var(--text-muted); }
 
 /* 상세는 표 맨 아래가 아니라 누른 행 바로 아래에 한 줄로 끼워 펼친다. */
 .detail-row td { padding: 0 8px 12px; border-top: 0; }
@@ -631,9 +642,8 @@ tbody tr:hover td { background: #191f2d; }
   .button-export { width: 100%; }
   th, td { padding: 10px 12px; }
   th:nth-child(4), td:nth-child(4) { display: none; }
-  /* 국민연금 표는 소재지가 4번째 열이므로 대신 업종·형태 열을 접는다. */
-  #npsResultSection th:nth-child(4), #npsResultSection td:nth-child(4) { display: table-cell; }
-  #npsResultSection th:nth-child(5), #npsResultSection td:nth-child(5),
+  /* 통합 보험 표는 좁은 화면에서 사업자번호와 업종을 접고 소재지를 남긴다. */
+  #npsResultSection th:nth-child(5), #npsResultSection td:nth-child(5) { display: table-cell; }
   #npsResultSection th:nth-child(6), #npsResultSection td:nth-child(6) { display: none; }
   .detail-card dl { grid-template-columns: 1fr; }
 }

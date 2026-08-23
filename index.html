@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="광주 동구 사업자 상태·사업자등록정보 진위확인·국민연금·고용·산재보험 가입 사업장 조회와 상가 업종·입지 분석">
+  <meta name="description" content="광주 동구 사업자 상태·사업자등록정보 진위확인·4대보험 사업장 조회와 상가 업종·입지 분석">
   <title>동구 사업자·상권 조회</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,7 +17,7 @@
   <!--
   THESIS: 사업자 한 건의 상태와 동구 전체 상가의 맥락을 같은 업무대 위에서 확인한다. 장식적인 대시보드 대신 조회와 판단이 바로 이어지는 관제 화면을 만든다.
   OWN-WORLD: 청흑색 무광 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 기존 업무 도구 언어를 확장한다.
-  STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·업종 분석, 국민연금 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
+   STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·업종 분석, 4대보험 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상권 탭은 좌측 선택·상세 레일과 지도가 한 화면에 놓인다.
   FORM: 통합 관제형, 구조 후보 5번, seed 859829d4.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
@@ -57,10 +57,7 @@
           사업자등록정보 진위확인
         </button>
         <button class="sub-tab" id="tab-nps" role="tab" aria-selected="false" aria-controls="subpanel-nps" data-subpanel="nps">
-          국민연금 가입 사업장 조회
-        </button>
-        <button class="sub-tab" id="tab-employment-insurance" role="tab" aria-selected="false" aria-controls="subpanel-employment-insurance" data-subpanel="employment-insurance">
-          고용·산재보험 가입 현황
+          4대보험 사업장 조회
         </button>
       </nav>
 
@@ -162,18 +159,26 @@
         <section class="input-station" aria-labelledby="nps-input-title">
           <div class="station-heading">
             <div>
-              <h2 id="nps-input-title">국민연금 가입 사업장 조회</h2>
-              <p class="source-note">출처 : 국민연금공단 API<br>조회 지역 : 광주 동구<br>유의사항 : 사업자등록번호는 앞 6자리만 제공되며, 상세주소는 조회되지 않습니다.<br><span class="source-basis" id="npsBasis"></span></p>
+              <h2 id="nps-input-title">4대보험 사업장 조회</h2>
+              <p class="source-note">출처 : 국민연금공단·근로복지공단 자료<br>조회 지역 : 광주 동구<br>자료 범위 : 국민연금·고용·산재보험 (건강보험 자료는 제공하지 않습니다.)<br>유의사항 : 국민연금 사업자등록번호는 앞 6자리만, 주소는 도로명까지만 제공됩니다.<br><span class="source-basis" id="npsBasis"></span></p>
             </div>
             <span class="count-badge" id="npsCountBadge">0개 사업장</span>
           </div>
           <div class="query-grid" id="npsQueryGrid">
             <label class="field">
-              <span>사업장명</span>
-              <input id="npsNameInput" type="search" autocomplete="off" placeholder="공란이면 동구 전체 조회">
+              <span>사업장명·주소·업종 검색</span>
+              <input id="npsNameInput" type="search" autocomplete="off" placeholder="예: 충장로, 음식점, 광주은행">
             </label>
             <label class="field">
-              <span>업종 대분류</span>
+              <span>자료 구분</span>
+              <select id="npsSourceSelect">
+                <option value="">전체 자료</option>
+                <option value="nps">국민연금 가입 사업장</option>
+                <option value="employment">고용·산재보험 가입 사업장</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>업종 대분류 (국민연금)</span>
               <select id="npsSectionSelect"><option value="">전체</option></select>
             </label>
             <div class="field">
@@ -183,8 +188,28 @@
                 <button class="filter-chip" type="button" data-style="2" aria-pressed="false">개인</button>
                 <button class="filter-chip" type="button" data-style="1" aria-pressed="false">법인</button>
               </div>
-              <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 탈퇴 사업장 포함 조회</label>
+              <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 국민연금 탈퇴 사업장 포함</label>
             </div>
+            <label class="field">
+              <span>보험 구분 (고용·산재)</span>
+              <select id="npsInsuranceTypeSelect">
+                <option value="">전체</option>
+                <option value="0">고용·산재</option>
+                <option value="1">산재</option>
+                <option value="2">고용</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>사업 구분 (고용·산재)</span>
+              <select id="npsInsuranceStatusSelect">
+                <option value="">전체</option>
+                <option value="계속">계속</option>
+                <option value="일괄유기">일괄유기</option>
+                <option value="일괄계속">일괄계속</option>
+                <option value="계속(일괄전환)">계속(일괄전환)</option>
+                <option value="유기">유기</option>
+              </select>
+            </label>
             <div class="field range-field">
               <span>사업장 등록일 <b class="range-readout" id="npsYearReadout">전체</b></span>
               <div class="range-dual" id="npsYearRange">
@@ -219,7 +244,7 @@
         <section class="result-section" id="npsResultSection" hidden aria-labelledby="nps-result-title">
           <div class="result-toolbar">
             <div>
-              <h2 id="nps-result-title">조회 결과</h2>
+              <h2 id="nps-result-title">통합 조회 결과</h2>
               <div class="result-stats" id="npsStatsRow"></div>
             </div>
             <div class="toolbar-actions">
@@ -227,10 +252,13 @@
                 <span>정렬 기준</span>
                 <select id="npsSortSelect">
                   <option value="">조회 순서</option>
-                  <option value="registered-asc">사업자 등록일 오름차순</option>
-                  <option value="registered-desc">사업자 등록일 내림차순</option>
-                  <option value="subscriber-asc">가입자 수 오름차순</option>
-                  <option value="subscriber-desc">가입자 수 내림차순</option>
+                  <option value="name-asc">사업장명 오름차순</option>
+                  <option value="registered-asc">국민연금 등록일 오름차순</option>
+                  <option value="registered-desc">국민연금 등록일 내림차순</option>
+                  <option value="subscriber-asc">국민연금 가입자 수 오름차순</option>
+                  <option value="subscriber-desc">국민연금 가입자 수 내림차순</option>
+                  <option value="employment-desc">고용보험 근로자 많은 순</option>
+                  <option value="industrial-desc">산재보험 근로자 많은 순</option>
                 </select>
               </label>
               <div class="pager" id="npsPager" hidden>
@@ -242,92 +270,9 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>사업장명</th><th>사업자등록번호</th><th>소재지 <span class="hint" tabindex="0" role="note" aria-label="상세주소는 조회되지 않습니다" data-hint="상세주소는 조회되지 않습니다">?</span></th><th>업종 대분류</th><th>사업장 형태</th><th>사업장 등록일</th><th>가입자 수</th><th>가입 상태</th><th>상세</th></tr></thead>
+              <thead><tr><th>#</th><th>사업장명</th><th>자료</th><th>사업자등록번호</th><th>소재지 <span class="hint" tabindex="0" role="note" aria-label="국민연금 상세주소는 조회되지 않습니다" data-hint="국민연금은 상세주소를 제공하지 않습니다">?</span></th><th>업종</th><th>국민연금 가입자</th><th>고용보험</th><th>산재보험</th><th>가입·사업 상태</th><th>상세</th></tr></thead>
               <tbody id="npsResultBody"></tbody>
             </table>
-          </div>
-        </section>
-      </div>
-
-      <div class="sub-panel" id="subpanel-employment-insurance" role="tabpanel" aria-labelledby="tab-employment-insurance" hidden>
-        <section class="input-station" aria-labelledby="employment-insurance-input-title">
-          <div class="station-heading">
-            <div>
-              <h2 id="employment-insurance-input-title">고용·산재보험 가입 사업장 조회</h2>
-              <p class="source-note">출처 : 근로복지공단 고용·산재보험 가입 현황<br>조회 지역 : 광주 동구<br><span class="source-basis" id="employmentInsuranceBasis"></span></p>
-            </div>
-            <span class="count-badge" id="employmentInsuranceCountBadge">0개 사업장</span>
-          </div>
-          <div class="query-grid" id="employmentInsuranceQueryGrid">
-            <label class="field">
-              <span>사업장명·주소·업종 검색</span>
-              <input id="employmentInsuranceSearchInput" type="search" autocomplete="off" placeholder="예: 충장로, 음식점, 광주은행">
-            </label>
-            <label class="field">
-              <span>보험 구분</span>
-              <select id="employmentInsuranceTypeSelect">
-                <option value="">전체</option>
-                <option value="0">고용·산재</option>
-                <option value="1">산재</option>
-                <option value="2">고용</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>사업 구분</span>
-              <select id="employmentInsuranceStatusSelect">
-                <option value="">전체</option>
-                <option value="계속">계속</option>
-                <option value="일괄유기">일괄유기</option>
-                <option value="일괄계속">일괄계속</option>
-                <option value="계속(일괄전환)">계속(일괄전환)</option>
-                <option value="유기">유기</option>
-              </select>
-            </label>
-          </div>
-          <div class="action-row">
-            <button class="button button-primary" id="employmentInsuranceRunBtn" type="button">조회 시작</button>
-            <button class="button button-quiet" id="employmentInsuranceClearBtn" type="button">초기화</button>
-          </div>
-          <p class="query-note" id="employmentInsuranceCriteriaNote" hidden aria-live="polite">조건이 변경되었습니다. 다시 조회 시작을 눌러 결과에 적용하세요.</p>
-          <div class="progress-wrap" id="employmentInsuranceProgressWrap" hidden>
-            <div class="progress-track"><div class="progress-fill" id="employmentInsuranceProgressFill"></div></div>
-            <p id="employmentInsuranceProgressText" aria-live="polite">대기 중</p>
-          </div>
-        </section>
-
-        <section class="result-section" id="employmentInsuranceResultSection" hidden aria-labelledby="employment-insurance-result-title">
-          <div class="result-toolbar">
-            <div>
-              <h2 id="employment-insurance-result-title">조회 결과</h2>
-              <div class="result-stats" id="employmentInsuranceStatsRow"></div>
-            </div>
-            <div class="toolbar-actions">
-              <label class="sort-control" for="employmentInsuranceSortSelect">
-                <span>정렬 기준</span>
-                <select id="employmentInsuranceSortSelect">
-                  <option value="">연번 순서</option>
-                  <option value="name-asc">사업장명 오름차순</option>
-                  <option value="employment-desc">고용 근로자 많은 순</option>
-                  <option value="industrial-desc">산재 근로자 많은 순</option>
-                </select>
-              </label>
-              <div class="pager" id="employmentInsurancePager" hidden>
-                <button class="button button-secondary" id="employmentInsurancePrevBtn" type="button">이전</button>
-                <span id="employmentInsurancePageLabel" class="mono">1</span>
-                <button class="button button-secondary" id="employmentInsuranceNextBtn" type="button">다음</button>
-              </div>
-              <button class="button button-export" id="employmentInsuranceDownloadBtn" type="button" disabled>XLSX 다운로드</button>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>#</th><th>사업장명</th><th>보험 구분</th><th>소재지</th><th>업종</th><th>고용 인원</th><th>산재 인원</th><th>고용 사업구분</th><th>산재 사업구분</th><th>성립일자<br>(고용·산재)</th><th>사업자등록번호</th><th>사업장관리번호</th></tr></thead>
-              <tbody id="employmentInsuranceResultBody"></tbody>
-            </table>
-          </div>
-          <div class="data-note">
-            <strong>자료 해석 유의사항</strong>
-            <p>원본의 보험구분 0은 고용·산재, 1은 산재, 2는 고용 가입 사업장입니다. 성립일자와 상시근로자 수가 없는 보험은 하이픈으로 표시합니다. 이 화면은 수동 갱신한 연말 기준 스냅샷이며 실시간 조회가 아닙니다.</p>
           </div>
         </section>
       </div>
