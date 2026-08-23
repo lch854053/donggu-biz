@@ -65,15 +65,21 @@ test("merges paired employment and industrial management numbers", () => {
   assert.equal(merged.industrialWorkplaceManagementNumber, "12345678906");
 });
 
-test("keeps a different management base as a separate workplace", () => {
+test("groups all insurance records under one business number", () => {
   const bankRows = snapshot.items.filter((row) => row.businessRegistrationNumber === "4088608817");
   const merged = mergeEmploymentInsuranceRows(bankRows);
-  const paired = merged.find((row) => row.insuranceType === "0" && row.employmentWorkerCount === 1764);
-  const separate = merged.find((row) => row.workplaceManagementNumber === "92110258797");
+  const [group] = merged;
 
-  assert.equal(merged.length, 2);
-  assert.equal(paired.industrialWorkerCount, 1762);
-  assert.deepEqual(paired.workplaceManagementNumbers, ["40881001820", "40881001826"]);
-  assert.equal(separate.insuranceType, "1");
-  assert.equal(separate.industrialWorkerCount, 1765);
+  assert.equal(merged.length, 1);
+  assert.equal(group.sourceRows.length, 3);
+  assert.deepEqual(group.workplaceManagementNumbers, ["40881001820", "40881001826", "92110258797"]);
+  assert.deepEqual(group.sourceRows.filter((row) => row.insuranceType === "1").map((row) => row.industrialWorkerCount), [1762, 1765]);
+  assert.equal(group.sourceRows.find((row) => row.workplaceManagementNumber === "92110258797").industrialWorkerCount, 1765);
+});
+
+test("grouping preserves every raw source id", () => {
+  const grouped = mergeEmploymentInsuranceRows(snapshot.items);
+  const sourceIds = new Set(grouped.flatMap((row) => row.sourceIds || [row.id]));
+  assert.equal(grouped.length, new Set(snapshot.items.map((row) => row.businessRegistrationNumber || `row:${row.id}`)).size);
+  assert.equal(sourceIds.size, snapshot.items.length);
 });

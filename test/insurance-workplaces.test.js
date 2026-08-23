@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { mergeEmploymentInsuranceRows } from "../lib/employment-insurance.js";
 import {
   combineInsuranceWorkplaces,
   matchesInsuranceWorkplaceCriteria,
@@ -75,6 +76,14 @@ test("employment-only rows remain visible in the default combined view", () => {
   assert.equal(matchesInsuranceWorkplaceCriteria(row, {}), true);
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { source: "nps" }), false);
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { source: "employment" }), true);
+});
+
+test("grouped insurance rows remain searchable by every source record", () => {
+  const [group] = mergeEmploymentInsuranceRows(employmentSnapshot.items.filter((row) => row.businessRegistrationNumber === "4088608817"));
+  const [row] = combineInsuranceWorkplaces([], [group]);
+
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { insuranceType: "1" }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { query: "92110258797" }), true);
 });
 
 test("sorts combined rows by either insurance source without mutating input", () => {
