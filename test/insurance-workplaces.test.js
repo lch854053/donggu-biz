@@ -134,12 +134,19 @@ test("current snapshots keep every source record in the integrated result", () =
 
 test("the insurance lookup uses one renamed tab", () => {
   assert.match(indexHtml, /4대보험 사업장 조회/);
+  assert.match(indexHtml, /<h2 id="nps-result-title">조회 결과<\/h2>/);
   assert.match(indexHtml, /출처 : 국민연금공단·근로복지공단 자료 \(연 1회 갱신\)/);
   assert.match(indexHtml, /자료 범위 : 국민연금·고용·산재보험 \(건강보험 자료는 제공하지 않습니다\.\)/);
   assert.doesNotMatch(indexHtml, /npsBasis/);
   assert.doesNotMatch(indexHtml, /고용·산재보험 가입 현황/);
   assert.doesNotMatch(indexHtml, /tab-employment-insurance|subpanel-employment-insurance/);
+  assert.doesNotMatch(indexHtml, /npsStatsRow|class="hint"/);
   assert.match(appJs, /const managementGroups = new Map\(\)/);
   assert.match(appJs, /class="insurance-workplace-group"/);
   assert.match(appJs, /사업장관리번호 <span class="insurance-workplace-number mono"/);
+  assert.match(appJs, /employment\?\.businessRegistrationNumber/);
+  assert.match(appJs, /insurancePostalCodeValues\(employment\)/);
+  assert.match(appJs, /국민연금 월별 추이/);
+  assert.match(appJs, /<h3>고용·산재보험 정보/);
+  assert.doesNotMatch(appJs, /통합 사업장/);
 });

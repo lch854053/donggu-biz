@@ -968,6 +968,18 @@ function insuranceManagementNumbers(row, kind) {
     .filter(Boolean))];
 }
 
+function insuranceAddressValues(row) {
+  return [...new Set(insuranceSourceRows(row)
+    .map((sourceRow) => displayAddress(sourceRow.address))
+    .filter(Boolean))];
+}
+
+function insurancePostalCodeValues(row) {
+  return [...new Set(insuranceSourceRows(row)
+    .map((sourceRow) => String(sourceRow.postalCode ?? "").trim())
+    .filter(Boolean))];
+}
+
 function insuranceWorkerCell(row, kind) {
   const employment = row.employmentInsurance;
   if (!employment) return '<span class="muted">-</span>';
@@ -1045,20 +1057,6 @@ function renderNpsTable() {
   }).join("");
 }
 
-function renderNpsStats() {
-  const rows = filteredNpsRows();
-  const nps = rows.filter((row) => row.nps).length;
-  const employment = rows.filter((row) => insuranceCoverageRows(row.employmentInsurance, "employment").length).length;
-  const industrial = rows.filter((row) => insuranceCoverageRows(row.employmentInsurance, "industrial").length).length;
-  const linked = rows.filter((row) => row.nps && row.employmentInsurance).length;
-  $("npsStatsRow").innerHTML = `
-    <span class="stat-item">사업장<strong>${rows.length.toLocaleString("ko-KR")}</strong></span>
-    <span class="stat-item">국민연금<strong>${nps.toLocaleString("ko-KR")}</strong></span>
-    <span class="stat-item">고용보험<strong>${employment.toLocaleString("ko-KR")}</strong></span>
-    <span class="stat-item">산재보험<strong>${industrial.toLocaleString("ko-KR")}</strong></span>
-    <span class="stat-item">연결 행<strong>${linked.toLocaleString("ko-KR")}</strong></span>`;
-}
-
 function renderNpsPager() {
   const lastPage = Math.max(1, Math.ceil(filteredNpsRows().length / NPS_PAGE_SIZE));
   $("npsPager").hidden = lastPage <= 1;
@@ -1072,7 +1070,6 @@ function renderNps() {
   $("npsCountBadge").textContent = `${shown.toLocaleString("ko-KR")}개 사업장`;
   $("npsDownloadBtn").disabled = !shown;
   renderNpsTable();
-  renderNpsStats();
   renderNpsPager();
 }
 
@@ -1170,8 +1167,8 @@ async function runNpsLookup() {
     renderNps();
     renderNpsCriteriaState();
     $("npsProgressFill").style.width = "100%";
-    $("npsProgressText").textContent = `통합 사업장 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`;
-    showToast(`통합 사업장 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`);
+    $("npsProgressText").textContent = `사업장 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`;
+    showToast(`사업장 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`);
   } catch (error) {
     $("npsProgressFill").style.width = "0%";
     $("npsProgressText").textContent = error.message;
@@ -1198,7 +1195,7 @@ function employmentInsuranceCountLabel(value) {
   return typeof value === "number" ? `${value.toLocaleString("ko-KR")}명` : "-";
 }
 
-function employmentInsuranceDetailHtml(row) {
+function employmentInsuranceDetailHtml(row, { sharedWithNps = false } = {}) {
   if (!row) return "";
   const detailRow = (label, value) => (value == null || value === "" ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
   const sourceRows = insuranceSourceRows(row);
@@ -1214,10 +1211,8 @@ function employmentInsuranceDetailHtml(row) {
     const groupedRow = { sourceRows: rows };
     const details = [];
     const addresses = [...new Set(rows.map((sourceRow) => sourceRow.address).filter(Boolean))];
-    const postalCodes = [...new Set(rows.map((sourceRow) => sourceRow.postalCode).filter(Boolean))];
     const typeNames = [...new Set(rows.map((sourceRow) => sourceRow.insuranceTypeName || insuranceTypeName(sourceRow.insuranceType)).filter(Boolean))];
-    addresses.forEach((address) => details.push(detailRow("사업장 주소", escapeHtml(address))));
-    postalCodes.forEach((postalCode) => details.push(detailRow("우편번호", escapeHtml(postalCode))));
+    if (!sharedWithNps) addresses.forEach((address) => details.push(detailRow("사업장 주소", escapeHtml(address))));
     if (typeNames.length) details.push(detailRow("보험 구분", escapeHtml(typeNames.join(" · "))));
 
     for (const kind of ["employment", "industrial"]) {
@@ -1241,11 +1236,12 @@ function employmentInsuranceDetailHtml(row) {
     </section>`;
   }).join("");
 
-  return `<section class="detail-section">
-    <h3>고용·산재보험 자료 ${employmentInsuranceTypeBadge(row)}</h3>
-    <dl class="insurance-business-summary">
+  const businessSummary = sharedWithNps ? "" : `<dl class="insurance-business-summary">
       ${detailRow("사업자등록번호", escapeHtml(row.businessRegistrationNumber || "-"))}
-    </dl>
+    </dl>`;
+  return `<section class="detail-section">
+    <h3>고용·산재보험 정보 ${employmentInsuranceTypeBadge(row)}</h3>
+    ${businessSummary}
     <div class="insurance-workplace-groups">${managementSections}</div>
   </section>`;
 }
@@ -1272,7 +1268,11 @@ async function showNpsDetail(rowKey) {
     return;
   }
 
-  npsDetail = { key: rowKey, seq, html: `${employmentInsuranceDetailHtml(employment)}<p>국민연금 사업장 상세 정보를 불러오는 중입니다.</p>` };
+  const npsLoading = `<section class="detail-section">
+    <h3>국민연금 상세 정보</h3>
+    <p>국민연금 사업장 상세 정보를 불러오는 중입니다.</p>
+  </section>`;
+  npsDetail = { key: rowKey, seq, html: `${npsLoading}${employmentInsuranceDetailHtml(employment, { sharedWithNps: true })}` };
   renderNpsTable();
 
   let base;
@@ -1282,10 +1282,18 @@ async function showNpsDetail(rowKey) {
     if (!detail) throw new Error("사업장 상세 정보를 찾을 수 없습니다.");
     const row = (label, value) => (value == null ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
     const people = (value) => (value == null ? null : `${value.toLocaleString("ko-KR")}명`);
-    base = `<p class="selection-name">${escapeHtml(detail.name)}</p>
+    const enrichedAddresses = insuranceAddressValues(employment);
+    const enrichedPostalCodes = insurancePostalCodeValues(employment);
+    const businessNumber = employment?.businessRegistrationNumber
+      || (detail.bizNoPrefix ? `${detail.bizNoPrefix}-****` : "-");
+    const address = enrichedAddresses.join(" / ") || displayAddress(detail.address) || "-";
+    base = `<section class="detail-section">
+      <h3>국민연금 상세 정보</h3>
+      <p class="selection-name">${escapeHtml(detail.name)}</p>
       <dl>
-        ${row("사업자등록번호", escapeHtml(detail.bizNoPrefix ? `${detail.bizNoPrefix}-****` : "-"))}
-        ${row("소재지", escapeHtml(displayAddress(detail.address) || "-"))}
+        ${row("사업자등록번호", escapeHtml(businessNumber))}
+        ${row("소재지", escapeHtml(address))}
+        ${enrichedPostalCodes.length ? row("우편번호", escapeHtml(enrichedPostalCodes.join(" / "))) : ""}
         ${row("업종 대분류", escapeHtml(detail.sectionName))}
         ${row("사업장 형태", escapeHtml(detail.styleName))}
         ${row("가입 상태", escapeHtml(detail.statusName))}
@@ -1295,25 +1303,34 @@ async function showNpsDetail(rowKey) {
         ${row("월별 신규 취득자", people(detail.newSubscriberCount))}
         ${row("월별 상실 가입자", people(detail.lostSubscriberCount))}
         ${row("당월 고지금액", detail.monthlyNoticeAmount == null ? "-" : `${detail.monthlyNoticeAmount.toLocaleString("ko-KR")}원`)}
-      </dl>`;
+      </dl>
+    </section>`;
   } catch (error) {
     if (npsDetail.key !== rowKey) return;
-    npsDetail = { key: rowKey, seq, html: `${employmentInsuranceDetailHtml(employment)}<p class="summary-empty">국민연금 상세 정보를 불러오지 못했습니다. ${escapeHtml(error.message)}</p>` };
+    const npsError = `<section class="detail-section">
+      <h3>국민연금 상세 정보</h3>
+      <p class="summary-empty">국민연금 상세 정보를 불러오지 못했습니다. ${escapeHtml(error.message)}</p>
+    </section>`;
+    npsDetail = { key: rowKey, seq, html: `${npsError}${employmentInsuranceDetailHtml(employment, { sharedWithNps: true })}` };
     renderNpsTable();
     return;
   }
   if (npsDetail.key !== rowKey) return;
 
   const historyRows = (nps.historyRows ?? []).filter((row) => row.seq && row.month);
-  const pending = historyRows.length >= 2 ? '<p class="summary-empty">월별 추이를 불러오는 중입니다.</p>' : "";
-  npsDetail = { key: rowKey, seq, html: base + employmentInsuranceDetailHtml(employment) + pending };
+  const pending = historyRows.length >= 2 ? `<section class="detail-section nps-history-section">
+    <h3 class="chart-heading">국민연금 월별 추이</h3>
+    <p class="summary-empty">국민연금 월별 추이를 불러오는 중입니다.</p>
+  </section>` : "";
+  const employmentHtml = employmentInsuranceDetailHtml(employment, { sharedWithNps: true });
+  npsDetail = { key: rowKey, seq, html: base + pending + employmentHtml };
   renderNpsTable();
   document.querySelector("#npsResultBody .detail-row")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   if (!pending) return;
 
   const charts = await npsHistoryHtml(historyRows);
   if (npsDetail.key !== rowKey) return;
-  npsDetail = { key: rowKey, seq, html: base + employmentInsuranceDetailHtml(employment) + charts };
+  npsDetail = { key: rowKey, seq, html: base + charts + employmentHtml };
   renderNpsTable();
 }
 
@@ -1324,7 +1341,8 @@ async function npsHistoryHtml(historyRows) {
     const { series } = await fetchNps({ action: "history", seqs });
     const points = (series || []).filter((point) => point.month).sort((a, b) => a.month.localeCompare(b.month));
     if (points.length < 2) return "";
-    return `<h3 class="chart-heading">월별 추이 <span class="chart-note">${points.length}개월</span></h3>
+    return `<section class="detail-section nps-history-section">
+      <h3 class="chart-heading">국민연금 월별 추이 <span class="chart-note">${points.length}개월</span></h3>
       <div class="chart-grid">
         ${trendChart("가입자 수", points, [{ key: "subscriberCount", label: "가입자 수", color: "#3987e5" }], "line", (value) => `${value.toLocaleString("ko-KR")}명`)}
         ${trendChart("당월 고지금액", points, [{ key: "monthlyNoticeAmount", label: "당월 고지금액", color: "#3987e5" }], "line", (value) => `${Math.round(value / 10000).toLocaleString("ko-KR")}만원`)}
@@ -1332,9 +1350,13 @@ async function npsHistoryHtml(historyRows) {
           { key: "newSubscriberCount", label: "신규 취득", color: "#199e70" },
           { key: "lostSubscriberCount", label: "상실", color: "#d95926" }
         ], "bar", (value) => `${value.toLocaleString("ko-KR")}명`)}
-      </div>`;
+      </div>
+    </section>`;
   } catch (error) {
-    return `<p class="summary-empty">월별 추이를 불러오지 못했습니다. ${escapeHtml(error.message)}</p>`;
+    return `<section class="detail-section nps-history-section">
+      <h3 class="chart-heading">국민연금 월별 추이</h3>
+      <p class="summary-empty">국민연금 월별 추이를 불러오지 못했습니다. ${escapeHtml(error.message)}</p>
+    </section>`;
   }
 }
 
