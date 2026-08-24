@@ -701,9 +701,7 @@ function buildZoneLayer() {
 
 function syncZoneTooltips() {
   zoneLeafletByNo.forEach((layer) => {
-    if (selectedZoneNo) {
-      layer.unbindTooltip();
-    } else if (!layer.getTooltip()) {
+    if (!layer.getTooltip()) {
       layer.bindTooltip(layer.feature.properties.name, { sticky: true, direction: "top" });
     }
   });
