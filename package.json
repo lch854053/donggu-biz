@@ -6,7 +6,6 @@
   "scripts": {
     "test": "node --test",
     "update-stores": "node scripts/update-stores.mjs",
-    "update-medical-stores": "node scripts/import-medical-stores.mjs",
     "update-employment-insurance": "node scripts/import-employment-insurance.mjs",
     "enrich-insurance-admin-dongs": "node scripts/enrich-insurance-admin-dongs.mjs",
     "update-zones": "node scripts/update-mainbiz-zones.mjs",

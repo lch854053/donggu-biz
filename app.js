@@ -497,7 +497,6 @@ let marketInitialized = false;
 let allStores = [];
 let visibleStores = [];
 let marketMeta = null;
-let medicalMeta = null;
 let marketMap;
 let markerCluster;
 let storeMarkers = [];
@@ -542,11 +541,10 @@ async function initializeMarket() {
   }
   marketInitialized = true;
   try {
-    const [response, zoneResponse, manualZoneResponse, medicalResponse] = await Promise.all([
+    const [response, zoneResponse, manualZoneResponse] = await Promise.all([
       fetch("data/stores_donggu.json"),
       fetch("data/mainbiz_zones_donggu.geojson").catch(() => null),
-      fetch("data/manual_mainbiz_zones_donggu.geojson").catch(() => null),
-      fetch("data/medical_stores_donggu.json").catch(() => null)
+      fetch("data/manual_mainbiz_zones_donggu.geojson").catch(() => null)
     ]);
     if (!response.ok) throw new Error(`상가정보 파일을 불러오지 못했습니다. HTTP ${response.status}`);
     const payload = await response.json();
@@ -566,19 +564,9 @@ async function initializeMarket() {
         console.error("[manual-mainbiz-zones] invalid JSON", error);
       }
     }
-    let medicalPayload = { stores: [], meta: {} };
-    if (medicalResponse?.ok) {
-      try {
-        medicalPayload = await medicalResponse.json();
-      } catch (error) {
-        console.error("[medical-stores] invalid JSON", error);
-      }
-    }
     const baseStores = Array.isArray(payload.stores) ? payload.stores : [];
     marketMeta = payload.meta || {};
-    const medicalStores = Array.isArray(medicalPayload.stores) ? medicalPayload.stores : [];
-    allStores = [...baseStores, ...medicalStores];
-    medicalMeta = medicalPayload.meta || {};
+    allStores = baseStores;
     const visibleVworldPayload = { features: filterVworldZones(zonePayload.features) };
     mainBizZones = mergeZoneFeatures(visibleVworldPayload, manualZonePayload);
     if (!allStores.length) throw new Error("상가정보 파일에 표시할 업소가 없습니다.");
@@ -609,14 +597,12 @@ function renderMarketMeta() {
   const generated = marketMeta.generatedAt
     ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(marketMeta.generatedAt))
     : "미확인";
-  const medicalUpdated = String(medicalMeta?.sourceUpdatedAt || "").replace(/-/g, ".");
-  const sources = [marketMeta?.source, medicalMeta?.source].filter(Boolean).join(" · ");
+  const source = marketMeta?.source || "상가정보 API";
   const dates = [
     month ? `상가정보 기준월 ${month}` : "",
-    `상가정보 갱신일 ${generated}`,
-    medicalUpdated ? `의료기관 원본 갱신 ${medicalUpdated}` : ""
+    `상가정보 갱신일 ${generated}`
   ].filter(Boolean).join(" · ");
-  $("marketMeta").textContent = `${sources || "상가정보 API"} · ${dates} · 통합 ${allStores.length.toLocaleString("ko-KR")}개`;
+  $("marketMeta").textContent = `${source} · ${dates} · 전체 ${allStores.length.toLocaleString("ko-KR")}개`;
 }
 
 function initializeMap() {
