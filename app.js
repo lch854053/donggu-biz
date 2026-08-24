@@ -3,7 +3,8 @@ import {
   buildLocationSelection,
   countBy,
   filterStores,
-  pointInGeometry
+  pointInGeometry,
+  sortStores
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
 import { DONGGU_ADMIN_DONGS } from "./lib/admin-dong.js";
@@ -797,7 +798,8 @@ function marketTableCriteriaLabel() {
   const values = [
     $("marketTableDongFilter").selectedOptions[0]?.textContent,
     $("marketTableIndustryFilter").selectedOptions[0]?.textContent,
-    $("marketTableZoneFilter").selectedOptions[0]?.textContent
+    $("marketTableZoneFilter").selectedOptions[0]?.textContent,
+    $("marketTableSortSelect").selectedOptions[0]?.textContent
   ].filter((value) => value && !value.startsWith("전체"));
   return values.length ? values.join(" · ") : "전체 업소";
 }
@@ -818,8 +820,7 @@ function renderMarketTable() {
     <td>${escapeHtml(store.adminDong || "-")}</td>
     <td>${escapeHtml(marketTableZoneNames(store) || "-")}</td>
     <td>${escapeHtml(store.address || "-")}</td>
-    <td>${escapeHtml(store.lotAddress || "-")}</td>
-  </tr>`).join("") : '<tr class="empty-row"><td colspan="9">조건에 맞는 업소가 없습니다.</td></tr>';
+  </tr>`).join("") : '<tr class="empty-row"><td colspan="8">조건에 맞는 업소가 없습니다.</td></tr>';
   $("marketTablePageLabel").textContent = `${marketTablePageNo} / ${lastPage}`;
   $("marketTablePrevBtn").disabled = marketTablePageNo <= 1;
   $("marketTableNextBtn").disabled = marketTablePageNo >= lastPage;
@@ -832,9 +833,10 @@ function runMarketTableSearch() {
     showToast("상가정보를 불러온 뒤 다시 조회해 주세요.");
     return;
   }
-  marketTableRows = filterStores(activeMarketStores(), marketTableCriteria())
-    .sort((left, right) => String(left.adminDong || "").localeCompare(String(right.adminDong || ""), "ko")
-      || String(left.name || "").localeCompare(String(right.name || ""), "ko"));
+  marketTableRows = sortStores(
+    filterStores(activeMarketStores(), marketTableCriteria()),
+    $("marketTableSortSelect").value
+  );
   marketTablePageNo = 1;
   marketTableAppliedLabel = marketTableCriteriaLabel();
   renderMarketTable();
@@ -844,6 +846,7 @@ function clearMarketTableSearch() {
   $("marketTableDongFilter").value = "";
   $("marketTableIndustryFilter").value = "";
   $("marketTableZoneFilter").value = "";
+  $("marketTableSortSelect").value = "name-asc";
   marketTableRows = [];
   marketTablePageNo = 1;
   marketTableAppliedLabel = "";
@@ -958,7 +961,7 @@ $("marketTableNextBtn").addEventListener("click", () => {
 $("marketTableDownloadBtn").addEventListener("click", () => {
   if (!marketTableRows.length) return;
   downloadXlsx(
-    ["순번", "업소명", "지점명", "업종 대분류", "업종 중분류", "업종 소분류", "행정동", "주요상권", "도로명주소", "지번주소"],
+    ["순번", "업소명", "지점명", "업종 대분류", "업종 중분류", "업종 소분류", "행정동", "주요상권", "도로명주소"],
     marketTableRows.map((store, index) => [
       index + 1,
       store.name,
@@ -968,8 +971,7 @@ $("marketTableDownloadBtn").addEventListener("click", () => {
       store.smallName,
       store.adminDong,
       marketTableZoneNames(store),
-      store.address,
-      store.lotAddress
+      store.address
     ]),
     `소상공인조회_${new Date().toISOString().slice(0, 10)}.xlsx`,
     "업소"

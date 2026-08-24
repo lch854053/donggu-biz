@@ -8,6 +8,7 @@ import {
   filterStores,
   geometryAreaSqm,
   pointInGeometry,
+  sortStores,
   summarizeStores,
   toLegacyPnu
 } from "../lib/market.js";
@@ -82,6 +83,14 @@ test("filters stores by a selected commercial-zone geometry", () => {
   const geometry = { type: "Polygon", coordinates: [[[126.91, 35.14], [126.93, 35.14], [126.93, 35.16], [126.91, 35.16], [126.91, 35.14]]] };
   assert.deepEqual(filterStores(stores, { zoneGeometry: geometry }).map((store) => store.name), ["동명카페", "충장서점"]);
   assert.deepEqual(filterStores(stores, { adminDong: "동명동", largeCode: "I2", zoneGeometry: geometry }).map((store) => store.name), ["동명카페"]);
+});
+
+test("sorts stores by name or large industry without mutating the source", () => {
+  assert.deepEqual(sortStores(stores, "name-asc").map((store) => store.name), ["동명카페", "충장서점"]);
+  assert.deepEqual(sortStores(stores, "name-desc").map((store) => store.name), ["충장서점", "동명카페"]);
+  assert.deepEqual(sortStores(stores, "industry-asc").map((store) => store.name), ["충장서점", "동명카페"]);
+  assert.deepEqual(sortStores(stores, "industry-desc").map((store) => store.name), ["동명카페", "충장서점"]);
+  assert.deepEqual(stores.map((store) => store.name), ["동명카페", "충장서점"]);
 });
 
 test("rejects invalid or sharply reduced zone snapshots", () => {

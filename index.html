@@ -329,6 +329,15 @@
               <span>주요상권</span>
               <select id="marketTableZoneFilter"><option value="">전체 주요상권</option></select>
             </label>
+            <label class="field">
+              <span>정렬 기준</span>
+              <select id="marketTableSortSelect">
+                <option value="name-asc">업소명 오름차순</option>
+                <option value="name-desc">업소명 내림차순</option>
+                <option value="industry-asc">업종 대분류 오름차순</option>
+                <option value="industry-desc">업종 대분류 내림차순</option>
+              </select>
+            </label>
           </div>
           <div class="action-row">
             <button class="button button-primary" id="marketTableRunBtn" type="button">조회</button>
@@ -351,7 +360,7 @@
           </div>
           <div class="table-wrap">
             <table class="market-store-table">
-              <thead><tr><th>#</th><th>업소명</th><th>업종 대분류</th><th>업종 중분류</th><th>업종 소분류</th><th>행정동</th><th>주요상권</th><th>도로명주소</th><th>지번주소</th></tr></thead>
+              <thead><tr><th>#</th><th>업소명</th><th>업종 대분류</th><th>업종 중분류</th><th>업종 소분류</th><th>행정동</th><th>주요상권</th><th>도로명주소</th></tr></thead>
               <tbody id="marketTableBody"></tbody>
             </table>
           </div>
