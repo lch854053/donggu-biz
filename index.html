@@ -161,7 +161,7 @@
           <div class="station-heading">
             <div>
               <h2 id="nps-input-title">4대보험 사업장 조회</h2>
-              <p class="source-note">출처 : 국민연금공단·근로복지공단 자료 (연 1회 갱신)<br>조회 지역 : 광주 동구<br>자료 범위 : 국민연금·고용·산재보험 (건강보험 자료는 제공하지 않습니다.)<span class="field-note is-warn">국민연금만 표시되거나 고용·산재만 표시되거나 가입 데이터가 조회되지 않는 것은 미가입을 뜻하지 않습니다. 해당 기관 자료에 포함되지 않은 경우일 수 있습니다.</span></p>
+              <p class="source-note">출처 : 국민연금공단·근로복지공단 자료 (연 1회 갱신)<br>조회 지역 : 광주 동구<br>자료 범위 : 국민연금·고용·산재보험 (건강보험 자료는 제공하지 않습니다.)<br>행정동 : 도로명주소 검색 API로 확정된 주소만 표시<span class="field-note is-warn">국민연금만 표시되거나 고용·산재만 표시되거나 가입 데이터가 조회되지 않는 것은 미가입을 뜻하지 않습니다. 주소가 모호한 사업장은 행정동 미확인으로 남습니다.</span></p>
             </div>
             <span class="count-badge" id="npsCountBadge">0개 사업장</span>
           </div>
@@ -174,6 +174,10 @@
               <span>사업자등록번호 검색</span>
               <input id="npsBusinessNumberInput" type="search" inputmode="numeric" autocomplete="off" aria-describedby="npsBusinessNumberNote" placeholder="숫자 6자리 이상">
               <small class="field-note" id="npsBusinessNumberNote">6자리 이상 입력</small>
+            </label>
+            <label class="field">
+              <span>행정동</span>
+              <select id="npsAdminDongSelect"><option value="">전체 행정동</option></select>
             </label>
             <label class="field">
               <span>업종 대분류</span>
@@ -221,7 +225,7 @@
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>사업장명</th><th>자료</th><th>사업자등록번호</th><th>소재지</th><th>업종</th><th>국민연금 가입자</th><th>고용보험</th><th>산재보험</th><th>가입·사업 상태</th><th>상세</th></tr></thead>
+              <thead><tr><th>#</th><th>사업장명</th><th>자료</th><th>사업자등록번호</th><th>소재지</th><th>행정동</th><th>업종</th><th>국민연금 가입자</th><th>고용보험</th><th>산재보험</th><th>가입·사업 상태</th><th>상세</th></tr></thead>
               <tbody id="npsResultBody"></tbody>
             </table>
           </div>
@@ -237,8 +241,14 @@
         </div>
       </div>
 
+      <nav class="sub-tabs market-view-tabs" aria-label="소상공인 조회 방식" role="tablist">
+        <button class="sub-tab market-view-tab is-active" id="market-view-tab-map" role="tab" aria-selected="true" aria-controls="market-view-map" data-market-view="map">지도로 조회</button>
+        <button class="sub-tab market-view-tab" id="market-view-tab-table" role="tab" aria-selected="false" aria-controls="market-view-table" data-market-view="table">표로 조회</button>
+      </nav>
+
       <div class="market-state" id="marketState" role="status">상가정보 파일을 읽고 있습니다.</div>
 
+      <div class="market-view-panel" id="market-view-map" role="tabpanel" aria-labelledby="market-view-tab-map">
       <div class="market-workspace" id="marketWorkspace" hidden>
         <aside class="filter-rail" aria-labelledby="market-filter-title">
           <div class="rail-heading">
@@ -294,6 +304,58 @@
           </aside>
         </section>
 
+      </div>
+      </div>
+
+      <div class="market-view-panel" id="market-view-table" role="tabpanel" aria-labelledby="market-view-tab-table" hidden>
+        <section class="input-station" aria-labelledby="market-table-filter-title">
+          <div class="station-heading">
+            <div>
+              <h2 id="market-table-filter-title">소상공인 조건검색</h2>
+              <p>지도와 동일한 상가업소·의료기관 통합 자료를 조회합니다.</p>
+            </div>
+            <span class="count-badge" id="marketTableCount">0개 업소</span>
+          </div>
+          <div class="query-grid market-table-query">
+            <label class="field">
+              <span>행정동</span>
+              <select id="marketTableDongFilter"><option value="">전체 행정동</option></select>
+            </label>
+            <label class="field">
+              <span>업종 대분류</span>
+              <select id="marketTableIndustryFilter"><option value="">전체 업종</option></select>
+            </label>
+            <label class="field">
+              <span>주요상권</span>
+              <select id="marketTableZoneFilter"><option value="">전체 주요상권</option></select>
+            </label>
+          </div>
+          <div class="action-row">
+            <button class="button button-primary" id="marketTableRunBtn" type="button">조회</button>
+            <button class="button button-quiet" id="marketTableClearBtn" type="button">초기화</button>
+            <button class="button button-export" id="marketTableDownloadBtn" type="button" disabled>XLSX 다운로드</button>
+          </div>
+        </section>
+
+        <section class="result-section market-table-result" id="marketTableResult" aria-labelledby="market-table-result-title" hidden>
+          <div class="result-toolbar">
+            <div>
+              <h2 id="market-table-result-title">조회 결과</h2>
+              <p class="source-note" id="marketTableCriteria"></p>
+            </div>
+            <div class="pager" id="marketTablePager">
+              <button class="button button-secondary" id="marketTablePrevBtn" type="button">이전</button>
+              <span id="marketTablePageLabel" class="mono">1 / 1</span>
+              <button class="button button-secondary" id="marketTableNextBtn" type="button">다음</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="market-store-table">
+              <thead><tr><th>#</th><th>업소명</th><th>업종 대분류</th><th>업종 중분류</th><th>업종 소분류</th><th>행정동</th><th>주요상권</th><th>도로명주소</th><th>지번주소</th></tr></thead>
+              <tbody id="marketTableBody"></tbody>
+            </table>
+          </div>
+        </section>
       </div>
     </section>
   </main>

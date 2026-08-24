@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { hydrateSnapshotWorkplace } from "../lib/nps.js";
 import { mergeEmploymentInsuranceRows } from "../lib/employment-insurance.js";
+import { DONGGU_ADMIN_DONGS } from "../lib/admin-dong.js";
 import {
   combineInsuranceWorkplaces,
+  insuranceAdminDongs,
   insuranceIndustrySectionCodes,
   matchesInsuranceWorkplaceCriteria,
   sortInsuranceWorkplaces
@@ -22,6 +24,7 @@ const nps = {
   name: "광주동구청",
   bizNoPrefix: "408815",
   address: "광주광역시 동구 서남로",
+  adminDong: "서남동",
   statusCode: "1",
   styleCode: "1",
   sectionCode: "N",
@@ -36,6 +39,7 @@ const employment = {
   insuranceTypeName: "고용·산재",
   name: "광주동구청",
   address: "광주 동구 서남로 1",
+  adminDong: "서남동",
   businessRegistrationNumber: "4088152345",
   employmentWorkerCount: 8,
   industrialWorkerCount: 7,
@@ -72,6 +76,9 @@ test("combined criteria search both data sources and insurance filters", () => {
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { insuranceStatus: "계속" }), true);
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { source: "employment", subscriberMin: 20 }), false);
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { source: "nps", sectionCode: "N" }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { adminDong: "서남동" }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { adminDong: "충장동" }), false);
+  assert.deepEqual([...insuranceAdminDongs(row)], ["서남동"]);
 });
 
 test("business registration search accepts a six-digit prefix or full number", () => {
@@ -230,6 +237,20 @@ test("current snapshots keep every source record in the integrated result", () =
   assert.ok(rows.some((row) => row.source === "employment"));
 });
 
+test("current snapshots expose only confirmed Dong-gu administrative dongs", () => {
+  const rows = combineInsuranceWorkplaces(
+    npsSnapshot.items.map(hydrateSnapshotWorkplace),
+    mergeEmploymentInsuranceRows(employmentSnapshot.items)
+  );
+  const matched = rows.filter((row) => insuranceAdminDongs(row).size);
+  const dongs = new Set(matched.flatMap((row) => [...insuranceAdminDongs(row)]));
+
+  assert.equal(rows.length, 7352);
+  assert.equal(matched.length, 6553);
+  assert.deepEqual([...dongs].sort(), [...DONGGU_ADMIN_DONGS].sort());
+  assert.ok(rows.some((row) => matchesInsuranceWorkplaceCriteria(row, { adminDong: "충장동" })));
+});
+
 test("the insurance lookup uses one renamed tab", () => {
   assert.match(indexHtml, /4대보험 사업장 조회/);
   assert.match(indexHtml, /<h2 id="nps-result-title">조회 결과<\/h2>/);
@@ -241,7 +262,9 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(indexHtml, /<span>업종 대분류<\/span>/);
   assert.match(indexHtml, /사업자등록번호 검색/);
   assert.match(indexHtml, /id="npsBusinessNumberInput"/);
+  assert.match(indexHtml, /id="npsAdminDongSelect"/);
   assert.match(indexHtml, /6자리 이상 입력/);
+  assert.match(indexHtml, /도로명주소 검색 API로 확정된 주소만 표시/);
   assert.match(indexHtml, /국민연금만 표시되거나 고용·산재만 표시되거나 가입 데이터가 조회되지 않는 것은 미가입을 뜻하지 않습니다/);
   assert.doesNotMatch(indexHtml, /자료 구분|사업장 형태|사업 구분 \(고용·산재\)/);
   assert.doesNotMatch(indexHtml, /업종 대분류 \(국민연금\)/);
@@ -256,6 +279,8 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(appJs, /사업자 상태 확인/);
   assert.match(appJs, /callBusinessProxy\(\[businessNumber\]\)/);
   assert.match(appJs, /businessNumber: \$\("npsBusinessNumberInput"\)/);
+  assert.match(appJs, /adminDong: \$\("npsAdminDongSelect"\)/);
+  assert.match(appJs, /insuranceAdminDongLabel\(row\)/);
   assert.doesNotMatch(appJs, /npsSourceSelect|npsStyleTabs|npsInsuranceStatusSelect|npsStyleCode/);
   assert.match(appJs, /insuranceIndustrySectionCodes\(row\)/);
   assert.match(appJs, /국민연금 월별 추이/);

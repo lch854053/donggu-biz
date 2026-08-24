@@ -21,6 +21,8 @@ test("employment insurance snapshot contains the validated Dong-gu dataset", () 
   assert.equal(snapshot.items[0].industrialEstablishedDate, "2023-04-01");
   assert.equal(snapshot.items[0].employmentWorkerCount, 7);
   assert.ok(snapshot.items.every((item) => item.name && item.address));
+  assert.equal(snapshot.quality.adminDongMatched, 6749);
+  assert.equal(snapshot.quality.adminDongMissing, 175);
 });
 
 test("employment insurance helpers convert dates and filter searchable fields", () => {

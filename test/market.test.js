@@ -81,6 +81,7 @@ test("matches stores inside a polygon while excluding its hole", () => {
 test("filters stores by a selected commercial-zone geometry", () => {
   const geometry = { type: "Polygon", coordinates: [[[126.91, 35.14], [126.93, 35.14], [126.93, 35.16], [126.91, 35.16], [126.91, 35.14]]] };
   assert.deepEqual(filterStores(stores, { zoneGeometry: geometry }).map((store) => store.name), ["동명카페", "충장서점"]);
+  assert.deepEqual(filterStores(stores, { adminDong: "동명동", largeCode: "I2", zoneGeometry: geometry }).map((store) => store.name), ["동명카페"]);
 });
 
 test("rejects invalid or sharply reduced zone snapshots", () => {

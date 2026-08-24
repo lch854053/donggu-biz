@@ -2,9 +2,11 @@ import {
   buildLocationFilter,
   buildLocationSelection,
   countBy,
-  filterStores
+  filterStores,
+  pointInGeometry
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
+import { DONGGU_ADMIN_DONGS } from "./lib/admin-dong.js";
 import {
   INDUSTRY_SECTIONS,
   displayAddress,
@@ -19,6 +21,7 @@ import {
 } from "./lib/employment-insurance.js";
 import {
   combineInsuranceWorkplaces,
+  insuranceAdminDongs,
   insuranceIndustrySectionCodes,
   matchesInsuranceWorkplaceCriteria,
   sortInsuranceWorkplaces
@@ -502,6 +505,34 @@ let zoneLayer;
 let selectedZoneNo = "";
 const zoneLeafletByNo = new Map();
 const CLUSTER_CHART_COLORS = ["#1d5e8c", "#49a36f", "#e09b32", "#8b67ad", "#d66161", "#93a0ad"];
+const MARKET_TABLE_PAGE_SIZE = 100;
+let marketTableRows = [];
+let marketTablePageNo = 1;
+let marketTableAppliedLabel = "";
+
+const marketViewTabs = [...document.querySelectorAll(".market-view-tab")];
+function activateMarketView(viewName) {
+  marketViewTabs.forEach((tab) => {
+    const active = tab.dataset.marketView === viewName;
+    tab.classList.toggle("is-active", active);
+    tab.setAttribute("aria-selected", String(active));
+    $(`market-view-${tab.dataset.marketView}`).hidden = !active;
+  });
+  closeClusterPanel();
+  if (viewName === "map") setTimeout(() => marketMap?.invalidateSize(), 0);
+}
+
+marketViewTabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => activateMarketView(tab.dataset.marketView));
+  tab.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+    event.preventDefault();
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const next = marketViewTabs[(index + direction + marketViewTabs.length) % marketViewTabs.length];
+    next.focus();
+    activateMarketView(next.dataset.marketView);
+  });
+});
 
 async function initializeMarket() {
   if (marketInitialized) {
@@ -718,13 +749,107 @@ function replaceOptions(select, items, placeholder) {
 }
 
 function populateMarketFilters() {
-  replaceOptions($("dongFilter"), [...new Set(activeMarketStores().map((store) => store.adminDong).filter(Boolean))]
-    .sort((a, b) => a.localeCompare(b, "ko")).map((name) => ({ value: name, label: name })), "전체 행정동");
-  replaceOptions($("zoneFilter"), mainBizZones.map((feature) => ({
+  const dongs = [...new Set(activeMarketStores().map((store) => store.adminDong).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "ko"))
+    .map((name) => ({ value: name, label: name }));
+  const zones = mainBizZones.map((feature) => ({
     value: feature.properties.no,
     label: feature.properties.name
-  })), "전체 지역");
+  }));
+  const industries = [...activeMarketStores().reduce((items, store) => {
+    if (store.largeCode && store.largeName) items.set(store.largeCode, store.largeName);
+    return items;
+  }, new Map())]
+    .map(([value, label]) => ({ value, label }))
+    .sort((left, right) => left.label.localeCompare(right.label, "ko"));
+  replaceOptions($("dongFilter"), dongs, "전체 행정동");
+  replaceOptions($("zoneFilter"), zones, "전체 지역");
+  replaceOptions($("marketTableDongFilter"), dongs, "전체 행정동");
+  replaceOptions($("marketTableIndustryFilter"), industries, "전체 업종");
+  replaceOptions($("marketTableZoneFilter"), zones, "전체 주요상권");
   $("zoneFilter").disabled = !mainBizZones.length;
+  $("marketTableZoneFilter").disabled = !mainBizZones.length;
+}
+
+function marketTableCriteria() {
+  const zoneNo = $("marketTableZoneFilter").value;
+  const zone = mainBizZones.find((feature) => feature.properties.no === zoneNo);
+  return {
+    adminDong: $("marketTableDongFilter").value,
+    largeCode: $("marketTableIndustryFilter").value,
+    zoneGeometry: zone?.geometry || null
+  };
+}
+
+function marketTableZoneNames(store) {
+  return mainBizZones
+    .filter((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))
+    .map((feature) => feature.properties.name)
+    .join(", ");
+}
+
+function marketTablePageRows() {
+  const offset = (marketTablePageNo - 1) * MARKET_TABLE_PAGE_SIZE;
+  return marketTableRows.slice(offset, offset + MARKET_TABLE_PAGE_SIZE);
+}
+
+function marketTableCriteriaLabel() {
+  const values = [
+    $("marketTableDongFilter").selectedOptions[0]?.textContent,
+    $("marketTableIndustryFilter").selectedOptions[0]?.textContent,
+    $("marketTableZoneFilter").selectedOptions[0]?.textContent
+  ].filter((value) => value && !value.startsWith("전체"));
+  return values.length ? values.join(" · ") : "전체 업소";
+}
+
+function renderMarketTable() {
+  const lastPage = Math.max(1, Math.ceil(marketTableRows.length / MARKET_TABLE_PAGE_SIZE));
+  marketTablePageNo = Math.min(Math.max(marketTablePageNo, 1), lastPage);
+  const offset = (marketTablePageNo - 1) * MARKET_TABLE_PAGE_SIZE;
+  const rows = marketTablePageRows();
+  $("marketTableCount").textContent = `${marketTableRows.length.toLocaleString("ko-KR")}개 업소`;
+  $("marketTableCriteria").textContent = `${marketTableAppliedLabel || "전체 업소"} · ${marketTableRows.length.toLocaleString("ko-KR")}개`;
+  $("marketTableBody").innerHTML = rows.length ? rows.map((store, index) => `<tr>
+    <td class="seq">${offset + index + 1}</td>
+    <td>${escapeHtml([store.name, store.branch].filter(Boolean).join(" "))}</td>
+    <td>${escapeHtml(store.largeName || "-")}</td>
+    <td>${escapeHtml(store.middleName || "-")}</td>
+    <td>${escapeHtml(store.smallName || "-")}</td>
+    <td>${escapeHtml(store.adminDong || "-")}</td>
+    <td>${escapeHtml(marketTableZoneNames(store) || "-")}</td>
+    <td>${escapeHtml(store.address || "-")}</td>
+    <td>${escapeHtml(store.lotAddress || "-")}</td>
+  </tr>`).join("") : '<tr class="empty-row"><td colspan="9">조건에 맞는 업소가 없습니다.</td></tr>';
+  $("marketTablePageLabel").textContent = `${marketTablePageNo} / ${lastPage}`;
+  $("marketTablePrevBtn").disabled = marketTablePageNo <= 1;
+  $("marketTableNextBtn").disabled = marketTablePageNo >= lastPage;
+  $("marketTableDownloadBtn").disabled = !marketTableRows.length;
+  $("marketTableResult").hidden = false;
+}
+
+function runMarketTableSearch() {
+  if (!allStores.length) {
+    showToast("상가정보를 불러온 뒤 다시 조회해 주세요.");
+    return;
+  }
+  marketTableRows = filterStores(activeMarketStores(), marketTableCriteria())
+    .sort((left, right) => String(left.adminDong || "").localeCompare(String(right.adminDong || ""), "ko")
+      || String(left.name || "").localeCompare(String(right.name || ""), "ko"));
+  marketTablePageNo = 1;
+  marketTableAppliedLabel = marketTableCriteriaLabel();
+  renderMarketTable();
+}
+
+function clearMarketTableSearch() {
+  $("marketTableDongFilter").value = "";
+  $("marketTableIndustryFilter").value = "";
+  $("marketTableZoneFilter").value = "";
+  marketTableRows = [];
+  marketTablePageNo = 1;
+  marketTableAppliedLabel = "";
+  $("marketTableCount").textContent = "0개 업소";
+  $("marketTableDownloadBtn").disabled = true;
+  $("marketTableResult").hidden = true;
 }
 
 function currentMarketFilters() {
@@ -820,6 +945,36 @@ $("resetMarketBtn").addEventListener("click", () => {
   marketMap?.setView(DONGGU_CENTER, 14);
 });
 $("clusterPanelClose").addEventListener("click", closeClusterPanel);
+$("marketTableRunBtn").addEventListener("click", runMarketTableSearch);
+$("marketTableClearBtn").addEventListener("click", clearMarketTableSearch);
+$("marketTablePrevBtn").addEventListener("click", () => {
+  marketTablePageNo -= 1;
+  renderMarketTable();
+});
+$("marketTableNextBtn").addEventListener("click", () => {
+  marketTablePageNo += 1;
+  renderMarketTable();
+});
+$("marketTableDownloadBtn").addEventListener("click", () => {
+  if (!marketTableRows.length) return;
+  downloadXlsx(
+    ["순번", "업소명", "지점명", "업종 대분류", "업종 중분류", "업종 소분류", "행정동", "주요상권", "도로명주소", "지번주소"],
+    marketTableRows.map((store, index) => [
+      index + 1,
+      store.name,
+      store.branch,
+      store.largeName,
+      store.middleName,
+      store.smallName,
+      store.adminDong,
+      marketTableZoneNames(store),
+      store.address,
+      store.lotAddress
+    ]),
+    `소상공인조회_${new Date().toISOString().slice(0, 10)}.xlsx`,
+    "업소"
+  );
+});
 
 // National Pension workplace lookup
 // 이 서비스는 광주 동구만 다룬다. 조회도 스냅샷도 같은 지역 하나를 본다.
@@ -864,6 +1019,7 @@ function npsCriteria() {
   return {
     query: $("npsNameInput").value.trim(),
     businessNumber: $("npsBusinessNumberInput").value.trim(),
+    adminDong: $("npsAdminDongSelect").value,
     includeWithdrawn: $("npsIncludeWithdrawn").checked,
     sectionCode: section === NPS_UNKNOWN_SECTION_VALUE ? "" : section,
     unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE
@@ -931,6 +1087,11 @@ function insurancePostalCodeValues(row) {
     .filter(Boolean))];
 }
 
+function insuranceAdminDongLabel(row) {
+  const values = [...insuranceAdminDongs(row)];
+  return values.length ? values.join(" · ") : "미확인";
+}
+
 function insuranceWorkerCell(row, kind) {
   const employment = row.employmentInsurance;
   if (!employment) return '<span class="muted">-</span>';
@@ -986,7 +1147,7 @@ function renderNpsTable() {
   const rows = npsPageRows();
   const body = $("npsResultBody");
   if (!rows.length) {
-    body.innerHTML = '<tr class="empty-row"><td colspan="11">해당 조건의 결과가 없습니다.</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="12">해당 조건의 결과가 없습니다.</td></tr>';
     return;
   }
   const offset = (npsPageNo - 1) * NPS_PAGE_SIZE;
@@ -994,7 +1155,7 @@ function renderNpsTable() {
     const opened = npsDetail.key === row.key;
     // 상세 카드는 표 맨 아래가 아니라 누른 행 바로 아래에 한 줄을 끼워 펼친다.
     const card = opened
-      ? `<tr class="detail-row"><td colspan="11"><div class="detail-card">${npsDetail.html}${businessStatusHtml(row)}</div></td></tr>`
+      ? `<tr class="detail-row"><td colspan="12"><div class="detail-card">${npsDetail.html}${businessStatusHtml(row)}</div></td></tr>`
       : "";
     const nps = row.nps;
     const employment = row.employmentInsurance;
@@ -1009,6 +1170,7 @@ function renderNpsTable() {
     <td>${insuranceSourceBadge(row)}</td>
     <td class="mono">${escapeHtml(businessNumber)}</td>
     <td>${escapeHtml(displayAddress(address) || "-")}</td>
+    <td>${escapeHtml(insuranceAdminDongLabel(row))}</td>
     <td>${insuranceIndustryCell(row)}</td>
     <td class="mono">${escapeHtml(npsSubscribers)}</td>
     <td>${insuranceWorkerCell(row, "employment")}</td>
@@ -1061,6 +1223,11 @@ function fillNpsSectionOptions() {
   $("npsSectionSelect").innerHTML = ['<option value="">전체</option>',
     ...INDUSTRY_SECTIONS.map(({ code, name }) => `<option value="${code}">${escapeHtml(name)}</option>`),
     `<option value="${NPS_UNKNOWN_SECTION_VALUE}">업종 미상</option>`].join("");
+}
+
+function fillNpsAdminDongOptions() {
+  $("npsAdminDongSelect").innerHTML = ['<option value="">전체 행정동</option>',
+    ...DONGGU_ADMIN_DONGS.map((name) => `<option value="${name}">${name}</option>`)].join("");
 }
 
 /**
@@ -1529,7 +1696,7 @@ function formatYmd(value) {
   return `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6)}`;
 }
 
-function downloadXlsx(headers, rows, fileName) {
+function downloadXlsx(headers, rows, fileName, sheetName = "사업장") {
   const xlsx = window.XLSX;
   if (!xlsx) {
     showToast("XLSX 다운로드 기능을 불러오지 못했습니다. 페이지를 새로고침해 주세요.");
@@ -1537,7 +1704,7 @@ function downloadXlsx(headers, rows, fileName) {
   }
   const workbook = xlsx.utils.book_new();
   const worksheet = xlsx.utils.aoa_to_sheet([headers, ...rows]);
-  xlsx.utils.book_append_sheet(workbook, worksheet, "사업장");
+  xlsx.utils.book_append_sheet(workbook, worksheet, sheetName);
   xlsx.writeFile(workbook, fileName);
   showToast("XLSX 파일을 내려받았습니다.");
 }
@@ -1546,6 +1713,7 @@ $("npsRunBtn").addEventListener("click", () => runNpsLookup());
 $("npsClearBtn").addEventListener("click", () => {
   $("npsNameInput").value = "";
   $("npsBusinessNumberInput").value = "";
+  $("npsAdminDongSelect").value = "";
   $("npsSectionSelect").value = "";
   $("npsIncludeWithdrawn").checked = false;
   npsPageNo = 1;
@@ -1559,6 +1727,7 @@ $("npsNameInput").addEventListener("input", markNpsCriteriaDirty);
 $("npsNameInput").addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
 $("npsBusinessNumberInput").addEventListener("input", markNpsCriteriaDirty);
 $("npsBusinessNumberInput").addEventListener("keydown", (event) => { if (event.key === "Enter") runNpsLookup(); });
+$("npsAdminDongSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsSectionSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsIncludeWithdrawn").addEventListener("change", markNpsCriteriaDirty);
 
@@ -1584,7 +1753,7 @@ $("npsDownloadBtn").addEventListener("click", () => {
   if (!rows.length) return;
   downloadXlsx(
     [
-      "순번", "자료", "사업장명", "사업자등록번호", "우편번호", "소재지",
+      "순번", "자료", "사업장명", "사업자등록번호", "우편번호", "소재지", "행정동",
       "국민연금 업종대분류", "고용·산재 업종코드", "고용·산재 업종명", "국민연금 사업장형태",
       "국민연금 등록일", "국민연금 가입자수", "국민연금 가입상태", "보험구분",
       "고용 성립일자", "산재 성립일자", "고용 상시근로자수", "산재 상시근로자수",
@@ -1600,6 +1769,7 @@ $("npsDownloadBtn").addEventListener("click", () => {
         employment?.businessRegistrationNumber || (nps?.bizNoPrefix ? `${nps.bizNoPrefix}-****` : ""),
         employment?.postalCode || "",
         displayAddress(employment?.address || nps?.address),
+        insuranceAdminDongLabel(row),
         nps && hasIndustryDetail(nps) ? nps.sectionName : "",
         employment?.employmentIndustryCode11 || employment?.employmentIndustryCode || "",
         employment?.employmentIndustryName11 || employment?.employmentIndustryName || "",
@@ -1625,5 +1795,6 @@ $("npsDownloadBtn").addEventListener("click", () => {
 });
 
 fillNpsSectionOptions();
+fillNpsAdminDongOptions();
 
 updateInputCount();

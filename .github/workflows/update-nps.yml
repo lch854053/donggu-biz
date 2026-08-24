@@ -25,21 +25,29 @@ jobs:
       - name: Check service key
         env:
           NPS_SERVICE_KEY: ${{ secrets.NPS_SERVICE_KEY }}
+          JUSO_API_KEY: ${{ secrets.JUSO_API_KEY }}
         run: |
           if [ -z "$NPS_SERVICE_KEY" ]; then
             echo "NPS_SERVICE_KEY 저장소 Secret이 없습니다. 디코딩 키를 등록한 뒤 다시 실행하세요." >&2
             exit 1
           fi
+          if [ -z "$JUSO_API_KEY" ]; then
+            echo "JUSO_API_KEY 저장소 Secret이 없습니다. 도로명주소 API 키를 등록한 뒤 다시 실행하세요." >&2
+            exit 1
+          fi
       - run: npm run update-nps
         env:
           NPS_SERVICE_KEY: ${{ secrets.NPS_SERVICE_KEY }}
+      - run: npm run enrich-insurance-admin-dongs
+        env:
+          JUSO_API_KEY: ${{ secrets.JUSO_API_KEY }}
       - run: npm test
       - name: Commit updated snapshot
         run: |
           # 스냅샷이 아직 저장소에 없을 때는 추적되지 않는 파일이라 git diff에 잡히지 않는다.
           # 먼저 add 한 뒤 색인과 비교해야 첫 수집분도 커밋된다.
-          git add data/nps_donggu.json
-          if git diff --cached --quiet -- data/nps_donggu.json; then
+          git add data/nps_donggu.json data/employment_insurance_donggu.json data/insurance_admin_dongs.json
+          if git diff --cached --quiet -- data/nps_donggu.json data/employment_insurance_donggu.json data/insurance_admin_dongs.json; then
             echo "집계가 그대로라 커밋할 것이 없습니다."
             exit 0
           fi

@@ -420,6 +420,16 @@ tbody tr:hover td { background: #f6f8fa; }
 .badge-gray { border-color: var(--line-strong); background: var(--surface-raised); color: var(--text-secondary); }
 
 .market-heading { margin-bottom: 14px; }
+.market-view-tabs { margin-bottom: 18px; }
+.market-table-query { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+.market-table-result .table-wrap { max-height: 640px; }
+.market-store-table { min-width: 1320px; }
+.market-store-table th:first-child,
+.market-store-table td:first-child { width: 58px; text-align: right; }
+.market-store-table td:nth-child(2) { min-width: 170px; font-weight: 600; }
+.market-store-table td:nth-child(7) { min-width: 130px; white-space: normal; }
+.market-store-table td:nth-child(8),
+.market-store-table td:nth-child(9) { min-width: 220px; white-space: normal; }
 
 .market-state {
   min-height: 260px;
@@ -593,6 +603,7 @@ tbody tr:hover td { background: #f6f8fa; }
   .sub-tabs { overflow-x: auto; }
   .sub-tab { flex: 1 0 auto; }
   .query-grid { padding: 14px 12px; }
+  .market-table-query { grid-template-columns: 1fr; }
   .market-workspace { display: flex; flex-direction: column; }
   .filter-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .map-stage { min-height: 56vh; }
@@ -618,7 +629,7 @@ tbody tr:hover td { background: #f6f8fa; }
   .cluster-pie { width: 108px; height: 108px; }
   /* 통합 보험 표는 좁은 화면에서 사업자번호와 업종을 접고 소재지를 남긴다. */
   #npsResultSection th:nth-child(5), #npsResultSection td:nth-child(5) { display: table-cell; }
-  #npsResultSection th:nth-child(6), #npsResultSection td:nth-child(6) { display: none; }
+  #npsResultSection th:nth-child(7), #npsResultSection td:nth-child(7) { display: none; }
   .detail-card dl { grid-template-columns: 1fr; }
 }
 

@@ -2,11 +2,12 @@
 // 목록 API에는 업종코드가 없어 사업장마다 상세조회를 한 번 더 부른다. 호출 수가 많으므로
 // 화면에서 실시간으로 할 일이 아니라 월 1회 배치로 돌린다.
 
-import { mkdir, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compactWorkplace, compactWorkplaceDetail, mergeWorkplaceHistory, parseNpsBody } from "../lib/nps.js";
 import { NPS_MAX_ROWS, NPS_VARIANTS, normalizeServiceKey, npsRequestUrl } from "../lib/nps-request.js";
+import { adminDongForAddress, createAdminDongLookup } from "../lib/admin-dong.js";
 
 const REGION = { label: "광주광역시 동구", sido: "29", sggu: "110" };
 const MAX_PAGES = 500;
@@ -24,6 +25,14 @@ if (!apiKey) throw new Error("NPS_SERVICE_KEY 환경변수가 필요합니다.")
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputPath = resolve(root, "data/nps_donggu.json");
 const tempPath = resolve(root, "data/.nps-donggu.tmp");
+const adminDongLookupPath = resolve(root, "data/insurance_admin_dongs.json");
+
+let adminDongLookup = new Map();
+try {
+  adminDongLookup = createAdminDongLookup(JSON.parse(await readFile(adminDongLookupPath, "utf8")));
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
 
 const sleep = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 
@@ -153,6 +162,7 @@ function snapshotItem(workplace) {
     name: workplace.name,
     bizNoPrefix: workplace.bizNoPrefix,
     address: workplace.address,
+    adminDong: adminDongForAddress(workplace.address, adminDongLookup),
     statusCode: workplace.statusCode,
     styleCode: workplace.styleCode,
     industryCode: workplace.industryCode ?? "",
@@ -174,6 +184,8 @@ const snapshot = {
   totalCount: firstPage.totalCount,
   collectedRowCount: collected.length,
   detailFailedCount: failed,
+  adminDongMatchedCount: items.filter((item) => adminDongForAddress(item.address, adminDongLookup)).length,
+  adminDongMissingCount: items.filter((item) => !adminDongForAddress(item.address, adminDongLookup)).length,
   items: items.map(snapshotItem)
 };
 

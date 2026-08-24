@@ -7,11 +7,13 @@ import {
   INSURANCE_TYPE_NAMES,
   workerCount
 } from "../lib/employment-insurance.js";
+import { adminDongForAddress, createAdminDongLookup } from "../lib/admin-dong.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const inputPath = resolve(root, "data/employment_insurance_donggu.csv");
 const outputPath = resolve(root, "data/employment_insurance_donggu.json");
 const tempPath = resolve(root, "data/.employment-insurance-donggu.tmp");
+const adminDongLookupPath = resolve(root, "data/insurance_admin_dongs.json");
 const sourceUpdatedAtArgument = process.argv.find((value) => value.startsWith("--source-updated-at="));
 const sourceUpdatedAtIndex = process.argv.indexOf("--source-updated-at");
 const sourceUpdatedAt = sourceUpdatedAtArgument?.slice("--source-updated-at=".length)
@@ -19,6 +21,13 @@ const sourceUpdatedAt = sourceUpdatedAtArgument?.slice("--source-updated-at=".le
 
 if (!/^\d{4}-\d{2}-\d{2}$/.test(sourceUpdatedAt || "")) {
   throw new Error("사용법: npm run update-employment-insurance -- --source-updated-at YYYY-MM-DD");
+}
+
+let adminDongLookup = new Map();
+try {
+  adminDongLookup = createAdminDongLookup(JSON.parse(await readFile(adminDongLookupPath, "utf8")));
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
 }
 
 function parseCsv(text) {
@@ -110,13 +119,15 @@ const items = data.map((values) => {
   }
   if (!value(row, "사업장명")) throw new Error(`사업장명이 비어 있습니다: ${id}`);
   ids.add(id);
+  const address = value(row, "사업장주소");
   return {
     id,
     insuranceType,
     insuranceTypeName: insuranceTypeName(insuranceType),
     name: value(row, "사업장명"),
     postalCode: value(row, "사업장우편번호"),
-    address: value(row, "사업장주소"),
+    address,
+    adminDong: adminDongForAddress(address, adminDongLookup),
     employmentIndustryCode: value(row, "고용보험 업종코드"),
     employmentIndustryName: value(row, "고용보험 업종명"),
     industrialEstablishedDate: nullableDate(row, "산재보험 성립일자", id),
@@ -149,6 +160,8 @@ const payload = {
     missingEmploymentWorkerCount: items.filter((item) => item.employmentWorkerCount == null).length,
     missingBusinessRegistrationNumber: items.filter((item) => !item.businessRegistrationNumber).length,
     missingWorkplaceManagementNumber: items.filter((item) => !item.workplaceManagementNumber).length,
+    adminDongMatched: items.filter((item) => item.adminDong).length,
+    adminDongMissing: items.filter((item) => !item.adminDong).length,
     insuranceTypeCounts: countBy(items, "insuranceTypeName"),
     industrialStatusCounts: countBy(items, "industrialStatus"),
     employmentStatusCounts: countBy(items, "employmentStatus")
