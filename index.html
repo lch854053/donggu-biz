@@ -265,6 +265,33 @@
 
         <section class="map-stage" aria-label="상가업소·의료기관 지도">
           <div id="marketMap"></div>
+          <aside class="cluster-panel" id="clusterPanel" aria-labelledby="clusterPanelTitle" hidden>
+            <header class="cluster-panel-head">
+              <div>
+                <h3 id="clusterPanelTitle">클러스터 업소</h3>
+                <p id="clusterPanelCount"></p>
+              </div>
+              <button class="cluster-panel-close" id="clusterPanelClose" type="button" aria-label="클러스터 업소 목록 닫기">×</button>
+            </header>
+            <div class="cluster-panel-body" id="clusterPanelBody">
+              <div class="cluster-table-wrap">
+                <table class="cluster-store-table">
+                  <thead><tr><th>연번</th><th>업소명</th><th>업종</th><th>주소</th></tr></thead>
+                  <tbody id="clusterStoreBody"></tbody>
+                </table>
+              </div>
+              <section class="cluster-stats" id="clusterStats" aria-labelledby="clusterStatsTitle" hidden>
+                <div class="cluster-stats-head">
+                  <h4 id="clusterStatsTitle">업종 통계</h4>
+                  <p id="clusterStatsMeta"></p>
+                </div>
+                <div class="cluster-chart">
+                  <div class="cluster-pie" id="clusterPie" role="img"></div>
+                  <div class="cluster-legend" id="clusterLegend"></div>
+                </div>
+              </section>
+            </div>
+          </aside>
         </section>
 
       </div>

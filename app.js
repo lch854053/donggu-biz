@@ -59,6 +59,7 @@ function activateService(panelName) {
     tab.setAttribute("aria-selected", String(active));
     $(`panel-${tab.dataset.panel}`).hidden = !active;
   });
+  closeClusterPanel();
   if (panelName === "market") initializeMarket();
 }
 
@@ -500,6 +501,7 @@ let mainBizZones = [];
 let zoneLayer;
 let selectedZoneNo = "";
 const zoneLeafletByNo = new Map();
+const CLUSTER_CHART_COLORS = ["#1d5e8c", "#49a36f", "#e09b32", "#8b67ad", "#d66161", "#93a0ad"];
 
 async function initializeMarket() {
   if (marketInitialized) {
@@ -596,8 +598,67 @@ function initializeMap() {
     chunkInterval: 100,
     chunkDelay: 30,
     maxClusterRadius: 46,
-    showCoverageOnHover: false
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: false,
+    spiderfyOnMaxZoom: false
   }).addTo(marketMap);
+  markerCluster.on("clusterclick", (event) => {
+    if (event.originalEvent) L.DomEvent.stopPropagation(event.originalEvent);
+    const stores = event.layer.getAllChildMarkers().map((marker) => marker.store).filter(Boolean);
+    renderClusterPanel(stores);
+  });
+  marketMap.on("click", closeClusterPanel);
+}
+
+function closeClusterPanel() {
+  const panel = $("clusterPanel");
+  if (!panel || panel.hidden) return;
+  panel.hidden = true;
+  $("clusterStoreBody").replaceChildren();
+  $("clusterStats").hidden = true;
+}
+
+function clusterIndustryRows(stores) {
+  const categories = countBy(stores, (store) => store.largeName || store.middleName || store.smallName || "미분류");
+  const rows = categories.slice(0, 5);
+  const otherCount = categories.slice(5).reduce((total, item) => total + item.count, 0);
+  if (otherCount) rows.push({ name: "기타", count: otherCount });
+  return { categories, rows };
+}
+
+function renderClusterIndustryChart(stores) {
+  const { categories, rows } = clusterIndustryRows(stores);
+  let offset = 0;
+  const segments = rows.map((row, index) => {
+    const start = offset;
+    offset += row.count / stores.length * 100;
+    return `${CLUSTER_CHART_COLORS[index]} ${start}% ${offset}%`;
+  });
+  const pie = $("clusterPie");
+  pie.style.background = `conic-gradient(${segments.join(",")})`;
+  pie.setAttribute("aria-label", `총 ${stores.length}개 업소의 업종 분포`);
+  $("clusterStatsMeta").textContent = `총 ${stores.length.toLocaleString("ko-KR")}개 · ${categories.length.toLocaleString("ko-KR")}개 업종`;
+  $("clusterLegend").innerHTML = rows.map((row, index) => `<div>
+    <i style="background:${CLUSTER_CHART_COLORS[index]}"></i>
+    <span>${escapeHtml(row.name)}</span>
+    <strong>${row.count.toLocaleString("ko-KR")}개</strong>
+  </div>`).join("");
+  $("clusterStats").hidden = false;
+}
+
+function renderClusterPanel(stores) {
+  const sortedStores = [...stores].sort((left, right) => left.name.localeCompare(right.name, "ko"));
+  $("clusterPanelCount").textContent = `${sortedStores.length.toLocaleString("ko-KR")}개 업소`;
+  $("clusterStoreBody").innerHTML = sortedStores.map((store, index) => `<tr>
+    <td class="seq">${index + 1}</td>
+    <td>${escapeHtml([store.name, store.branch].filter(Boolean).join(" "))}</td>
+    <td>${escapeHtml(store.smallName || store.middleName || store.largeName || "미분류")}</td>
+    <td>${escapeHtml(store.address || store.lotAddress || "-")}</td>
+  </tr>`).join("");
+  $("clusterStats").hidden = true;
+  if (sortedStores.length >= 5) renderClusterIndustryChart(sortedStores);
+  $("clusterPanel").hidden = false;
+  $("clusterPanelBody").scrollTop = 0;
 }
 
 function selectedZone() {
@@ -680,6 +741,7 @@ function buildStoreMarkers() {
     marker.store = store;
     marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(store.name)}${store.branch ? ` ${escapeHtml(store.branch)}` : ""}</strong><span>${escapeHtml(store.smallName || store.largeName)}</span><span>${escapeHtml(store.address)}</span></div>`);
     marker.on({
+      click: closeClusterPanel,
       mouseover() { if (selectedZoneNo || $("dongFilter").value) marker.openPopup(); },
       mouseout() { if (selectedZoneNo || $("dongFilter").value) marker.closePopup(); }
     });
@@ -688,6 +750,7 @@ function buildStoreMarkers() {
 }
 
 function applyMarketFilters() {
+  closeClusterPanel();
   visibleStores = filterStores(activeMarketStores(), currentMarketFilters());
   markerCluster.clearLayers();
   if ($("dongFilter").value || selectedZoneNo) {
@@ -758,6 +821,7 @@ $("resetMarketBtn").addEventListener("click", () => {
   selectZone("", false);
   marketMap?.setView(DONGGU_CENTER, 14);
 });
+$("clusterPanelClose").addEventListener("click", closeClusterPanel);
 
 // National Pension workplace lookup
 // 이 서비스는 광주 동구만 다룬다. 조회도 스냅샷도 같은 지역 하나를 본다.

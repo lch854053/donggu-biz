@@ -489,6 +489,63 @@ tbody tr:hover td { background: #f6f8fa; }
 .marker-cluster-medium div,
 .marker-cluster-large div { background: var(--accent-dark); color: var(--text); font-family: var(--mono); }
 
+.cluster-panel {
+  position: absolute;
+  z-index: 1000;
+  top: 16px;
+  right: 16px;
+  width: min(580px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .97);
+  box-shadow: 0 18px 44px rgba(23, 37, 54, .2);
+  display: flex;
+  flex-direction: column;
+}
+
+.cluster-panel-head {
+  flex: none;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cluster-panel-head h3,
+.cluster-panel-head p,
+.cluster-stats-head h4,
+.cluster-stats-head p { margin: 0; }
+.cluster-panel-head h3 { font-size: 16px; }
+.cluster-panel-head p { margin-top: 2px; color: var(--text-secondary); font: 12px/1.4 var(--mono); }
+.cluster-panel-close { width: 32px; height: 32px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--text-secondary); cursor: pointer; font-size: 22px; line-height: 1; }
+.cluster-panel-close:hover { border-color: var(--line-strong); background: var(--surface-raised); color: var(--text); }
+.cluster-panel-body { min-height: 0; padding: 12px; overflow: auto; }
+.cluster-table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 7px; }
+.cluster-store-table { min-width: 520px; font-size: 12px; }
+.cluster-store-table th { padding: 8px 10px; font-size: 11px; }
+.cluster-store-table td { padding: 8px 10px; }
+.cluster-store-table th:first-child,
+.cluster-store-table td:first-child { width: 52px; text-align: right; }
+.cluster-store-table th:nth-child(2) { width: 140px; }
+.cluster-store-table th:nth-child(3) { width: 120px; }
+.cluster-store-table td:nth-child(4) { min-width: 190px; white-space: normal; }
+
+.cluster-stats { margin-top: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface-soft); }
+.cluster-stats-head { margin-bottom: 12px; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.cluster-stats-head h4 { font-size: 14px; }
+.cluster-stats-head p { color: var(--text-muted); font: 11px/1.4 var(--mono); }
+.cluster-chart { display: flex; align-items: center; gap: 20px; }
+.cluster-pie { width: 132px; height: 132px; flex: none; border: 8px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px var(--line); }
+.cluster-legend { min-width: 0; flex: 1; display: grid; gap: 7px; }
+.cluster-legend div { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 7px; color: var(--text-secondary); font-size: 12px; }
+.cluster-legend i { width: 9px; height: 9px; border-radius: 2px; }
+.cluster-legend span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cluster-legend strong { color: var(--text); font: 600 11px/1.4 var(--mono); }
+
 .summary-empty { margin: 0; color: var(--text-secondary); font-size: 12px; }
 .selection-analysis { margin-top: 20px; padding-top: 15px; border-top: 1px solid var(--line); }
 .selection-overview p { margin: 0; color: var(--text-secondary); font-size: 12px; }
@@ -540,6 +597,7 @@ tbody tr:hover td { background: #f6f8fa; }
   .filter-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .map-stage { min-height: 56vh; }
   #marketMap { min-height: 56vh; }
+  .cluster-panel { top: 10px; right: 10px; width: calc(100% - 20px); max-height: calc(100% - 20px); }
 }
 
 @media (max-width: 520px) {
@@ -555,6 +613,9 @@ tbody tr:hover td { background: #f6f8fa; }
   .button-export { width: 100%; }
   th, td { padding: 10px 12px; }
   th:nth-child(4), td:nth-child(4) { display: none; }
+  .cluster-store-table th:nth-child(4), .cluster-store-table td:nth-child(4) { display: table-cell; }
+  .cluster-chart { align-items: flex-start; }
+  .cluster-pie { width: 108px; height: 108px; }
   /* 통합 보험 표는 좁은 화면에서 사업자번호와 업종을 접고 소재지를 남긴다. */
   #npsResultSection th:nth-child(5), #npsResultSection td:nth-child(5) { display: table-cell; }
   #npsResultSection th:nth-child(6), #npsResultSection td:nth-child(6) { display: none; }
