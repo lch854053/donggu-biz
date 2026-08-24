@@ -100,14 +100,16 @@ test("loads the manually registered commercial-zone boundaries", async () => {
     readFile(new URL("../data/stores_donggu.json", import.meta.url), "utf8").then(JSON.parse),
     readFile(new URL("../data/mainbiz_zones_donggu.geojson", import.meta.url), "utf8").then(JSON.parse)
   ]);
-  assert.equal(payload.meta.zoneCount, 7);
-  assertZoneSnapshotHealthy({ features: payload.features, minimumCount: 7 });
+  assert.equal(payload.meta.zoneCount, 9);
+  assertZoneSnapshotHealthy({ features: payload.features, minimumCount: 9 });
   const sansu = payload.features.find((feature) => feature.properties.no === "manual-sansu-market");
   const artStreet = payload.features.find((feature) => feature.properties.no === "manual-art-street");
   const electronicsStreet = payload.features.find((feature) => feature.properties.no === "manual-electronics-street");
   const daeinMarket = payload.features.find((feature) => feature.properties.no === "manual-daein-market");
   const namgwangjuMarket = payload.features.find((feature) => feature.properties.no === "manual-namgwangju-market");
   const printingStreet = payload.features.find((feature) => feature.properties.no === "manual-printing-street");
+  const weddingStreet = payload.features.find((feature) => feature.properties.no === "manual-wedding-street");
+  const honsuStreet = payload.features.find((feature) => feature.properties.no === "manual-honsu-street");
   const boribapStreet = payload.features.find((feature) => feature.properties.no === "manual-mudeungsan-boribap-street");
   assert.equal(pointInGeometry(126.930954807232, 35.1537139906824, sansu.geometry), true);
   assert.equal(pointInGeometry(126.9189161085083, 35.14964229752389, artStreet.geometry), true);
@@ -115,6 +117,8 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.equal(pointInGeometry(126.91680470501554, 35.153897541407304, daeinMarket.geometry), true);
   assert.equal(pointInGeometry(126.92126911677772, 35.13927142984483, namgwangjuMarket.geometry), true);
   assert.equal(pointInGeometry(126.91790655694692, 35.14409148564109, printingStreet.geometry), true);
+  assert.equal(pointInGeometry(126.91539780867934, 35.14533138568136, weddingStreet.geometry), true);
+  assert.equal(pointInGeometry(126.91251131075357, 35.15083214530407, honsuStreet.geometry), true);
   assert.equal(pointInGeometry(126.9425714556449, 35.14940569033853, boribapStreet.geometry), true);
   assert.ok(Math.abs(geometryAreaSqm(sansu.geometry) - sansu.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(artStreet.geometry) - artStreet.properties.areaSqm) < 1);
@@ -122,11 +126,15 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.ok(Math.abs(geometryAreaSqm(daeinMarket.geometry) - daeinMarket.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(namgwangjuMarket.geometry) - namgwangjuMarket.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(printingStreet.geometry) - printingStreet.properties.areaSqm) < 1);
+  assert.ok(Math.abs(geometryAreaSqm(weddingStreet.geometry) - weddingStreet.properties.areaSqm) < 1);
+  assert.ok(Math.abs(geometryAreaSqm(honsuStreet.geometry) - honsuStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(boribapStreet.geometry) - boribapStreet.properties.areaSqm) < 1);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 96);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 263);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 146);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 365);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: weddingStreet.geometry }).length, 159);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: honsuStreet.geometry }).length, 114);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: boribapStreet.geometry }).length, 33);
   const mergedZones = mergeZoneFeatures(vworldPayload, payload);
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "대인시장").length, 1);
@@ -134,7 +142,7 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "남광주시장").length, 1);
   assert.equal(mergedZones.find((feature) => feature.properties.name === "남광주시장").properties.source, "manual");
   assert.equal(storePayload.stores.filter((store) => mergedZones
-    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1153);
+    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1426);
 });
 
 test("merges VWorld and manual zones while rejecting duplicate numbers", () => {
