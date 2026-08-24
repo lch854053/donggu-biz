@@ -571,7 +571,6 @@ async function initializeMarket() {
 }
 
 function renderMarketMeta() {
-  $("marketTitle").textContent = "동구 상가업소·의료기관 현황";
   const month = String(marketMeta.standardMonth || "").replace(/^(\d{4})(\d{2})$/, "$1.$2");
   const generated = marketMeta.generatedAt
     ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(marketMeta.generatedAt))
