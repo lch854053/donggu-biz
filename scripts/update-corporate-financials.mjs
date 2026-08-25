@@ -69,7 +69,7 @@ async function fetchStatements(corporateRegistrationNumber, businessYear) {
 }
 
 const matchSnapshot = JSON.parse(await readFile(inputPath, "utf8"));
-const matches = matchSnapshot.matches.filter((item) => item.status === "matched");
+const matches = matchSnapshot.matches.filter((item) => ["matched", "address-matched", "manual"].includes(item.status));
 const companies = [];
 let completed = 0;
 

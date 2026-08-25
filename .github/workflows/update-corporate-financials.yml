@@ -37,8 +37,8 @@ jobs:
       - run: npm test
       - name: Commit updated snapshots
         run: |
-          git add data/corporate_matches_donggu.json data/corporate_financials_donggu.json
-          if git diff --cached --quiet -- data/corporate_matches_donggu.json data/corporate_financials_donggu.json; then
+          git add data/corporate_matches_donggu.json data/corporate_numbers_donggu.json data/corporate_financials_donggu.json
+          if git diff --cached --quiet -- data/corporate_matches_donggu.json data/corporate_numbers_donggu.json data/corporate_financials_donggu.json; then
             echo "기업 매칭과 재무정보가 그대로라 커밋할 것이 없습니다."
             exit 0
           fi

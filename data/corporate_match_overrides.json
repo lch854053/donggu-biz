@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "description": "공식 근거로 수동 확인한 사업자등록번호-법인등록번호 매핑"
+  },
+  "overrides": [
+    {
+      "businessRegistrationNumber": "1318642628",
+      "corporateRegistrationNumber": "1201110622432",
+      "evidenceUrl": "https://apis.data.go.kr/1160100/service/GetCorpBasicInfoService_V2/getCorpOutline_V2?crno=1201110622432",
+      "reviewedAt": "2026-08-25",
+      "reviewedBy": "사용자 수동확인",
+      "note": "(주)드림스테이 법인번호 수동 확정"
+    },
+    {
+      "businessRegistrationNumber": "4108143898",
+      "corporateRegistrationNumber": "2001110038653",
+      "evidenceUrl": "https://apis.data.go.kr/1160100/service/GetCorpBasicInfoService_V2/getCorpOutline_V2?crno=2001110038653",
+      "reviewedAt": "2026-08-25",
+      "reviewedBy": "사용자 수동확인",
+      "note": "(주)혜민서 법인번호 수동 확정"
+    },
+    {
+      "businessRegistrationNumber": "5658702132",
+      "corporateRegistrationNumber": "2001140127546",
+      "evidenceUrl": "https://apis.data.go.kr/1160100/service/GetCorpBasicInfoService_V2/getCorpOutline_V2?crno=2001140127546",
+      "reviewedAt": "2026-08-25",
+      "reviewedBy": "사용자 수동확인",
+      "note": "(유)피카딜리산업개발 법인번호 수동 확정"
+    }
+  ]
+}

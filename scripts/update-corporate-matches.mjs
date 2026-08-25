@@ -2,8 +2,10 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
+  applyManualCorporateOverride,
   buildCorporatePilotCandidates,
   corporateNameQueries,
+  resolveCorporateAddressMatch,
   resolveCorporateMatch
 } from "../lib/corporate-matches.js";
 
@@ -36,6 +38,9 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const inputPath = resolve(root, "data/employment_insurance_donggu.json");
 const outputPath = resolve(root, "data/corporate_matches_donggu.json");
 const tempPath = resolve(root, "data/.corporate-matches-donggu.tmp");
+const numbersOutputPath = resolve(root, "data/corporate_numbers_donggu.json");
+const numbersTempPath = resolve(root, "data/.corporate-numbers-donggu.tmp");
+const overridesPath = resolve(root, "data/corporate_match_overrides.json");
 const sleep = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
 
 let apiQueryCount = 0;
@@ -102,9 +107,17 @@ async function matchCandidate(candidate) {
   }
   const apiItems = uniqueApiItems(collected);
   resolution = resolveCorporateMatch(candidate.businessRegistrationNumber, apiItems);
+  if (resolution.status === "unmatched") resolution = resolveCorporateAddressMatch(candidate, apiItems);
+  const override = overridesByBusinessNumber.get(candidate.businessRegistrationNumber);
+  if (override && ["matched", "address-matched"].includes(resolution.status)
+    && resolution.company.corporateRegistrationNumber !== override.corporateRegistrationNumber) {
+    throw new Error(`자동 매칭과 수동 확정이 충돌합니다: ${candidate.businessRegistrationNumber}`);
+  }
+  if (override) resolution = applyManualCorporateOverride(candidate, apiItems, override);
   return {
     businessRegistrationNumber: candidate.businessRegistrationNumber,
     sourceNames: candidate.names,
+    sourceAddresses: candidate.addresses,
     searchedNames: queries,
     candidateCount: apiItems.length,
     ...resolution
@@ -113,6 +126,33 @@ async function matchCandidate(candidate) {
 
 const employmentSnapshot = JSON.parse(await readFile(inputPath, "utf8"));
 const allCandidates = buildCorporatePilotCandidates(employmentSnapshot.items || []);
+let overridePayload = { overrides: [] };
+try {
+  overridePayload = JSON.parse(await readFile(overridesPath, "utf8"));
+} catch (error) {
+  if (error.code !== "ENOENT") throw error;
+}
+const overrides = Array.isArray(overridePayload.overrides) ? overridePayload.overrides : [];
+const overridesByBusinessNumber = new Map();
+for (const override of overrides) {
+  const businessNumber = String(override.businessRegistrationNumber || "").replace(/[^0-9]/g, "");
+  const corporateNumber = String(override.corporateRegistrationNumber || "").replace(/[^0-9]/g, "");
+  if (!/^\d{10}$/.test(businessNumber) || !/^\d{13}$/.test(corporateNumber)) {
+    throw new Error("수동 확정 파일의 사업자등록번호 또는 법인등록번호 형식이 올바르지 않습니다.");
+  }
+  if (!/^https:\/\//.test(String(override.evidenceUrl || ""))) {
+    throw new Error(`수동 확정에는 https 공식 근거 URL이 필요합니다: ${businessNumber}`);
+  }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(override.reviewedAt || "")) || !String(override.reviewedBy || "").trim()) {
+    throw new Error(`수동 확정에는 검토일과 검토자가 필요합니다: ${businessNumber}`);
+  }
+  if (overridesByBusinessNumber.has(businessNumber)) throw new Error(`수동 확정 사업자번호가 중복됩니다: ${businessNumber}`);
+  overridesByBusinessNumber.set(businessNumber, { ...override, businessRegistrationNumber: businessNumber, corporateRegistrationNumber: corporateNumber });
+}
+const candidateBusinessNumbers = new Set(allCandidates.map((candidate) => candidate.businessRegistrationNumber));
+for (const businessNumber of overridesByBusinessNumber.keys()) {
+  if (!candidateBusinessNumbers.has(businessNumber)) throw new Error(`수동 확정 대상이 법인 후보에 없습니다: ${businessNumber}`);
+}
 const candidates = limit ? allCandidates.slice(0, limit) : allCandidates;
 const results = [];
 
@@ -121,15 +161,17 @@ for (let offset = 0; offset < candidates.length; offset += CONCURRENCY) {
   results.push(...await Promise.all(batch.map(matchCandidate)));
   const completed = Math.min(offset + batch.length, candidates.length);
   if (completed % 100 < CONCURRENCY || completed === candidates.length) {
-    const matched = results.filter((result) => result.status === "matched").length;
-    console.log(`[corporate-matches] ${completed}/${candidates.length} 처리, ${matched}개 매칭, API ${apiQueryCount}회`);
+    const confirmed = results.filter((result) => ["matched", "address-matched", "manual"].includes(result.status)).length;
+    console.log(`[corporate-matches] ${completed}/${candidates.length} 처리, ${confirmed}개 확정, API ${apiQueryCount}회`);
   }
   await sleep(PAUSE_MS);
 }
 
-const counts = Object.fromEntries(["matched", "unmatched", "ambiguous"]
+const counts = Object.fromEntries(["matched", "address-matched", "manual", "unmatched", "ambiguous"]
   .map((status) => [status, results.filter((result) => result.status === status).length]));
-if (!results.length || !counts.matched) throw new Error("확정된 법인 매칭이 없어 스냅샷을 쓰지 않습니다.");
+if (!results.length || counts.matched + counts["address-matched"] + counts.manual === 0) {
+  throw new Error("확정된 법인 매칭이 없어 스냅샷을 쓰지 않습니다.");
+}
 if (new Set(results.map((result) => result.businessRegistrationNumber)).size !== results.length) {
   throw new Error("파일럿 결과에 사업자등록번호 중복이 있습니다.");
 }
@@ -149,8 +191,28 @@ const snapshot = {
   },
   matches: results.sort((left, right) => left.businessRegistrationNumber.localeCompare(right.businessRegistrationNumber))
 };
+const confirmedResults = results.filter((result) => ["matched", "address-matched", "manual"].includes(result.status));
+const numberSnapshot = {
+  meta: {
+    source: "금융위원회_기업기본정보",
+    collectedAt: snapshot.meta.collectedAt,
+    region: snapshot.meta.region,
+    totalCount: confirmedResults.length,
+    automaticCount: counts.matched,
+    addressMatchedCount: counts["address-matched"],
+    manualCount: counts.manual
+  },
+  companies: confirmedResults.map((result) => ({
+    businessRegistrationNumber: result.businessRegistrationNumber,
+    corporateRegistrationNumber: result.company.corporateRegistrationNumber,
+    name: result.company.name,
+    matchType: result.status
+  })).sort((left, right) => left.businessRegistrationNumber.localeCompare(right.businessRegistrationNumber))
+};
 
 await mkdir(dirname(outputPath), { recursive: true });
 await writeFile(tempPath, `${JSON.stringify(snapshot)}\n`, "utf8");
 await rename(tempPath, outputPath);
-console.log(`[corporate-matches] 확정 ${counts.matched}, 미확정 ${counts.unmatched}, 모호 ${counts.ambiguous} → data/corporate_matches_donggu.json`);
+await writeFile(numbersTempPath, `${JSON.stringify(numberSnapshot)}\n`, "utf8");
+await rename(numbersTempPath, numbersOutputPath);
+console.log(`[corporate-matches] 사업자번호 ${counts.matched}, 주소 ${counts["address-matched"]}, 수동 ${counts.manual}, 미확정 ${counts.unmatched}, 모호 ${counts.ambiguous}`);
