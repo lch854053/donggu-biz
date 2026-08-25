@@ -1352,17 +1352,14 @@ function employmentInsuranceCountLabel(value) {
   return typeof value === "number" ? `${value.toLocaleString("ko-KR")}명` : "-";
 }
 
-function businessAndCorporateNumberHtml(businessNumber) {
-  const raw = String(businessNumber || "");
-  const digits = raw.replace(/[^0-9]/g, "");
+function corporateRegistrationNumberHtml(businessNumber) {
+  const digits = String(businessNumber || "").replace(/[^0-9]/g, "");
   const company = /^\d{10}$/.test(digits) ? corporateNumbersByBusinessNumber.get(digits) : null;
   const corporateNumber = String(company?.corporateRegistrationNumber || "");
   const formattedCorporateNumber = /^\d{13}$/.test(corporateNumber)
     ? `${corporateNumber.slice(0, 6)}-${corporateNumber.slice(6)}`
     : corporateNumber;
-  return `${escapeHtml(raw || "-")}${formattedCorporateNumber
-    ? ` <span class="corporate-number-inline">법인 ${escapeHtml(formattedCorporateNumber)}</span>`
-    : ""}`;
+  return formattedCorporateNumber ? escapeHtml(formattedCorporateNumber) : "-";
 }
 
 function employmentInsuranceDetailHtml(row, { sharedWithNps = false } = {}) {
@@ -1407,7 +1404,8 @@ function employmentInsuranceDetailHtml(row, { sharedWithNps = false } = {}) {
   }).join("");
 
   const businessSummary = sharedWithNps ? "" : `<dl class="insurance-business-summary">
-      ${detailRow("사업자등록번호", businessAndCorporateNumberHtml(row.businessRegistrationNumber))}
+      ${detailRow("사업자등록번호", escapeHtml(row.businessRegistrationNumber || "-"))}
+      ${detailRow("법인등록번호", corporateRegistrationNumberHtml(row.businessRegistrationNumber))}
     </dl>`;
   return `<section class="detail-section">
     <h3>고용·산재보험 정보 ${employmentInsuranceTypeBadge(row)}</h3>
@@ -1570,7 +1568,8 @@ async function showNpsDetail(rowKey) {
       <h3>국민연금 상세 정보</h3>
       <p class="selection-name">${escapeHtml(detail.name)}</p>
       <dl>
-        ${row("사업자등록번호", businessAndCorporateNumberHtml(businessNumber))}
+        ${row("사업자등록번호", escapeHtml(businessNumber))}
+        ${row("법인등록번호", corporateRegistrationNumberHtml(businessNumber))}
         ${row("소재지", escapeHtml(address))}
         ${enrichedPostalCodes.length ? row("우편번호", escapeHtml(enrichedPostalCodes.join(" / "))) : ""}
         ${row("업종 대분류", escapeHtml(detail.sectionName))}

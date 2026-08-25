@@ -287,8 +287,11 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(appJs, /<h3>고용·산재보험 정보/);
   assert.match(appJs, /기업 재무정보/);
   assert.match(appJs, /법인 전체 재무제표/);
-  assert.match(appJs, /businessAndCorporateNumberHtml/);
-  assert.match(appJs, /법인 \$\{escapeHtml\(formattedCorporateNumber\)\}/);
+  assert.match(appJs, /corporateRegistrationNumberHtml/);
+  assert.match(appJs, /formattedCorporateNumber \? escapeHtml\(formattedCorporateNumber\) : "-"/);
+  assert.match(appJs, /사업자등록번호", escapeHtml\([^)]*businessNumber/);
+  assert.match(appJs, /법인등록번호", corporateRegistrationNumberHtml\([^)]*businessNumber/);
+  assert.doesNotMatch(appJs, /corporate-number-inline/);
   assert.doesNotMatch(appJs, /통합 사업장/);
   assert.doesNotMatch(appJs, /npsInsuranceTypeSelect|npsYearRange|npsPeopleRange/);
 });
