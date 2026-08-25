@@ -285,6 +285,8 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(appJs, /insuranceIndustrySectionCodes\(row\)/);
   assert.match(appJs, /국민연금 월별 추이/);
   assert.match(appJs, /<h3>고용·산재보험 정보/);
+  assert.match(appJs, /기업 재무정보/);
+  assert.match(appJs, /법인 전체 재무제표/);
   assert.doesNotMatch(appJs, /통합 사업장/);
   assert.doesNotMatch(appJs, /npsInsuranceTypeSelect|npsYearRange|npsPeopleRange/);
 });

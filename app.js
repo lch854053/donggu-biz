@@ -983,6 +983,8 @@ let npsSort = "";
 
 let employmentInsuranceRows = [];
 let employmentInsuranceSnapshot = null;
+let corporateFinancialsByBusinessNumber = new Map();
+let corporateFinancialsMeta = null;
 
 // 업종 대분류 선택기에서 "업종 미상"을 가리키는 값. 분류표의 대분류 코드와 겹치지 않게 둔다.
 const NPS_UNKNOWN_SECTION_VALUE = "unknown";
@@ -1143,7 +1145,7 @@ function renderNpsTable() {
     const opened = npsDetail.key === row.key;
     // 상세 카드는 표 맨 아래가 아니라 누른 행 바로 아래에 한 줄을 끼워 펼친다.
     const card = opened
-      ? `<tr class="detail-row"><td colspan="12"><div class="detail-card">${npsDetail.html}${businessStatusHtml(row)}</div></td></tr>`
+      ? `<tr class="detail-row"><td colspan="12"><div class="detail-card">${npsDetail.html}${businessStatusHtml(row)}${corporateFinancialHtml(row)}</div></td></tr>`
       : "";
     const nps = row.nps;
     const employment = row.employmentInsurance;
@@ -1224,6 +1226,7 @@ function fillNpsAdminDongOptions() {
  * 스냅샷을 함께 읽는다. 국민연금 API는 상세 카드와 월별 추이에만 쓴다.
  */
 const NPS_SNAPSHOT_URL = "data/nps_donggu.json";
+const CORPORATE_FINANCIALS_SNAPSHOT_URL = "data/corporate_financials_donggu.json";
 
 async function loadNpsSnapshot() {
   if (npsSnapshot) return npsSnapshot;
@@ -1250,6 +1253,23 @@ async function loadEmploymentInsuranceSnapshot() {
   return employmentInsuranceSnapshot;
 }
 
+async function loadCorporateFinancialsSnapshot() {
+  if (corporateFinancialsMeta) return;
+  try {
+    const response = await fetch(CORPORATE_FINANCIALS_SNAPSHOT_URL, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json();
+    corporateFinancialsMeta = payload.meta || {};
+    corporateFinancialsByBusinessNumber = new Map((payload.companies || [])
+      .map((company) => [String(company.businessRegistrationNumber || ""), company])
+      .filter(([businessNumber]) => /^\d{10}$/.test(businessNumber)));
+  } catch (error) {
+    console.error("[corporate-financials] snapshot unavailable", error);
+    corporateFinancialsMeta = { unavailable: true };
+    corporateFinancialsByBusinessNumber = new Map();
+  }
+}
+
 async function runNpsLookup() {
   if (npsBusy) return;
   const businessNumber = $("npsBusinessNumberInput").value.trim();
@@ -1268,7 +1288,11 @@ async function runNpsLookup() {
   renderNpsPager();
 
   try {
-    const [nps, employment] = await Promise.all([loadNpsSnapshot(), loadEmploymentInsuranceSnapshot()]);
+    const [nps, employment] = await Promise.all([
+      loadNpsSnapshot(),
+      loadEmploymentInsuranceSnapshot(),
+      loadCorporateFinancialsSnapshot()
+    ]);
     npsRows = nps.items;
     employmentInsuranceRows = employment.items;
     insuranceRows = combineInsuranceWorkplaces(npsRows, employmentInsuranceRows);
@@ -1395,6 +1419,54 @@ function businessStatusHtml(row) {
     <h3>사업자 상태</h3>
     <div class="business-status-actions">${button}${businessNumber ? '<span class="field-note">국세청 실시간 조회</span>' : ""}</div>
     ${result}
+  </section>`;
+}
+
+function corporateFinancialHtml(row) {
+  const businessNumber = businessNumberForStatus(row);
+  const company = corporateFinancialsByBusinessNumber.get(businessNumber);
+  if (!company) return "";
+
+  const statementsByYear = new Map();
+  for (const statement of company.statements || []) {
+    const year = String(statement.businessYear || "");
+    const current = statementsByYear.get(year);
+    if (!current || (!String(current.statementTypeName).includes("별도") && String(statement.statementTypeName).includes("별도"))) {
+      statementsByYear.set(year, statement);
+    }
+  }
+  const statements = [...statementsByYear.values()]
+    .sort((left, right) => String(right.businessYear).localeCompare(String(left.businessYear)));
+  if (!statements.length) return "";
+
+  const amountLabel = (value) => typeof value === "number"
+    ? `${Math.round(value / 100000000).toLocaleString("ko-KR")}억원`
+    : "-";
+  const ratioLabel = (value) => typeof value === "number"
+    ? `${value.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}%`
+    : "-";
+  const corporateNumber = String(company.corporateRegistrationNumber || "");
+  const formattedCorporateNumber = /^\d{13}$/.test(corporateNumber)
+    ? `${corporateNumber.slice(0, 6)}-${corporateNumber.slice(6)}`
+    : corporateNumber;
+  const cards = statements.map((statement) => `<article class="financial-year-card">
+    <h4>${escapeHtml(statement.businessYear)}년 <span>${escapeHtml(statement.statementTypeName || "요약재무제표")}</span></h4>
+    <dl>
+      <div><dt>매출액</dt><dd>${amountLabel(statement.sales)}</dd></div>
+      <div><dt>영업이익</dt><dd>${amountLabel(statement.operatingProfit)}</dd></div>
+      <div><dt>당기순이익</dt><dd>${amountLabel(statement.netIncome)}</dd></div>
+      <div><dt>총자산</dt><dd>${amountLabel(statement.totalAssets)}</dd></div>
+      <div><dt>총부채</dt><dd>${amountLabel(statement.totalDebt)}</dd></div>
+      <div><dt>부채비율</dt><dd>${ratioLabel(statement.debtRatio)}</dd></div>
+    </dl>
+  </article>`).join("");
+
+  return `<section class="detail-section corporate-financial-section">
+    <h3>기업 재무정보 <span class="chart-note">법인 전체 기준</span></h3>
+    <p class="selection-name">${escapeHtml(company.name)}</p>
+    <p class="financial-corporate-number">법인등록번호 <span class="mono">${escapeHtml(formattedCorporateNumber)}</span></p>
+    <div class="financial-year-grid">${cards}</div>
+    <p class="field-note">동구 사업장 단독 실적이 아닌 법인 전체 재무제표입니다. 별도재무제표를 우선 표시하고, 없으면 연결재무제표를 표시합니다.</p>
   </section>`;
 }
 

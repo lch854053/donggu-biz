@@ -1,0 +1,48 @@
+name: Update Dong-gu corporate financial snapshots
+
+on:
+  workflow_dispatch:
+  schedule:
+    # NPS snapshot update 다음 날 04:00 KST.
+    - cron: "0 19 6 * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Check service key
+        env:
+          FSC_SERVICE_KEY: ${{ secrets.FSC_SERVICE_KEY }}
+        run: |
+          if [ -z "$FSC_SERVICE_KEY" ]; then
+            echo "FSC_SERVICE_KEY 저장소 Secret이 없습니다." >&2
+            exit 1
+          fi
+      - run: npm run update-corporate-matches
+        env:
+          FSC_SERVICE_KEY: ${{ secrets.FSC_SERVICE_KEY }}
+      - run: npm run update-corporate-financials
+        env:
+          FSC_SERVICE_KEY: ${{ secrets.FSC_SERVICE_KEY }}
+      - run: npm test
+      - name: Commit updated snapshots
+        run: |
+          git add data/corporate_matches_donggu.json data/corporate_financials_donggu.json
+          if git diff --cached --quiet -- data/corporate_matches_donggu.json data/corporate_financials_donggu.json; then
+            echo "기업 매칭과 재무정보가 그대로라 커밋할 것이 없습니다."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update Dong-gu corporate financial snapshots"
+          git push

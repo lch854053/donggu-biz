@@ -220,6 +220,13 @@ button { color: inherit; }
 .insurance-workplace-group h4 { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; color: var(--text-secondary); font-size: 15px; }
 .insurance-workplace-number { color: var(--text); font-size: 15px; }
 .insurance-workplace-group dl { margin-top: 6px !important; }
+.financial-corporate-number { margin-bottom: 10px !important; }
+.financial-year-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+.financial-year-card { padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-raised); }
+.financial-year-card h4 { margin: 0 0 6px; color: var(--text); font-size: 15px; }
+.financial-year-card h4 span { margin-left: 5px; color: var(--text-muted); font-size: 12px; font-weight: 400; }
+.financial-year-card dl { grid-template-columns: 1fr !important; }
+.corporate-financial-section > .field-note { display: block; margin-top: 10px; }
 
 .insurance-metric,
 .insurance-industry { min-width: 104px; display: grid; gap: 2px; }
