@@ -13,6 +13,24 @@ test("financial statement fields preserve negative amounts and missing values", 
   assert.equal(statement.netIncome, null);
 });
 
+test("rejects undocumented and internally inconsistent summary rows", () => {
+  const rows = validFinancialStatements([{
+    crno: "2001110000001", bizYear: "2025", basDt: "20251016",
+    fnclDcd: "999", fnclDcdNm: "NA", enpTastAmt: "68743000000",
+    enpTdbtAmt: "26790000000", enpTcptAmt: "68743000000", fnclDebtRto: "0"
+  }], "2001110000001", "2025");
+  assert.deepEqual(rows, []);
+});
+
+test("calculates debt ratio from validated debt and equity amounts", () => {
+  const [statement] = validFinancialStatements([{
+    crno: "2001110000001", bizYear: "2025", basDt: "20251231",
+    fnclDcd: "120", fnclDcdNm: "별도요약재무제표", enpTastAmt: "150",
+    enpTdbtAmt: "50", enpTcptAmt: "100", fnclDebtRto: "0"
+  }], "2001110000001", "2025");
+  assert.equal(statement.debtRatio, 50);
+});
+
 test("financial rows must match both corporate number and business year", () => {
   const rows = validFinancialStatements([
     { crno: "2001110000001", bizYear: "2025", basDt: "20251231", fnclDcd: "110", fnclDcdNm: "연결" },
