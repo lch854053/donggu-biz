@@ -526,6 +526,7 @@ function activateMarketView(viewName) {
   });
   closeClusterPanel();
   if (viewName === "map") setTimeout(() => marketMap?.invalidateSize(), 0);
+  if (viewName === "analysis") initializeBuildingOutline();
 }
 
 marketViewTabs.forEach((tab, index) => {
@@ -556,7 +557,9 @@ const OUTLINE_OTHER_COLOR = "#c4879e";
 const OUTLINE_UNMATCHED_COLOR = "#586276";
 const OUTLINE_UNKNOWN_COLOR = "#8793a8";
 const OUTLINE_PLAIN_COLOR = "#aeb9cb";
+let outlineMap;
 let outlineManifest = null;
+let outlineZoneLayer;
 let outlineBuildingLayer;
 let outlineFeatures = [];
 let outlineIndustryById = new Map();
@@ -567,7 +570,8 @@ const outlineCellCache = new Map();
 
 async function initializeMarket() {
   if (marketInitialized) {
-    setTimeout(() => marketMap?.invalidateSize(), 0);
+    if (!$("market-view-analysis").hidden) initializeBuildingOutline();
+    else setTimeout(() => marketMap?.invalidateSize(), 0);
     return;
   }
   marketInitialized = true;
@@ -617,6 +621,7 @@ async function initializeMarket() {
     $("marketState").hidden = true;
     $("marketWorkspace").hidden = false;
     setTimeout(() => marketMap.invalidateSize(), 0);
+    if (!$("market-view-analysis").hidden) initializeBuildingOutline();
   } catch (error) {
     $("marketState").classList.add("is-error");
     $("marketState").textContent = `${error.message} 데이터 갱신 스크립트를 먼저 실행해 주세요.`;
@@ -719,23 +724,25 @@ function setOutlineState(message, isError = false) {
 }
 
 function clearOutlineLayers() {
+  outlineZoneLayer?.remove();
   outlineBuildingLayer?.remove();
+  outlineZoneLayer = null;
   outlineBuildingLayer = null;
   outlineFeatures = [];
   outlineIndustryById = new Map();
   outlineStoresById = new Map();
-  $("outlineAnalysis").hidden = true;
+  $("outlineWorkspace").hidden = true;
   $("outlineLegend").replaceChildren();
   $("outlineLegend").hidden = true;
-  $("outlineZoneName").textContent = "건물 윤곽";
+  $("outlineZoneName").textContent = "선택 상권";
   $("outlineZoneMeta").textContent = "";
   const state = $("outlineState");
   state.hidden = true;
   state.classList.remove("is-error");
   state.textContent = "";
-  if (marketMap) {
-    marketMap.setMaxBounds(null);
-    marketMap.setMinZoom(0);
+  if (outlineMap) {
+    outlineMap.setMaxBounds(null);
+    outlineMap.setMinZoom(0);
   }
 }
 
@@ -865,10 +872,12 @@ async function loadBuildingOutline() {
   const zone = selectedZone();
   const requestId = ++outlineLoadId;
   clearOutlineLayers();
-  if (!zone || !marketMap) return;
+  if (!zone || !outlineMap) {
+    if (!zone && outlineMap) setOutlineState("주요상권을 선택해 주세요.");
+    return;
+  }
 
   const zoneName = zone.properties?.name || "선택 상권";
-  $("outlineAnalysis").hidden = false;
   $("outlineZoneName").textContent = zoneName;
   $("outlineZoneMeta").textContent = "건물 윤곽을 불러오는 중입니다.";
   setOutlineState(`${zoneName}의 건물 윤곽을 불러오는 중입니다.`);
@@ -891,27 +900,55 @@ async function loadBuildingOutline() {
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
 
+    outlineZoneLayer = L.geoJSON(zone, {
+      interactive: false,
+      style: {
+        color: "#83b3ff",
+        weight: 2,
+        opacity: .9,
+        fillColor: "#5b98ff",
+        fillOpacity: .06
+      }
+    }).addTo(outlineMap);
     outlineBuildingLayer = L.geoJSON({ type: "FeatureCollection", features: outlineFeatures }, {
       style: outlineFeatureStyle,
       onEachFeature: bindOutlineFeature
-    }).addTo(marketMap);
+    }).addTo(outlineMap);
+    outlineZoneLayer.bringToFront();
 
-    const leafletBounds = zoneLeafletByNo.get(selectedZoneNo)?.getBounds() || L.geoJSON(zone).getBounds();
+    const leafletBounds = outlineZoneLayer.getBounds();
     if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
-    marketMap.fitBounds(leafletBounds, { padding: [32, 32], maxZoom: 18 });
+    outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom: 18 });
 
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
+    $("outlineWorkspace").hidden = false;
     if (outlineFeatures.length) {
       $("outlineState").hidden = true;
     } else {
       setOutlineState("선택 상권에 표시할 건물 윤곽이 없습니다.");
     }
+    setTimeout(() => outlineMap.invalidateSize(), 0);
   } catch (error) {
     if (requestId !== outlineLoadId) return;
     clearOutlineLayers();
     setOutlineState(`${error.message} 데이터가 배포되었는지 확인해 주세요.`, true);
   }
+}
+
+function initializeBuildingOutline() {
+  if (!outlineMap) {
+    outlineMap = L.map("buildingOutlineMap", {
+      zoomControl: true,
+      preferCanvas: true
+    }).setView(DONGGU_CENTER, 14);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(outlineMap);
+  }
+  setTimeout(() => outlineMap.invalidateSize(), 0);
+  loadBuildingOutline();
 }
 
 $("outlineIndustryToggle").addEventListener("change", (event) => {
@@ -995,8 +1032,11 @@ function populateMarketFilters() {
   replaceOptions($("marketTableDongFilter"), dongs, "전체 행정동");
   replaceOptions($("marketTableIndustryFilter"), industries, "전체 업종");
   replaceOptions($("marketTableZoneFilter"), zones, "전체 주요상권");
+  replaceOptions($("outlineZoneFilter"), zones, "주요상권 선택");
+  $("outlineZoneFilter").value = selectedZoneNo;
   $("zoneFilter").disabled = !mainBizZones.length;
   $("marketTableZoneFilter").disabled = !mainBizZones.length;
+  $("outlineZoneFilter").disabled = !mainBizZones.length;
 }
 
 function marketTableCriteria() {
@@ -1106,7 +1146,7 @@ function applyMarketFilters() {
   closeClusterPanel();
   visibleStores = filterStores(activeMarketStores(), currentMarketFilters());
   markerCluster.clearLayers();
-  if ($("dongFilter").value && !selectedZoneNo) {
+  if ($("dongFilter").value || selectedZoneNo) {
     const visibleIds = new Set(visibleStores.map((store) => store.id));
     markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
   }
@@ -1146,19 +1186,21 @@ function selectZone(number, fitBounds) {
   const selection = buildLocationSelection("zone", number);
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selectedZoneNo;
+  $("outlineZoneFilter").value = selectedZoneNo;
   $("dongFilter").value = selection.adminDong;
   syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
   applyMarketFilters();
   const layer = zoneLeafletByNo.get(selectedZoneNo);
-  if (fitBounds && layer && !$("panel-market").hidden) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
-  loadBuildingOutline();
+  if (fitBounds && layer && !$("market-view-map").hidden) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
+  if (outlineMap) loadBuildingOutline();
 }
 
 $("dongFilter").addEventListener("change", (event) => {
   const selection = buildLocationSelection("dong", event.target.value);
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selection.zoneNo;
+  $("outlineZoneFilter").value = selection.zoneNo;
   syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
   applyMarketFilters();
@@ -1168,9 +1210,10 @@ $("dongFilter").addEventListener("change", (event) => {
   } else if (!event.target.value) {
     marketMap.setView(DONGGU_CENTER, 14);
   }
-  loadBuildingOutline();
+  if (outlineMap) loadBuildingOutline();
 });
 $("zoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
+$("outlineZoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
 $("resetMarketBtn").addEventListener("click", () => {
   $("dongFilter").value = "";
   selectZone("", false);
@@ -1206,6 +1249,7 @@ $("marketTableDownloadBtn").addEventListener("click", () => {
     "업소"
   );
 });
+$("analysisLookupBtn").addEventListener("click", () => activateMarketView("map"));
 
 // National Pension workplace lookup
 // 이 서비스는 광주 동구만 다룬다. 조회도 스냅샷도 같은 지역 하나를 본다.

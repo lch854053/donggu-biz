@@ -185,16 +185,20 @@ test("ships a complete building-outline cell snapshot", async () => {
   await Promise.all(manifest.cells.map((cell) => access(new URL(`../data/figure-ground/${cell.file}`, import.meta.url))));
 });
 
-test("puts building-outline analysis in the market map", async () => {
+test("keeps building-outline analysis under the market service", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(html, /id="panel-market"/);
   assert.match(html, /id="marketMap"/);
+  assert.match(html, /data-market-view="analysis">상권 상세 분석/);
+  assert.match(html, /id="outlineZoneFilter"/);
+  assert.match(html, /id="buildingOutlineMap"/);
   assert.match(html, /id="outlineIndustryToggle"[^>]*checked/);
   assert.match(html, /class="outline-legend" id="outlineLegend" hidden/);
   assert.doesNotMatch(html, /id="panel-analysis"/);
   assert.doesNotMatch(html, /id="tab-analysis"/);
-  assert.doesNotMatch(html, /id="outlineZoneFilter"/);
+  assert.match(app, /if \(\$\("dongFilter"\)\.value \|\| selectedZoneNo\)/);
+  assert.match(app, /outlineMap\.fitBounds\(leafletBounds/);
   assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
   assert.doesNotMatch(app, /marketMap\.setMinZoom\(Math\.max\(12/);
 });

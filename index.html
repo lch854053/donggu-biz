@@ -15,10 +15,10 @@
 </head>
 <body>
   <!--
-  THESIS: 사업자 한 건의 상태와 동구 전체 상가의 맥락을 같은 업무대 위에서 확인한다. 장식적인 대시보드 대신 조회와 판단이 바로 이어지는 관제 화면을 만든다.
-  OWN-WORLD: 흰 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 공공 업무 도구 언어를 사용한다.
-   STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·건물 윤곽, 4대보험 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
-   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상권 지도는 좌측 선택·상세 레일과 지도가 한 화면에 놓인다.
+   THESIS: 사업자 한 건의 상태와 동구 전체 상가의 맥락을 같은 업무대 위에서 확인한다. 장식적인 대시보드 대신 조회와 판단이 바로 이어지는 관제 화면을 만든다.
+   OWN-WORLD: 흰 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 공공 업무 도구 언어를 사용한다.
+   STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·상권 상세 분석, 4대보험 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
+   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상권 조회 하위 탭은 지도·상세 분석·표 흐름을 제공한다.
   FORM: 통합 관제형, 구조 후보 5번, seed 859829d4.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
   -->
@@ -243,6 +243,7 @@
 
       <nav class="sub-tabs market-view-tabs" aria-label="소상공인 조회 방식" role="tablist">
         <button class="sub-tab market-view-tab is-active" id="market-view-tab-map" role="tab" aria-selected="true" aria-controls="market-view-map" data-market-view="map">지도로 조회</button>
+        <button class="sub-tab market-view-tab" id="market-view-tab-analysis" role="tab" aria-selected="false" aria-controls="market-view-analysis" data-market-view="analysis">상권 상세 분석</button>
         <button class="sub-tab market-view-tab" id="market-view-tab-table" role="tab" aria-selected="false" aria-controls="market-view-table" data-market-view="table">표로 조회</button>
       </nav>
 
@@ -271,29 +272,10 @@
               <p>행정동 또는 주요상권을 선택하면 상세 현황을 확인할 수 있습니다.</p>
             </div>
           </section>
-          <section class="outline-analysis" id="outlineAnalysis" aria-labelledby="outlineZoneName" hidden>
-            <div class="rail-heading">
-              <h3 id="outlineZoneName">건물 윤곽</h3>
-            </div>
-            <p class="outline-zone-meta" id="outlineZoneMeta"></p>
-            <label class="outline-toggle" for="outlineIndustryToggle">
-              <input id="outlineIndustryToggle" type="checkbox" checked>
-              <span>
-                <strong>업종 분류</strong>
-                <small>연결된 업소가 있는 건물의 우세 업종 기준</small>
-              </span>
-            </label>
-            <div class="data-note">
-              <strong>지도 해석</strong>
-              <p>건물 도형은 Figure-Ground 정적 데이터이며, 업종 색상은 선택 상권 내부 점포를 건물 필지에 연결한 결과입니다. 업종 데이터가 있는 건물에 마우스를 올리면 업소명·업종·주소를 확인할 수 있습니다.</p>
-            </div>
-          </section>
         </aside>
 
-        <section class="map-stage" aria-label="상가업소 및 건물 윤곽 지도">
+        <section class="map-stage" aria-label="상가업소 지도">
           <div id="marketMap"></div>
-          <div class="outline-map-state" id="outlineState" role="status" hidden></div>
-          <div class="outline-legend" id="outlineLegend" hidden></div>
           <aside class="cluster-panel" id="clusterPanel" aria-labelledby="clusterPanelTitle" hidden>
             <header class="cluster-panel-head">
               <div>
@@ -324,6 +306,50 @@
         </section>
 
       </div>
+      </div>
+
+      <div class="market-view-panel" id="market-view-analysis" role="tabpanel" aria-labelledby="market-view-tab-analysis" hidden>
+        <div class="market-heading analysis-heading">
+          <div>
+            <h2>상권 상세 분석</h2>
+            <p>주요상권을 선택하면 해당 경계 안의 건물 윤곽과 업종 분포를 확인합니다.</p>
+          </div>
+          <div class="analysis-actions">
+            <label class="field analysis-zone-field">
+              <span>주요상권</span>
+              <select id="outlineZoneFilter" disabled>
+                <option value="">상권 목록을 불러오는 중...</option>
+              </select>
+            </label>
+            <button class="button button-quiet" id="analysisLookupBtn" type="button">지도로 조회 돌아가기</button>
+          </div>
+        </div>
+
+        <div class="market-state" id="outlineState" role="status">주요상권을 선택해 주세요.</div>
+
+        <div class="outline-workspace" id="outlineWorkspace" hidden>
+          <aside class="outline-rail" aria-labelledby="outlineZoneName">
+            <div class="rail-heading">
+              <h3 id="outlineZoneName">선택 상권</h3>
+            </div>
+            <p class="outline-zone-meta" id="outlineZoneMeta"></p>
+            <label class="outline-toggle" for="outlineIndustryToggle">
+              <input id="outlineIndustryToggle" type="checkbox" checked>
+              <span>
+                <strong>업종 분류</strong>
+                <small>연결된 업소가 있는 건물의 우세 업종 기준</small>
+              </span>
+            </label>
+            <div class="data-note">
+              <strong>지도 해석</strong>
+              <p>건물 도형은 Figure-Ground 정적 데이터이며, 업종 색상은 선택 상권 내부 점포를 건물 필지에 연결한 결과입니다. 업종 데이터가 있는 건물에 마우스를 올리면 업소명·업종·주소를 확인할 수 있습니다.</p>
+            </div>
+          </aside>
+          <section class="outline-map-stage" aria-label="선택 상권 건물 윤곽 지도">
+            <div id="buildingOutlineMap"></div>
+            <div class="outline-legend" id="outlineLegend" hidden></div>
+          </section>
+        </div>
       </div>
 
       <div class="market-view-panel" id="market-view-table" role="tabpanel" aria-labelledby="market-view-tab-table" hidden>
