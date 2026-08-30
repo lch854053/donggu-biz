@@ -588,8 +588,23 @@ tbody tr:hover td { background: #f6f8fa; }
 .outline-toggle input { width: 16px; height: 16px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
 .outline-toggle strong { display: block; font-size: 12px; }
 .outline-toggle small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
-.outline-legend { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--line); }
-.outline-legend-title { margin: 0 0 10px; color: var(--text-secondary); font-size: 12px; font-weight: 700; }
+.outline-legend {
+  position: absolute;
+  z-index: 650;
+  left: 16px;
+  bottom: 16px;
+  max-width: min(320px, calc(100% - 32px));
+  max-height: min(360px, calc(100% - 32px));
+  overflow: auto;
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid rgba(200, 208, 217, .92);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .9);
+  color: var(--text);
+  box-shadow: 0 8px 22px rgba(23, 37, 54, .16);
+}
+.outline-legend-title { margin: 0 0 8px; color: var(--text); font-size: 12px; font-weight: 700; }
 .outline-legend-row { padding: 6px 0; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-secondary); font-size: 12px; }
 .outline-legend-row strong { color: var(--text); font: 12px/1.4 var(--mono); white-space: nowrap; }
 .outline-legend-label { display: flex; align-items: center; gap: 7px; min-width: 0; }
@@ -602,7 +617,7 @@ tbody tr:hover td { background: #f6f8fa; }
   z-index: 700;
   left: 16px;
   right: 16px;
-  bottom: 16px;
+  top: 16px;
   max-width: 620px;
   padding: 10px 14px;
   border: 1px solid var(--line-strong);
@@ -672,7 +687,8 @@ tbody tr:hover td { background: #f6f8fa; }
   .map-stage { min-height: 56vh; }
   #marketMap { min-height: 56vh; }
   .cluster-panel { top: 10px; right: 10px; width: calc(100% - 20px); max-height: calc(100% - 20px); }
-  .outline-map-state { left: 10px; right: 10px; bottom: 10px; }
+  .outline-map-state { left: 10px; right: 10px; top: 10px; }
+  .outline-legend { left: 10px; bottom: 10px; max-width: calc(100% - 20px); max-height: min(320px, calc(100% - 20px)); }
 }
 
 @media (max-width: 520px) {

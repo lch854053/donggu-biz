@@ -726,6 +726,7 @@ function clearOutlineLayers() {
   outlineStoresById = new Map();
   $("outlineAnalysis").hidden = true;
   $("outlineLegend").replaceChildren();
+  $("outlineLegend").hidden = true;
   $("outlineZoneName").textContent = "건물 윤곽";
   $("outlineZoneMeta").textContent = "";
   const state = $("outlineState");
@@ -897,9 +898,6 @@ async function loadBuildingOutline() {
 
     const leafletBounds = zoneLeafletByNo.get(selectedZoneNo)?.getBounds() || L.geoJSON(zone).getBounds();
     if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
-    marketMap.setMaxBounds(leafletBounds.pad(.08));
-    const fitZoom = marketMap.getBoundsZoom(leafletBounds, false);
-    marketMap.setMinZoom(Math.max(12, Math.min(fitZoom, 18)));
     marketMap.fitBounds(leafletBounds, { padding: [32, 32], maxZoom: 18 });
 
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);

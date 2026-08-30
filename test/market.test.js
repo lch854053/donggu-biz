@@ -187,12 +187,16 @@ test("ships a complete building-outline cell snapshot", async () => {
 
 test("puts building-outline analysis in the market map", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(html, /id="panel-market"/);
   assert.match(html, /id="marketMap"/);
   assert.match(html, /id="outlineIndustryToggle"[^>]*checked/);
+  assert.match(html, /class="outline-legend" id="outlineLegend" hidden/);
   assert.doesNotMatch(html, /id="panel-analysis"/);
   assert.doesNotMatch(html, /id="tab-analysis"/);
   assert.doesNotMatch(html, /id="outlineZoneFilter"/);
+  assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
+  assert.doesNotMatch(app, /marketMap\.setMinZoom\(Math\.max\(12/);
 });
 
 test("rejects invalid or sharply reduced zone snapshots", () => {
