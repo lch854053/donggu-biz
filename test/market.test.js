@@ -198,6 +198,8 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.doesNotMatch(html, /id="panel-analysis"/);
   assert.doesNotMatch(html, /id="tab-analysis"/);
   assert.match(app, /if \(\$\("dongFilter"\)\.value \|\| selectedZoneNo\)/);
+  assert.doesNotMatch(app, /outlineZoneLayer/);
+  assert.doesNotMatch(app, /function initializeBuildingOutline\(\)[\s\S]*?tileLayer/);
   assert.match(app, /outlineMap\.fitBounds\(leafletBounds/);
   assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
   assert.doesNotMatch(app, /marketMap\.setMinZoom\(Math\.max\(12/);

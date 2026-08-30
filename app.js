@@ -559,7 +559,6 @@ const OUTLINE_UNKNOWN_COLOR = "#8793a8";
 const OUTLINE_PLAIN_COLOR = "#aeb9cb";
 let outlineMap;
 let outlineManifest = null;
-let outlineZoneLayer;
 let outlineBuildingLayer;
 let outlineFeatures = [];
 let outlineIndustryById = new Map();
@@ -724,9 +723,7 @@ function setOutlineState(message, isError = false) {
 }
 
 function clearOutlineLayers() {
-  outlineZoneLayer?.remove();
   outlineBuildingLayer?.remove();
-  outlineZoneLayer = null;
   outlineBuildingLayer = null;
   outlineFeatures = [];
   outlineIndustryById = new Map();
@@ -900,25 +897,13 @@ async function loadBuildingOutline() {
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
 
-    outlineZoneLayer = L.geoJSON(zone, {
-      interactive: false,
-      style: {
-        color: "#83b3ff",
-        weight: 2,
-        opacity: .9,
-        fillColor: "#5b98ff",
-        fillOpacity: .06
-      }
-    }).addTo(outlineMap);
     outlineBuildingLayer = L.geoJSON({ type: "FeatureCollection", features: outlineFeatures }, {
       style: outlineFeatureStyle,
       onEachFeature: bindOutlineFeature
     }).addTo(outlineMap);
-    outlineZoneLayer.bringToFront();
 
-    const leafletBounds = outlineZoneLayer.getBounds();
-    if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
-    outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom: 18 });
+    const leafletBounds = outlineBuildingLayer.getBounds();
+    if (leafletBounds.isValid()) outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom: 18 });
 
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
@@ -942,10 +927,6 @@ function initializeBuildingOutline() {
       zoomControl: true,
       preferCanvas: true
     }).setView(DONGGU_CENTER, 14);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(outlineMap);
   }
   setTimeout(() => outlineMap.invalidateSize(), 0);
   loadBuildingOutline();
