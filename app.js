@@ -637,6 +637,7 @@ function renderMarketMeta() {
   const sourceTotal = Number(marketMeta?.sourceTotalCount);
   const addedWithCoordinates = Number(supplemental?.addedWithCoordinatesCount);
   const addedWithoutCoordinates = Number(supplemental?.addedWithoutCoordinatesCount);
+  const kakaoEnriched = Number(marketMeta?.kakaoAddressEnrichment?.enrichedCount);
   const unavailableSources = Array.isArray(supplemental?.sources)
     ? supplemental.sources.filter((sourceInfo) => sourceInfo?.error).length
     : 0;
@@ -653,7 +654,10 @@ function renderMarketMeta() {
   const unavailable = unavailableSources
     ? ` · 인허가 원천 ${unavailableSources.toLocaleString("ko-KR")}건 미수집`
     : "";
-  $("marketMeta").textContent = `${source} · ${dates} · ${count}${unresolved}${unavailable}`;
+  const addressEnrichment = Number.isFinite(kakaoEnriched) && kakaoEnriched > 0
+    ? ` · 주소 보강 Kakao Local ${kakaoEnriched.toLocaleString("ko-KR")}건`
+    : "";
+  $("marketMeta").textContent = `${source} · ${dates} · ${count}${unresolved}${unavailable}${addressEnrichment}`;
 }
 
 function initializeMap() {

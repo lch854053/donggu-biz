@@ -125,6 +125,7 @@ NTS_API_KEY=국세청_사업자상태조회_서비스키
 JUSO_API_KEY=도로명주소_검색_API_승인키
 SDSC_SERVICE_KEY=소상공인시장진흥공단_상가정보_서비스키
 LOCALDATA_SERVICE_KEY=행정안전부_지방행정_인허가_API_서비스키
+KAKAO_REST_API_KEY=카카오_앱_REST_API_키
 NPS_SERVICE_KEY=국민연금공단_가입사업장내역_서비스키
 FSC_SERVICE_KEY=금융위원회_기업정보_서비스키
 VWORLD_KEY=VWorld_2D데이터_API키
@@ -138,6 +139,7 @@ API 키는 브라우저 코드나 정적 JSON에 포함하지 않습니다.
 ```bash
 npm install
 npm run update-stores
+npm run enrich-store-addresses
 npm run update-zones
 npm run update-nps
 npm run update-corporate-matches
@@ -156,9 +158,9 @@ npm run apply-localdata -- --submit
 
 스냅샷은 브라우저가 조회할 때 통째로 내려받으므로 화면이 실제로 읽는 값만 담습니다 — 같은 사업장인지 가리는 이름·사업자등록번호 앞 6자리·주소와, 목록 조회에 없어 채워야 하는 업종코드·업종명·등록일·탈퇴일·가입자 수입니다. 월별 이력의 `seq` 목록은 화면이 그때그때 받은 조회 결과에서 다시 만들므로 담지 않습니다.
 
-상가 데이터는 `data/stores_donggu.json`, VWorld 주요상권 경계는 `data/mainbiz_zones_donggu.geojson`, 수동 등록·보정 경계는 `data/manual_mainbiz_zones_donggu.geojson`에 저장됩니다. GitHub Actions는 매월 5일 API 기반 데이터를 다시 수집하며 수동 경계는 별도 파일에 보존됩니다. `SDSC_SERVICE_KEY`, 인허가 API 활용신청이 끝난 `LOCALDATA_SERVICE_KEY`, `VWORLD_KEY` 저장소 Secret이 필요합니다. 두 서비스키가 같은 공공데이터포털 키라면 `LOCALDATA_SERVICE_KEY`를 별도로 등록하지 않아도 워크플로가 `SDSC_SERVICE_KEY`를 대신 사용합니다. 설정된 인허가 원천 중 권한 오류가 난 원천은 스냅샷 메타데이터에 남기고 다음 갱신에서 다시 시도합니다.
+상가 데이터는 `data/stores_donggu.json`, VWorld 주요상권 경계는 `data/mainbiz_zones_donggu.geojson`, 수동 등록·보정 경계는 `data/manual_mainbiz_zones_donggu.geojson`에 저장됩니다. GitHub Actions는 매월 5일 API 기반 데이터를 다시 수집하며 수동 경계는 별도 파일에 보존됩니다. `SDSC_SERVICE_KEY`, 인허가 API 활용신청이 끝난 `LOCALDATA_SERVICE_KEY`, `KAKAO_REST_API_KEY`, `VWORLD_KEY` 저장소 Secret이 필요합니다. 두 서비스키가 같은 공공데이터포털 키라면 `LOCALDATA_SERVICE_KEY`를 별도로 등록하지 않아도 워크플로가 `SDSC_SERVICE_KEY`를 대신 사용합니다. 설정된 인허가 원천 중 권한 오류가 난 원천은 스냅샷 메타데이터에 남기고 다음 갱신에서 다시 시도합니다.
 
-행정안전부 인허가 API는 `OPN_ATMY_GRP_CD=5805000`(전남광주통합특별시 동구)와 영업상태코드 `01`(영업/정상)로 조회합니다. 좌표는 EPSG:5174에서 WGS84로 변환하고, 기존 SDSC 업소와 이름·주소·좌표를 순서대로 비교해 중복을 제거합니다. 인허가 자료와 SDSC 자료의 업소 식별자가 서로 다르므로, 보완 원천의 추가 건수는 실제 신규 점포 수가 아니라 현재 매칭 규칙에 따른 감사 가능한 후보 수입니다.
+행정안전부 인허가 API는 `OPN_ATMY_GRP_CD=5805000`(전남광주통합특별시 동구)와 영업상태코드 `01`(영업/정상)로 조회합니다. 좌표는 EPSG:5174에서 WGS84로 변환하고, 기존 SDSC 업소와 이름·주소·좌표를 순서대로 비교해 중복을 제거합니다. 인허가 자료와 SDSC 자료의 업소 식별자가 서로 다르므로, 보완 원천의 추가 건수는 실제 신규 점포 수가 아니라 현재 매칭 규칙에 따른 감사 가능한 후보 수입니다. 인허가 API가 `***`로 마스킹한 주소는 `KAKAO_REST_API_KEY`로 카카오 Local 좌표→주소 API를 호출해 건물 단위 주소를 보강하며, 원본 주소는 `sourceAddress`·`sourceLotAddress`에 보존합니다. 층·호수는 복원하지 않습니다. 기존 스냅샷만 보강할 때는 `npm run enrich-store-addresses`를 실행합니다.
 
 현재 수동 등록 경계는 산수시장, 예술의 거리, 전자의 거리, 인쇄의 거리와 무등산 보리밥거리이며, 대인시장과 남광주시장은 VWorld 원본을 수동 보정 경계로 대체합니다.
 

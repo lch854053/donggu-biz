@@ -15,6 +15,7 @@ import {
   parseLocaldataResponse
 } from "../lib/store-license.js";
 import { adminDongForAddress, createAdminDongLookup, normalizeAdminDongName } from "../lib/admin-dong.js";
+import { enrichStoreAddresses } from "../lib/kakao-local.js";
 
 const API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong";
 const SIGNGU_CODE = "12210";
@@ -24,6 +25,7 @@ const LOCALDATA_MAX_RETRIES = 3;
 const LOCALDATA_REQUEST_PAUSE_MS = 120;
 const key = process.env.SDSC_SERVICE_KEY;
 const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
+const kakaoKey = process.env.KAKAO_REST_API_KEY;
 
 if (!key) throw new Error("SDSC_SERVICE_KEY 환경변수가 필요합니다.");
 
@@ -227,6 +229,28 @@ if (localdataKey) {
   console.log(`[localdata] ${comparison.uniqueLicenseCount} unique active licenses, ${comparison.addedWithCoordinatesCount} stores added${unavailableCount ? `, ${unavailableCount} sources unavailable` : ""}`);
 }
 
+const addressCandidates = stores.filter((store) => /[*＊]/.test(`${store.address || ""} ${store.lotAddress || ""}`)
+  && Number.isFinite(store.longitude) && Number.isFinite(store.latitude));
+let kakaoAddressMeta = null;
+if (!kakaoKey && addressCandidates.length) {
+  throw new Error(`마스킹 주소 ${addressCandidates.length}건을 보강하려면 KAKAO_REST_API_KEY 환경변수가 필요합니다.`);
+}
+if (kakaoKey) {
+  const enriched = await enrichStoreAddresses(stores, {
+    apiKey: kakaoKey,
+    onError(error, store) {
+      console.warn(`[kakao] ${store.id} ${store.name}: ${error.message}`);
+    }
+  });
+  stores = enriched.stores;
+  kakaoAddressMeta = {
+    source: "Kakao Local 좌표로 주소 변환",
+    generatedAt: new Date().toISOString(),
+    ...enriched.stats
+  };
+  console.log(`[kakao] enriched ${enriched.stats.enrichedCount}/${enriched.stats.candidateCount} stores with ${enriched.stats.requestCount} coordinate requests and ${enriched.stats.keywordRequestCount} keyword fallbacks (${enriched.stats.unresolvedCount} unresolved)`);
+}
+
 if (sourceItems.length !== totalCount) {
   throw new Error(`수집 건수 불일치: expected ${totalCount}, received ${sourceItems.length}`);
 }
@@ -253,7 +277,8 @@ const payload = {
     ...(supplementalMeta ? {
       source: "소상공인시장진흥공단 상가정보 + 행정안전부 인허가(영업 중)",
       supplemental: supplementalMeta
-    } : {})
+    } : {}),
+    ...(kakaoAddressMeta ? { kakaoAddressEnrichment: kakaoAddressMeta } : {})
   },
   dimensions: {
     adminDongs: countBy(stores, "adminDong").map(({ name }) => name),
@@ -271,6 +296,11 @@ const payload = {
       supplementalAdded: supplementalMeta.addedCount,
       supplementalAddedWithCoordinates: supplementalMeta.addedWithCoordinatesCount,
       supplementalAddedWithoutCoordinates: supplementalMeta.addedWithoutCoordinatesCount
+    } : {}),
+    ...(kakaoAddressMeta ? {
+      kakaoAddressEnriched: kakaoAddressMeta.enrichedCount,
+      kakaoAddressEnrichmentFailed: kakaoAddressMeta.failedCount,
+      kakaoAddressEnrichmentUnresolved: kakaoAddressMeta.unresolvedCount
     } : {})
   },
   stores

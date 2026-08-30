@@ -22,6 +22,7 @@ jobs:
         env:
           SDSC_SERVICE_KEY: ${{ secrets.SDSC_SERVICE_KEY }}
           LOCALDATA_SERVICE_KEY: ${{ secrets.LOCALDATA_SERVICE_KEY || secrets.SDSC_SERVICE_KEY }}
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
       - run: npm run update-zones
         env:
           VWORLD_KEY: ${{ secrets.VWORLD_KEY }}
