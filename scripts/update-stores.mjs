@@ -3,12 +3,27 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compactStore, countBy } from "../lib/market.js";
 import { assertSnapshotHealthy } from "../lib/store-update.js";
+import {
+  distanceMeters,
+  compactLicense,
+  isActiveLicense,
+  latestSourceTimestamp,
+  LOCALDATA_ADMIN_CODE,
+  LOCALDATA_PAGE_SIZE,
+  LOCALDATA_SOURCES,
+  mergeStoreSources,
+  parseLocaldataResponse
+} from "../lib/store-license.js";
+import { adminDongForAddress, createAdminDongLookup, normalizeAdminDongName } from "../lib/admin-dong.js";
 
 const API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong";
 const SIGNGU_CODE = "12210";
 const PAGE_SIZE = 1000;
 const MAX_RETRIES = 3;
+const LOCALDATA_MAX_RETRIES = 3;
+const LOCALDATA_REQUEST_PAUSE_MS = 120;
 const key = process.env.SDSC_SERVICE_KEY;
+const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
 
 if (!key) throw new Error("SDSC_SERVICE_KEY 환경변수가 필요합니다.");
 
@@ -45,6 +60,96 @@ async function fetchPage(pageNo) {
   }
 }
 
+async function fetchLocaldataPage(source, pageNo) {
+  const url = new URL(source.endpoint);
+  url.search = new URLSearchParams({
+    serviceKey: localdataKey,
+    pageNo: String(pageNo),
+    numOfRows: String(LOCALDATA_PAGE_SIZE),
+    returnType: "json",
+    "cond[OPN_ATMY_GRP_CD::EQ]": LOCALDATA_ADMIN_CODE,
+    "cond[SALS_STTS_CD::EQ]": "01"
+  }).toString();
+
+  for (let attempt = 1; attempt <= LOCALDATA_MAX_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+      const text = await response.text();
+      let payload;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        throw new Error(`HTTP ${response.status}: JSON 응답이 아닙니다.`);
+      }
+      if (!response.ok) {
+        const message = payload?.OpenAPI_ServiceResponse?.cmmMsgHeader?.errMsg || `HTTP ${response.status}`;
+        throw new Error(message);
+      }
+      return parseLocaldataResponse(payload);
+    } catch (error) {
+      if (attempt === LOCALDATA_MAX_RETRIES) throw error;
+      await sleep(attempt * 1000);
+    }
+  }
+}
+
+async function fetchLocaldataSource(source) {
+  const first = await fetchLocaldataPage(source, 1);
+  const pageCount = Math.ceil(first.totalCount / LOCALDATA_PAGE_SIZE);
+  const items = [...first.items];
+  for (let pageNo = 2; pageNo <= pageCount; pageNo += 1) {
+    const page = await fetchLocaldataPage(source, pageNo);
+    items.push(...page.items);
+    console.log(`[localdata:${source.slug}] ${pageNo}/${pageCount} pages, ${items.length}/${first.totalCount} rows`);
+    await sleep(LOCALDATA_REQUEST_PAUSE_MS);
+  }
+  if (items.length !== first.totalCount) {
+    throw new Error(`${source.slug} 수집 건수 불일치: expected ${first.totalCount}, received ${items.length}`);
+  }
+  return { source, totalCount: first.totalCount, items };
+}
+
+function legalDongNames(address) {
+  return [...new Set(String(address || "").match(/[가-힣]+동/g) || [])];
+}
+
+async function createLicenseAdminDongResolver(baseStores) {
+  let addressLookup = new Map();
+  try {
+    const lookupPath = resolve(root, "data/insurance_admin_dongs.json");
+    addressLookup = createAdminDongLookup(JSON.parse(await readFile(lookupPath, "utf8")));
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+
+  const storesByLegalDong = new Map();
+  for (const store of baseStores) {
+    if (!store.legalDong || !store.adminDong) continue;
+    if (!storesByLegalDong.has(store.legalDong)) storesByLegalDong.set(store.legalDong, []);
+    storesByLegalDong.get(store.legalDong).push(store);
+  }
+
+  return (address, coordinates) => {
+    const explicit = normalizeAdminDongName(String(address || "").replace(/[(),]/g, " "));
+    if (explicit) return explicit;
+    const known = adminDongForAddress(address, addressLookup);
+    if (known) return known;
+
+    const legalStores = legalDongNames(address).flatMap((name) => storesByLegalDong.get(name) || []);
+    const nearestLegalStore = legalStores
+      .filter((store) => Number.isFinite(store.longitude) && Number.isFinite(store.latitude))
+      .map((store) => ({ store, distance: distanceMeters(coordinates, store) }))
+      .sort((left, right) => left.distance - right.distance)[0];
+    if (nearestLegalStore && nearestLegalStore.distance <= 250) return nearestLegalStore.store.adminDong;
+
+    const nearestStore = baseStores
+      .filter((store) => Number.isFinite(store.longitude) && Number.isFinite(store.latitude))
+      .map((store) => ({ store, distance: distanceMeters(coordinates, store) }))
+      .sort((left, right) => left.distance - right.distance)[0];
+    return nearestStore && nearestStore.distance <= 120 ? nearestStore.store.adminDong : "";
+  };
+}
+
 const first = await fetchPage(1);
 const totalCount = Number(first.body.totalCount || 0);
 const pageCount = Math.ceil(totalCount / PAGE_SIZE);
@@ -58,7 +163,7 @@ for (let pageNo = 2; pageNo <= pageCount; pageNo += 1) {
 }
 
 const seen = new Set();
-const stores = sourceItems
+const baseStores = sourceItems
   .filter((item) => item.signguCd === SIGNGU_CODE)
   .map(compactStore)
   .filter((store) => {
@@ -68,16 +173,61 @@ const stores = sourceItems
   })
   .sort((a, b) => a.id.localeCompare(b.id));
 
+let stores = baseStores;
+let supplementalMeta = null;
+if (localdataKey) {
+  const adminDongForLicense = await createLicenseAdminDongResolver(baseStores);
+  const localdataResults = [];
+  for (const source of LOCALDATA_SOURCES) {
+    const result = await fetchLocaldataSource(source);
+    const activeItems = result.items.filter(isActiveLicense);
+    const licenses = activeItems.map((item) => {
+      const compacted = compactLicense(item, source);
+      return {
+        ...compacted,
+        adminDong: adminDongForLicense(compacted.address || compacted.lotAddress, compacted)
+      };
+    });
+    localdataResults.push({ ...result, activeItems, licenses });
+  }
+  const merged = mergeStoreSources(baseStores, localdataResults.flatMap(({ licenses }) => licenses));
+  stores = merged.stores.sort((a, b) => a.id.localeCompare(b.id));
+  const comparison = merged.comparison;
+  supplementalMeta = {
+    rawLicenseCount: comparison.rawLicenseCount,
+    uniqueLicenseCount: comparison.uniqueLicenseCount,
+    matchedCount: comparison.matchedCount,
+    addedCount: comparison.addedCount,
+    addedWithCoordinatesCount: comparison.addedWithCoordinatesCount,
+    addedWithoutCoordinatesCount: comparison.addedWithoutCoordinatesCount,
+    matchTypeCounts: comparison.matchTypeCounts,
+    bySource: comparison.bySource,
+    sources: localdataResults.map(({ source, totalCount, activeItems, licenses }) => ({
+      datasetId: source.datasetId,
+      slug: source.slug,
+      title: source.title,
+      endpoint: source.endpoint,
+      sourceCount: totalCount,
+      activeCount: activeItems.length,
+      sourceUpdatedAt: latestSourceTimestamp(licenses)
+    }))
+  };
+  console.log(`[localdata] ${comparison.uniqueLicenseCount} unique active licenses, ${comparison.addedWithCoordinatesCount} stores added`);
+}
+
 if (sourceItems.length !== totalCount) {
   throw new Error(`수집 건수 불일치: expected ${totalCount}, received ${sourceItems.length}`);
 }
-let previousCount = null;
+let previousPayload = null;
 try {
-  const previous = JSON.parse(await readFile(outputPath, "utf8"));
-  previousCount = Number(previous?.meta?.totalCount);
+  previousPayload = JSON.parse(await readFile(outputPath, "utf8"));
 } catch (error) {
   if (error?.code !== "ENOENT") throw new Error(`기존 데이터 파일을 읽을 수 없습니다: ${error.message}`);
 }
+if (!localdataKey && previousPayload?.meta?.supplemental) {
+  throw new Error("기존 보완 데이터가 있어 LOCALDATA_SERVICE_KEY가 필요합니다.");
+}
+const previousCount = Number(previousPayload?.meta?.totalCount);
 assertSnapshotHealthy({ totalCount, validCount: stores.length, previousCount });
 
 const payload = {
@@ -87,7 +237,11 @@ const payload = {
     source: "소상공인시장진흥공단 상가(상권)정보 API",
     signguCode: SIGNGU_CODE,
     totalCount: stores.length,
-    sourceTotalCount: totalCount
+    sourceTotalCount: totalCount,
+    ...(supplementalMeta ? {
+      source: "소상공인시장진흥공단 상가정보 + 행정안전부 인허가(영업 중)",
+      supplemental: supplementalMeta
+    } : {})
   },
   dimensions: {
     adminDongs: countBy(stores, "adminDong").map(({ name }) => name),
@@ -98,9 +252,14 @@ const payload = {
       })
   },
   quality: {
-    removedRows: sourceItems.length - stores.length,
+    removedRows: sourceItems.length - baseStores.length,
     missingBuildingName: stores.filter((store) => !store.buildingName).length,
-    missingFloor: stores.filter((store) => !store.floor).length
+    missingFloor: stores.filter((store) => !store.floor).length,
+    ...(supplementalMeta ? {
+      supplementalAdded: supplementalMeta.addedCount,
+      supplementalAddedWithCoordinates: supplementalMeta.addedWithCoordinatesCount,
+      supplementalAddedWithoutCoordinates: supplementalMeta.addedWithoutCoordinatesCount
+    } : {})
   },
   stores
 };

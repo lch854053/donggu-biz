@@ -22,6 +22,15 @@ import {
   geometryCenter,
   matchBuildingIndustries
 } from "../lib/building-outline.js";
+import {
+  compactLicense,
+  compareStoreSources,
+  deduplicateLicenseStores,
+  epsg5174ToWgs84,
+  LOCALDATA_SOURCES,
+  mergeStoreSources,
+  parseLocaldataResponse
+} from "../lib/store-license.js";
 
 const stores = [
   { name: "동명카페", branch: "", address: "동명로", lotAddress: "동명동", buildingName: "", adminDong: "동명동", largeCode: "I2", largeName: "음식", middleCode: "I212", smallCode: "I21201", smallName: "카페", longitude: 126.92, latitude: 35.15 },
@@ -40,6 +49,75 @@ test("compacts an API store row", () => {
   assert.equal(store.name, "테스트");
   assert.equal(store.legacyPnu, "2911010800102870025");
   assert.equal(store.longitude, 126.92);
+});
+
+test("converts LocalData EPSG:5174 coordinates to WGS84", () => {
+  const coordinates = epsg5174ToWgs84("193104.410616951", "183418.411238483");
+  assert.ok(coordinates);
+  assert.ok(Math.abs(coordinates.longitude - 126.9251016594) < 1e-9);
+  assert.ok(Math.abs(coordinates.latitude - 35.1500089129) < 1e-9);
+  assert.equal(epsg5174ToWgs84("", ""), null);
+});
+
+test("parses the LocalData response envelope", () => {
+  const page = parseLocaldataResponse({
+    response: {
+      header: { resultCode: "0", resultMsg: "정상" },
+      body: { pageNo: 1, numOfRows: 1, totalCount: 1, items: { item: [{ MNG_NO: "license-1" }] } }
+    }
+  });
+  assert.deepEqual(page, { pageNo: 1, numOfRows: 1, totalCount: 1, items: [{ MNG_NO: "license-1" }] });
+  assert.throws(() => parseLocaldataResponse({ response: { header: { resultCode: "30", resultMsg: "실패" } } }), /실패/);
+});
+
+test("merges active license records without double-counting known stores", () => {
+  const restaurantSource = LOCALDATA_SOURCES.find((source) => source.slug === "general_restaurants");
+  const bakerySource = LOCALDATA_SOURCES.find((source) => source.slug === "bakeries");
+  const base = [{
+    ...stores[0],
+    id: "sdsc-1",
+    name: "동명카페",
+    address: "전남광주통합특별시 동구 동명로 1",
+    lotAddress: "전남광주통합특별시 동구 동명동 1"
+  }];
+  const matching = compactLicense({
+    MNG_NO: "restaurant-1",
+    BPLC_NM: "동명카페",
+    ROAD_NM_ADDR: "전남광주통합특별시 동구 동명로 1",
+    LOTNO_ADDR: "전남광주통합특별시 동구 동명동 1",
+    CRD_INFO_X: "193104.410616951",
+    CRD_INFO_Y: "183418.411238483",
+    SALS_STTS_CD: "01",
+    SALS_STTS_NM: "영업/정상"
+  }, restaurantSource);
+  const added = compactLicense({
+    MNG_NO: "bakery-1",
+    BPLC_NM: "새로운 제과점",
+    ROAD_NM_ADDR: "전남광주통합특별시 동구 제봉로 1",
+    LOTNO_ADDR: "전남광주통합특별시 동구 대인동 2",
+    CRD_INFO_X: "192031.813112322",
+    CRD_INFO_Y: "183922.104625861",
+    SALS_STTS_CD: "01",
+    SALS_STTS_NM: "영업/정상"
+  }, bakerySource);
+  const duplicate = compactLicense({
+    MNG_NO: "bakery-2",
+    BPLC_NM: "새로운 제과점",
+    ROAD_NM_ADDR: "전남광주통합특별시 동구 제봉로 1",
+    LOTNO_ADDR: "전남광주통합특별시 동구 대인동 2",
+    CRD_INFO_X: "192031.813112322",
+    CRD_INFO_Y: "183922.104625861",
+    SALS_STTS_CD: "01",
+    SALS_STTS_NM: "영업/정상"
+  }, restaurantSource);
+  const result = mergeStoreSources(base, [matching, added, duplicate]);
+  assert.equal(deduplicateLicenseStores([added, duplicate]).length, 1);
+  assert.equal(result.comparison.rawLicenseCount, 3);
+  assert.equal(result.comparison.matchedCount, 1);
+  assert.equal(result.comparison.addedCount, 1);
+  assert.deepEqual(result.comparison.matchTypeCounts, { "name-address": 1 });
+  assert.equal(result.stores.length, 2);
+  assert.deepEqual(result.added[0].sourceSlugs, ["bakeries", "general_restaurants"]);
 });
 
 test("filters stores by administrative dong, category and query", () => {
@@ -251,20 +329,20 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.ok(Math.abs(geometryAreaSqm(weddingStreet.geometry) - weddingStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(honsuStreet.geometry) - honsuStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(boribapStreet.geometry) - boribapStreet.properties.areaSqm) < 1);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 96);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 263);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 146);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 365);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: weddingStreet.geometry }).length, 159);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: honsuStreet.geometry }).length, 114);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: boribapStreet.geometry }).length, 33);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 106);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 287);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 156);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 393);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: weddingStreet.geometry }).length, 175);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: honsuStreet.geometry }).length, 123);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: boribapStreet.geometry }).length, 38);
   const mergedZones = mergeZoneFeatures(vworldPayload, payload);
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "대인시장").length, 1);
   assert.equal(mergedZones.find((feature) => feature.properties.name === "대인시장").properties.source, "manual");
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "남광주시장").length, 1);
   assert.equal(mergedZones.find((feature) => feature.properties.name === "남광주시장").properties.source, "manual");
   assert.equal(storePayload.stores.filter((store) => mergedZones
-    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1426);
+    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1550);
 });
 
 test("merges VWorld and manual zones while rejecting duplicate numbers", () => {

@@ -74,7 +74,7 @@ function activateService(panelName) {
 }
 
 // Business lookup sub-navigation
-const subTabs = [...document.querySelectorAll(".sub-tab")];
+const subTabs = [...document.querySelectorAll("[data-subpanel]")];
 subTabs.forEach((tab, index) => {
   tab.addEventListener("click", () => activateBusinessLookup(tab.dataset.subpanel));
   tab.addEventListener("keydown", (event) => {
@@ -633,11 +633,21 @@ function renderMarketMeta() {
     ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(marketMeta.generatedAt))
     : "미확인";
   const source = marketMeta?.source || "상가정보 API";
+  const supplemental = marketMeta?.supplemental;
+  const sourceTotal = Number(marketMeta?.sourceTotalCount);
+  const addedWithCoordinates = Number(supplemental?.addedWithCoordinatesCount);
+  const addedWithoutCoordinates = Number(supplemental?.addedWithoutCoordinatesCount);
   const dates = [
     month ? `상가정보 기준월 ${month}` : "",
     `상가정보 갱신일 ${generated}`
   ].filter(Boolean).join(" · ");
-  $("marketMeta").textContent = `${source} · ${dates} · 전체 ${allStores.length.toLocaleString("ko-KR")}개`;
+  const count = Number.isFinite(sourceTotal) && Number.isFinite(addedWithCoordinates)
+    ? `전체 ${allStores.length.toLocaleString("ko-KR")}개 (SDSC ${sourceTotal.toLocaleString("ko-KR")}개 + 인허가 좌표 보완 ${addedWithCoordinates.toLocaleString("ko-KR")}개)`
+    : `전체 ${allStores.length.toLocaleString("ko-KR")}개`;
+  const unresolved = Number.isFinite(addedWithoutCoordinates) && addedWithoutCoordinates > 0
+    ? ` · 인허가 좌표 미확인 ${addedWithoutCoordinates.toLocaleString("ko-KR")}건(지도 제외)`
+    : "";
+  $("marketMeta").textContent = `${source} · ${dates} · ${count}${unresolved}`;
 }
 
 function initializeMap() {

@@ -21,6 +21,7 @@ jobs:
       - run: npm run update-stores
         env:
           SDSC_SERVICE_KEY: ${{ secrets.SDSC_SERVICE_KEY }}
+          LOCALDATA_SERVICE_KEY: ${{ secrets.LOCALDATA_SERVICE_KEY || secrets.SDSC_SERVICE_KEY }}
       - run: npm run update-zones
         env:
           VWORLD_KEY: ${{ secrets.VWORLD_KEY }}
