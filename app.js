@@ -799,15 +799,20 @@ function clampOutlineTooltip(tooltip) {
   if (!element || !mapElement) return;
 
   const mapRect = mapElement.getBoundingClientRect();
+  const visibleRect = {
+    left: Math.max(mapRect.left + OUTLINE_TOOLTIP_MARGIN, OUTLINE_TOOLTIP_MARGIN),
+    top: Math.max(mapRect.top + OUTLINE_TOOLTIP_MARGIN, OUTLINE_TOOLTIP_MARGIN),
+    right: Math.min(mapRect.right - OUTLINE_TOOLTIP_MARGIN, window.innerWidth - OUTLINE_TOOLTIP_MARGIN),
+    bottom: Math.min(mapRect.bottom - OUTLINE_TOOLTIP_MARGIN, window.innerHeight - OUTLINE_TOOLTIP_MARGIN)
+  };
+  if (visibleRect.right <= visibleRect.left || visibleRect.bottom <= visibleRect.top) return;
   const maxHeight = Math.max(1, Math.min(
     420,
-    mapRect.height - OUTLINE_TOOLTIP_MARGIN * 2,
-    window.innerHeight - OUTLINE_TOOLTIP_MARGIN * 2
+    visibleRect.bottom - visibleRect.top
   ));
   const maxWidth = Math.max(1, Math.min(
     360,
-    mapRect.width - OUTLINE_TOOLTIP_MARGIN * 2,
-    window.innerWidth - OUTLINE_TOOLTIP_MARGIN * 2
+    visibleRect.right - visibleRect.left
   ));
   element.style.maxHeight = `${maxHeight}px`;
   element.style.maxWidth = `${maxWidth}px`;
@@ -815,17 +820,17 @@ function clampOutlineTooltip(tooltip) {
   const tooltipRect = element.getBoundingClientRect();
   let shiftX = 0;
   let shiftY = 0;
-  if (tooltipRect.right > mapRect.right - OUTLINE_TOOLTIP_MARGIN) {
-    shiftX -= tooltipRect.right - (mapRect.right - OUTLINE_TOOLTIP_MARGIN);
+  if (tooltipRect.right > visibleRect.right) {
+    shiftX -= tooltipRect.right - visibleRect.right;
   }
-  if (tooltipRect.left + shiftX < mapRect.left + OUTLINE_TOOLTIP_MARGIN) {
-    shiftX += mapRect.left + OUTLINE_TOOLTIP_MARGIN - (tooltipRect.left + shiftX);
+  if (tooltipRect.left + shiftX < visibleRect.left) {
+    shiftX += visibleRect.left - (tooltipRect.left + shiftX);
   }
-  if (tooltipRect.bottom > mapRect.bottom - OUTLINE_TOOLTIP_MARGIN) {
-    shiftY -= tooltipRect.bottom - (mapRect.bottom - OUTLINE_TOOLTIP_MARGIN);
+  if (tooltipRect.bottom > visibleRect.bottom) {
+    shiftY -= tooltipRect.bottom - visibleRect.bottom;
   }
-  if (tooltipRect.top + shiftY < mapRect.top + OUTLINE_TOOLTIP_MARGIN) {
-    shiftY += mapRect.top + OUTLINE_TOOLTIP_MARGIN - (tooltipRect.top + shiftY);
+  if (tooltipRect.top + shiftY < visibleRect.top) {
+    shiftY += visibleRect.top - (tooltipRect.top + shiftY);
   }
   if (shiftX || shiftY) {
     L.DomUtil.setPosition(
