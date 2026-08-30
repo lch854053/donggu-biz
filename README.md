@@ -14,7 +14,7 @@
 
 - 광주 동구 상가업소 지도와 상호 배타적인 행정동·주요상권 조회
 - 매월 갱신하는 상가정보와 행정안전부 인허가(영업 중) 보완 스냅샷의 업소를 지도와 표에서 조회
-- 일반음식점·휴게음식점·제과점·미용업·이용업·담배소매업·숙박업·노래연습장업을 관리번호·주소·좌표로 중복 제거
+- 설정된 행정안전부 인허가 39개 원천(건강·반려동물·체육·게임·유흥·식품·숙박 등)을 관리번호·주소·좌표로 중복 제거
 - 스냅샷 메타데이터에 원천별 건수·매칭 건수·추가 건수·좌표 누락 건수를 기록
 - 선택한 행정동 또는 주요상권의 상위 10개 업종 소분류 분석
 - 지도에서 주요상권을 선택하면 기존 점포·클러스터 마커로 업소 위치를 확인
@@ -148,7 +148,7 @@ npm run update-corporate-financials
 
 스냅샷은 브라우저가 조회할 때 통째로 내려받으므로 화면이 실제로 읽는 값만 담습니다 — 같은 사업장인지 가리는 이름·사업자등록번호 앞 6자리·주소와, 목록 조회에 없어 채워야 하는 업종코드·업종명·등록일·탈퇴일·가입자 수입니다. 월별 이력의 `seq` 목록은 화면이 그때그때 받은 조회 결과에서 다시 만들므로 담지 않습니다.
 
-상가 데이터는 `data/stores_donggu.json`, VWorld 주요상권 경계는 `data/mainbiz_zones_donggu.geojson`, 수동 등록·보정 경계는 `data/manual_mainbiz_zones_donggu.geojson`에 저장됩니다. GitHub Actions는 매월 5일 API 기반 데이터를 다시 수집하며 수동 경계는 별도 파일에 보존됩니다. `SDSC_SERVICE_KEY`, 각 인허가 API 활용신청이 끝난 `LOCALDATA_SERVICE_KEY`, `VWORLD_KEY` 저장소 Secret이 필요합니다. 두 서비스키가 같은 공공데이터포털 키라면 `LOCALDATA_SERVICE_KEY`를 별도로 등록하지 않아도 워크플로가 `SDSC_SERVICE_KEY`를 대신 사용합니다.
+상가 데이터는 `data/stores_donggu.json`, VWorld 주요상권 경계는 `data/mainbiz_zones_donggu.geojson`, 수동 등록·보정 경계는 `data/manual_mainbiz_zones_donggu.geojson`에 저장됩니다. GitHub Actions는 매월 5일 API 기반 데이터를 다시 수집하며 수동 경계는 별도 파일에 보존됩니다. `SDSC_SERVICE_KEY`, 인허가 API 활용신청이 끝난 `LOCALDATA_SERVICE_KEY`, `VWORLD_KEY` 저장소 Secret이 필요합니다. 두 서비스키가 같은 공공데이터포털 키라면 `LOCALDATA_SERVICE_KEY`를 별도로 등록하지 않아도 워크플로가 `SDSC_SERVICE_KEY`를 대신 사용합니다. 설정된 인허가 원천 중 권한 오류가 난 원천은 스냅샷 메타데이터에 남기고 다음 갱신에서 다시 시도합니다.
 
 행정안전부 인허가 API는 `OPN_ATMY_GRP_CD=5805000`(전남광주통합특별시 동구)와 영업상태코드 `01`(영업/정상)로 조회합니다. 좌표는 EPSG:5174에서 WGS84로 변환하고, 기존 SDSC 업소와 이름·주소·좌표를 순서대로 비교해 중복을 제거합니다. 인허가 자료와 SDSC 자료의 업소 식별자가 서로 다르므로, 보완 원천의 추가 건수는 실제 신규 점포 수가 아니라 현재 매칭 규칙에 따른 감사 가능한 후보 수입니다.
 

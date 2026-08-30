@@ -637,6 +637,9 @@ function renderMarketMeta() {
   const sourceTotal = Number(marketMeta?.sourceTotalCount);
   const addedWithCoordinates = Number(supplemental?.addedWithCoordinatesCount);
   const addedWithoutCoordinates = Number(supplemental?.addedWithoutCoordinatesCount);
+  const unavailableSources = Array.isArray(supplemental?.sources)
+    ? supplemental.sources.filter((sourceInfo) => sourceInfo?.error).length
+    : 0;
   const dates = [
     month ? `상가정보 기준월 ${month}` : "",
     `상가정보 갱신일 ${generated}`
@@ -647,7 +650,10 @@ function renderMarketMeta() {
   const unresolved = Number.isFinite(addedWithoutCoordinates) && addedWithoutCoordinates > 0
     ? ` · 인허가 좌표 미확인 ${addedWithoutCoordinates.toLocaleString("ko-KR")}건(지도 제외)`
     : "";
-  $("marketMeta").textContent = `${source} · ${dates} · ${count}${unresolved}`;
+  const unavailable = unavailableSources
+    ? ` · 인허가 원천 ${unavailableSources.toLocaleString("ko-KR")}건 미수집`
+    : "";
+  $("marketMeta").textContent = `${source} · ${dates} · ${count}${unresolved}${unavailable}`;
 }
 
 function initializeMap() {

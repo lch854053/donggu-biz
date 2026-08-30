@@ -82,19 +82,29 @@ async function fetchLocaldataPage(source, pageNo) {
         throw new Error(`HTTP ${response.status}: JSON 응답이 아닙니다.`);
       }
       if (!response.ok) {
-        const message = payload?.OpenAPI_ServiceResponse?.cmmMsgHeader?.errMsg || `HTTP ${response.status}`;
-        throw new Error(message);
+        const serviceError = payload?.OpenAPI_ServiceResponse?.cmmMsgHeader || {};
+        const error = new Error(serviceError.errMsg || `HTTP ${response.status}`);
+        error.code = String(serviceError.returnReasonCode || "");
+        error.authorization = error.code === "30";
+        throw error;
       }
       return parseLocaldataResponse(payload);
     } catch (error) {
-      if (attempt === LOCALDATA_MAX_RETRIES) throw error;
+      if (error.authorization || attempt === LOCALDATA_MAX_RETRIES) throw error;
       await sleep(attempt * 1000);
     }
   }
 }
 
 async function fetchLocaldataSource(source) {
-  const first = await fetchLocaldataPage(source, 1);
+  let first;
+  try {
+    first = await fetchLocaldataPage(source, 1);
+  } catch (error) {
+    if (!error.authorization) throw error;
+    console.warn(`[localdata:${source.slug}] skipped: ${error.message}`);
+    return { source, totalCount: null, items: [], error };
+  }
   const pageCount = Math.ceil(first.totalCount / LOCALDATA_PAGE_SIZE);
   const items = [...first.items];
   for (let pageNo = 2; pageNo <= pageCount; pageNo += 1) {
@@ -202,17 +212,19 @@ if (localdataKey) {
     addedWithoutCoordinatesCount: comparison.addedWithoutCoordinatesCount,
     matchTypeCounts: comparison.matchTypeCounts,
     bySource: comparison.bySource,
-    sources: localdataResults.map(({ source, totalCount, activeItems, licenses }) => ({
+    sources: localdataResults.map(({ source, totalCount, activeItems, licenses, error }) => ({
       datasetId: source.datasetId,
       slug: source.slug,
       title: source.title,
       endpoint: source.endpoint,
       sourceCount: totalCount,
       activeCount: activeItems.length,
-      sourceUpdatedAt: latestSourceTimestamp(licenses)
+      sourceUpdatedAt: latestSourceTimestamp(licenses),
+      ...(error ? { error: error.message, errorCode: error.code } : {})
     }))
   };
-  console.log(`[localdata] ${comparison.uniqueLicenseCount} unique active licenses, ${comparison.addedWithCoordinatesCount} stores added`);
+  const unavailableCount = localdataResults.filter((result) => result.error).length;
+  console.log(`[localdata] ${comparison.uniqueLicenseCount} unique active licenses, ${comparison.addedWithCoordinatesCount} stores added${unavailableCount ? `, ${unavailableCount} sources unavailable` : ""}`);
 }
 
 if (sourceItems.length !== totalCount) {

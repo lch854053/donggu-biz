@@ -70,6 +70,19 @@ test("parses the LocalData response envelope", () => {
   assert.throws(() => parseLocaldataResponse({ response: { header: { resultCode: "30", resultMsg: "실패" } } }), /실패/);
 });
 
+test("declares every approved supplemental LocalData source once", () => {
+  const approvedIds = [
+    "15154822", "15154874", "15154458", "15154899", "15154952", "15155272", "15154944", "15155083", "15155055",
+    "15155077", "15155085", "15154975", "15155011", "15155038", "15155071", "15155091", "15154927", "15154951",
+    "15154955", "15154958", "15154945", "15154890", "15154883", "15155245", "15155144", "15155126", "15155170",
+    "15155221", "15155090", "15155113", "15155103"
+  ];
+  const sources = LOCALDATA_SOURCES.filter((source) => approvedIds.includes(source.datasetId));
+  assert.equal(sources.length, approvedIds.length);
+  assert.equal(new Set(sources.map((source) => source.datasetId)).size, approvedIds.length);
+  assert.ok(sources.every((source) => source.endpoint.startsWith("https://apis.data.go.kr/1741000/") && source.endpoint.endsWith("/info")));
+});
+
 test("merges active license records without double-counting known stores", () => {
   const restaurantSource = LOCALDATA_SOURCES.find((source) => source.slug === "general_restaurants");
   const bakerySource = LOCALDATA_SOURCES.find((source) => source.slug === "bakeries");
@@ -329,12 +342,12 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.ok(Math.abs(geometryAreaSqm(weddingStreet.geometry) - weddingStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(honsuStreet.geometry) - honsuStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(boribapStreet.geometry) - boribapStreet.properties.areaSqm) < 1);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 106);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 287);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 156);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 393);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: weddingStreet.geometry }).length, 175);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: honsuStreet.geometry }).length, 123);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 113);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 299);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 160);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 412);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: weddingStreet.geometry }).length, 178);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: honsuStreet.geometry }).length, 128);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: boribapStreet.geometry }).length, 38);
   const mergedZones = mergeZoneFeatures(vworldPayload, payload);
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "대인시장").length, 1);
@@ -342,7 +355,7 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "남광주시장").length, 1);
   assert.equal(mergedZones.find((feature) => feature.properties.name === "남광주시장").properties.source, "manual");
   assert.equal(storePayload.stores.filter((store) => mergedZones
-    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1550);
+    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1612);
 });
 
 test("merges VWorld and manual zones while rejecting duplicate numbers", () => {
