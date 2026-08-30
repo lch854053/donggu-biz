@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="광주 동구 사업자 상태·사업자등록정보 진위확인·4대보험 사업장 조회와 상가 업종·입지 분석">
-  <title>동구 사업자·상권 조회</title>
+  <title>동구 사업자·상가·상권 조회</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -17,8 +17,8 @@
   <!--
    THESIS: 사업자 한 건의 상태와 동구 전체 상가의 맥락을 같은 업무대 위에서 확인한다. 장식적인 대시보드 대신 조회와 판단이 바로 이어지는 관제 화면을 만든다.
    OWN-WORLD: 흰 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 공공 업무 도구 언어를 사용한다.
-   STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·상권 상세 분석, 4대보험 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
-   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상권 조회 하위 탭은 지도·상세 분석·표 흐름을 제공한다.
+   STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·상권 분석, 4대보험 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
+   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상가·상권 조회 하위 탭은 상가 조회·상권 지도·상권 분석 흐름을 제공한다.
   FORM: 통합 관제형, 구조 후보 5번, seed 859829d4.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
   -->
@@ -44,7 +44,7 @@
       사업자 조회
     </button>
     <button class="primary-tab" id="tab-market" role="tab" aria-selected="false" aria-controls="panel-market" data-panel="market">
-      소상공인 조회
+      상가·상권 조회
     </button>
   </nav>
 
@@ -236,20 +236,20 @@
     <section class="service-panel" id="panel-market" role="tabpanel" aria-labelledby="tab-market" hidden>
       <div class="market-heading">
         <div>
-          <h2 id="marketTitle">동구 상권 조회</h2>
+          <h2 id="marketTitle">동구 상가·상권 조회</h2>
           <p id="marketMeta">상가정보를 불러오는 중입니다.</p>
         </div>
       </div>
 
-      <nav class="sub-tabs market-view-tabs" aria-label="소상공인 조회 방식" role="tablist">
-        <button class="sub-tab market-view-tab is-active" id="market-view-tab-map" role="tab" aria-selected="true" aria-controls="market-view-map" data-market-view="map">지도로 조회</button>
-        <button class="sub-tab market-view-tab" id="market-view-tab-analysis" role="tab" aria-selected="false" aria-controls="market-view-analysis" data-market-view="analysis">상권 상세 분석</button>
-        <button class="sub-tab market-view-tab" id="market-view-tab-table" role="tab" aria-selected="false" aria-controls="market-view-table" data-market-view="table">표로 조회</button>
+      <nav class="sub-tabs market-view-tabs" aria-label="상가·상권 조회 방식" role="tablist">
+        <button class="sub-tab market-view-tab is-active" id="market-view-tab-table" role="tab" aria-selected="true" aria-controls="market-view-table" data-market-view="table">상가 조회</button>
+        <button class="sub-tab market-view-tab" id="market-view-tab-map" role="tab" aria-selected="false" aria-controls="market-view-map" data-market-view="map">상권 지도</button>
+        <button class="sub-tab market-view-tab" id="market-view-tab-analysis" role="tab" aria-selected="false" aria-controls="market-view-analysis" data-market-view="analysis">상권 분석</button>
       </nav>
 
       <div class="market-state" id="marketState" role="status">상가정보 파일을 읽고 있습니다.</div>
 
-      <div class="market-view-panel" id="market-view-map" role="tabpanel" aria-labelledby="market-view-tab-map">
+      <div class="market-view-panel" id="market-view-map" role="tabpanel" aria-labelledby="market-view-tab-map" hidden>
       <div class="market-workspace" id="marketWorkspace" hidden>
         <aside class="filter-rail" aria-labelledby="market-filter-title">
           <div class="rail-heading">
@@ -274,7 +274,7 @@
           </section>
         </aside>
 
-        <section class="map-stage" aria-label="상가업소 지도">
+        <section class="map-stage" aria-label="상권 지도">
           <div id="marketMap"></div>
           <aside class="cluster-panel" id="clusterPanel" aria-labelledby="clusterPanelTitle" hidden>
             <header class="cluster-panel-head">
@@ -311,7 +311,7 @@
       <div class="market-view-panel" id="market-view-analysis" role="tabpanel" aria-labelledby="market-view-tab-analysis" hidden>
         <div class="market-heading analysis-heading">
           <div>
-            <h2>상권 상세 분석</h2>
+            <h2>상권 분석</h2>
             <p>주요상권을 선택하면 해당 경계 안의 건물 윤곽과 업종 분포를 확인합니다.</p>
           </div>
           <div class="analysis-actions">
@@ -321,7 +321,7 @@
                 <option value="">상권 목록을 불러오는 중...</option>
               </select>
             </label>
-            <button class="button button-quiet" id="analysisLookupBtn" type="button">지도로 조회 돌아가기</button>
+            <button class="button button-quiet" id="analysisLookupBtn" type="button">상권 지도로 돌아가기</button>
           </div>
         </div>
 
@@ -352,16 +352,20 @@
         </div>
       </div>
 
-      <div class="market-view-panel" id="market-view-table" role="tabpanel" aria-labelledby="market-view-tab-table" hidden>
+      <div class="market-view-panel" id="market-view-table" role="tabpanel" aria-labelledby="market-view-tab-table">
         <section class="input-station" aria-labelledby="market-table-filter-title">
           <div class="station-heading">
             <div>
-              <h2 id="market-table-filter-title">소상공인 조건검색</h2>
-              <p>지도와 동일한 상가업소 자료를 조회합니다.</p>
+              <h2 id="market-table-filter-title">상가 조건검색</h2>
+              <p>상권 지도와 동일한 상가업소 자료를 조회합니다.</p>
             </div>
             <span class="count-badge" id="marketTableCount">0개 업소</span>
           </div>
           <div class="query-grid market-table-query">
+            <label class="field">
+              <span>업소명</span>
+              <input id="marketTableNameInput" type="search" autocomplete="off" placeholder="예: 강남전자">
+            </label>
             <label class="field">
               <span>행정동</span>
               <select id="marketTableDongFilter"><option value="">전체 행정동</option></select>

@@ -633,31 +633,11 @@ function renderMarketMeta() {
     ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(marketMeta.generatedAt))
     : "미확인";
   const source = marketMeta?.source || "상가정보 API";
-  const supplemental = marketMeta?.supplemental;
-  const sourceTotal = Number(marketMeta?.sourceTotalCount);
-  const addedWithCoordinates = Number(supplemental?.addedWithCoordinatesCount);
-  const addedWithoutCoordinates = Number(supplemental?.addedWithoutCoordinatesCount);
-  const kakaoEnriched = Number(marketMeta?.kakaoAddressEnrichment?.enrichedCount);
-  const unavailableSources = Array.isArray(supplemental?.sources)
-    ? supplemental.sources.filter((sourceInfo) => sourceInfo?.error).length
-    : 0;
   const dates = [
     month ? `상가정보 기준월 ${month}` : "",
     `상가정보 갱신일 ${generated}`
   ].filter(Boolean).join(" · ");
-  const count = Number.isFinite(sourceTotal) && Number.isFinite(addedWithCoordinates)
-    ? `전체 ${allStores.length.toLocaleString("ko-KR")}개 (SDSC ${sourceTotal.toLocaleString("ko-KR")}개 + 인허가 좌표 보완 ${addedWithCoordinates.toLocaleString("ko-KR")}개)`
-    : `전체 ${allStores.length.toLocaleString("ko-KR")}개`;
-  const unresolved = Number.isFinite(addedWithoutCoordinates) && addedWithoutCoordinates > 0
-    ? ` · 인허가 좌표 미확인 ${addedWithoutCoordinates.toLocaleString("ko-KR")}건(지도 제외)`
-    : "";
-  const unavailable = unavailableSources
-    ? ` · 인허가 원천 ${unavailableSources.toLocaleString("ko-KR")}건 미수집`
-    : "";
-  const addressEnrichment = Number.isFinite(kakaoEnriched) && kakaoEnriched > 0
-    ? ` · 주소 보강 Kakao Local ${kakaoEnriched.toLocaleString("ko-KR")}건`
-    : "";
-  $("marketMeta").textContent = `${source} · ${dates} · ${count}${unresolved}${unavailable}${addressEnrichment}`;
+  $("marketMeta").textContent = [source, dates].filter(Boolean).join(" · ");
 }
 
 function initializeMap() {
@@ -1044,6 +1024,7 @@ function marketTableCriteria() {
   const zoneNo = $("marketTableZoneFilter").value;
   const zone = mainBizZones.find((feature) => feature.properties.no === zoneNo);
   return {
+    storeName: $("marketTableNameInput").value.trim(),
     adminDong: $("marketTableDongFilter").value,
     largeCode: $("marketTableIndustryFilter").value,
     zoneGeometry: zone?.geometry || null
@@ -1063,12 +1044,14 @@ function marketTablePageRows() {
 }
 
 function marketTableCriteriaLabel() {
+  const storeName = $("marketTableNameInput").value.trim();
   const values = [
     $("marketTableDongFilter").selectedOptions[0]?.textContent,
     $("marketTableIndustryFilter").selectedOptions[0]?.textContent,
     $("marketTableZoneFilter").selectedOptions[0]?.textContent,
     $("marketTableSortSelect").selectedOptions[0]?.textContent
   ].filter((value) => value && !value.startsWith("전체"));
+  if (storeName) values.unshift(`업소명 ${storeName}`);
   return values.length ? values.join(" · ") : "전체 업소";
 }
 
@@ -1111,6 +1094,7 @@ function runMarketTableSearch() {
 }
 
 function clearMarketTableSearch() {
+  $("marketTableNameInput").value = "";
   $("marketTableDongFilter").value = "";
   $("marketTableIndustryFilter").value = "";
   $("marketTableZoneFilter").value = "";

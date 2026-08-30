@@ -139,6 +139,8 @@ test("merges active license records without double-counting known stores", () =>
 test("filters stores by administrative dong, category and query", () => {
   assert.deepEqual(filterStores(stores, { adminDong: "동명동" }).map((store) => store.name), ["동명카페"]);
   assert.deepEqual(filterStores(stores, { largeCode: "G2", query: "본점" }).map((store) => store.name), ["충장서점"]);
+  assert.deepEqual(filterStores(stores, { storeName: "충장" }).map((store) => store.name), ["충장서점"]);
+  assert.deepEqual(filterStores(stores, { storeName: "충장로" }), []);
 });
 
 test("uses either a zone or an administrative dong, never both", () => {
@@ -283,8 +285,14 @@ test("keeps building-outline analysis under the market service", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(html, /id="panel-market"/);
+  assert.match(html, /id="tab-market"[\s\S]*?>\s*상가·상권 조회/);
+  assert.match(html, /id="marketTitle">동구 상가·상권 조회</);
   assert.match(html, /id="marketMap"/);
-  assert.match(html, /data-market-view="analysis">상권 상세 분석/);
+  assert.deepEqual(
+    [...html.matchAll(/data-market-view="([^"]+)">([^<]+)</g)].map(([, view, label]) => [view, label]),
+    [["table", "상가 조회"], ["map", "상권 지도"], ["analysis", "상권 분석"]]
+  );
+  assert.match(html, /id="marketTableNameInput"/);
   assert.match(html, /id="outlineZoneFilter"/);
   assert.match(html, /id="buildingOutlineMap"/);
   assert.match(html, /id="outlineIndustryToggle"[^>]*checked/);
@@ -292,6 +300,7 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.doesNotMatch(html, /id="panel-analysis"/);
   assert.doesNotMatch(html, /id="tab-analysis"/);
   assert.match(app, /if \(\$\("dongFilter"\)\.value \|\| selectedZoneNo\)/);
+  assert.match(app, /storeName: \$\("marketTableNameInput"\)\.value\.trim\(\)/);
   assert.doesNotMatch(app, /outlineZoneLayer/);
   assert.doesNotMatch(app, /function initializeBuildingOutline\(\)[\s\S]*?tileLayer/);
   assert.match(app, /outlineMap\.fitBounds\(leafletBounds/);
