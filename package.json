@@ -11,7 +11,8 @@
     "update-corporate-financials": "node scripts/update-corporate-financials.mjs",
     "enrich-insurance-admin-dongs": "node scripts/enrich-insurance-admin-dongs.mjs",
     "update-zones": "node scripts/update-mainbiz-zones.mjs",
-    "update-nps": "node scripts/update-nps.mjs"
+    "update-nps": "node scripts/update-nps.mjs",
+    "apply-localdata": "node scripts/apply-localdata.mjs"
   },
   "engines": {
     "node": ">=20"

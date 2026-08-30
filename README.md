@@ -14,7 +14,7 @@
 
 - 광주 동구 상가업소 지도와 상호 배타적인 행정동·주요상권 조회
 - 매월 갱신하는 상가정보와 행정안전부 인허가(영업 중) 보완 스냅샷의 업소를 지도와 표에서 조회
-- 설정된 행정안전부 인허가 39개 원천(건강·반려동물·체육·게임·유흥·식품·숙박 등)을 관리번호·주소·좌표로 중복 제거
+- 설정된 행정안전부 인허가 54개 원천(건강·반려동물·체육·게임·유흥·식품·숙박·직업·관광 등)을 관리번호·주소·좌표로 중복 제거
 - 스냅샷 메타데이터에 원천별 건수·매칭 건수·추가 건수·좌표 누락 건수를 기록
 - 선택한 행정동 또는 주요상권의 상위 10개 업종 소분류 분석
 - 지도에서 주요상권을 선택하면 기존 점포·클러스터 마커로 업소 위치를 확인
@@ -142,6 +142,14 @@ npm run update-zones
 npm run update-nps
 npm run update-corporate-matches
 npm run update-corporate-financials
+```
+
+공공데이터포털의 추가 인허가 API 활용신청은 Playwright 개인회원 자동화 도구로 순회할 수 있습니다. 브라우저가 열리면 로그인을 직접 완료하고, 실제 제출 시에만 `--submit`과 확인 문자열 `APPLY_PERSONAL`을 사용합니다. 로그인 정보·CAPTCHA·브라우저 프로필은 저장소에 포함하지 않습니다.
+
+```bash
+npm run apply-localdata -- --list
+npm run apply-localdata -- --priority --submit
+npm run apply-localdata -- --submit
 ```
 
 국민연금 사업장 스냅샷은 `data/nps_donggu.json`에 저장되며 조회 화면의 업종·등록일·가입자 수를 채우는 데 쓰입니다. GitHub Actions `Update Dong-gu NPS snapshot` 워크플로가 매월 6일 04시(KST)에 돌리고, 저장소 Actions 탭에서 손으로도 실행할 수 있습니다. 목록 전량을 받은 뒤 사업장마다 상세조회를 한 번씩 더 부르고 주소 행정동도 보강하므로 `NPS_SERVICE_KEY`와 `JUSO_API_KEY` 저장소 Secret이 필요합니다. 공공데이터포털은 몇 분씩 연결되지 않을 때가 있어, 한 요청을 최대 6번까지 대기를 두 배씩(최대 30초) 늘려 가며 다시 부르고, 첫 조합이 오류로 끝나도 다음 조합을 이어서 시도합니다. data.go.kr 트래픽 한도(개발계정 기본 1일 1만 회)를 넘기면 운영계정 전환이나 한도 상향을 신청해야 합니다.
