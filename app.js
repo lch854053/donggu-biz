@@ -554,7 +554,8 @@ const OUTLINE_INDUSTRY_COLORS = new Map([
   ["보건의료", "#94cf73"]
 ]);
 const OUTLINE_OTHER_COLOR = "#c4879e";
-const OUTLINE_UNKNOWN_COLOR = "#586276";
+const OUTLINE_UNMATCHED_COLOR = "#586276";
+const OUTLINE_UNKNOWN_COLOR = "#8793a8";
 const OUTLINE_PLAIN_COLOR = "#aeb9cb";
 let outlineMap;
 let outlineManifest = null;
@@ -765,7 +766,7 @@ function outlineFeatureStyle(feature) {
     ? OUTLINE_PLAIN_COLOR
     : industry
       ? OUTLINE_INDUSTRY_COLORS.get(industry) || OUTLINE_OTHER_COLOR
-      : OUTLINE_UNKNOWN_COLOR;
+      : OUTLINE_UNMATCHED_COLOR;
   return {
     color: outlineIndustryMode && industry ? color : "#8490aa",
     weight: outlineIndustryMode && industry ? 1.15 : .7,
@@ -784,7 +785,7 @@ function renderOutlineLegend() {
   }
   const counts = new Map();
   for (const feature of outlineFeatures) {
-    const industry = outlineIndustryById.get(String(feature.id)) || "업종 미확인";
+    const industry = outlineIndustryById.get(String(feature.id)) || "점포 미연결";
     counts.set(industry, (counts.get(industry) || 0) + 1);
   }
   if (!counts.size) {
@@ -794,15 +795,17 @@ function renderOutlineLegend() {
   const rows = [...counts.entries()]
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "ko"))
     .map(([industry, count]) => {
-      const color = industry === "업종 미확인"
-        ? OUTLINE_UNKNOWN_COLOR
-        : OUTLINE_INDUSTRY_COLORS.get(industry) || OUTLINE_OTHER_COLOR;
+      const color = industry === "점포 미연결"
+        ? OUTLINE_UNMATCHED_COLOR
+        : industry === "업종 미확인"
+          ? OUTLINE_UNKNOWN_COLOR
+          : OUTLINE_INDUSTRY_COLORS.get(industry) || OUTLINE_OTHER_COLOR;
       return `<div class="outline-legend-row">
         <span class="outline-legend-label"><i style="background:${color}"></i>${escapeHtml(industry)}</span>
         <strong>${count.toLocaleString("ko-KR")}동</strong>
       </div>`;
     }).join("");
-  legend.innerHTML = `<p class="outline-legend-title">건물별 우세 업종</p>${rows}`;
+  legend.innerHTML = `<p class="outline-legend-title">건물별 업종·연결 상태</p>${rows}`;
 }
 
 function renderOutlineZoneMeta(zone, stores, matchedStoreIds) {
@@ -812,7 +815,7 @@ function renderOutlineZoneMeta(zone, stores, matchedStoreIds) {
   $("outlineZoneMeta").textContent = [
     area > 0 ? `경계 ${(area / 1e6).toFixed(3)}㎢` : "",
     `업소 ${stores.length.toLocaleString("ko-KR")}개`,
-    `업종 연결 ${matchedStoreIds.size.toLocaleString("ko-KR")}개`
+    `점포 연결 ${matchedStoreIds.size.toLocaleString("ko-KR")}개`
   ].filter(Boolean).join(" · ");
 }
 

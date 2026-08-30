@@ -17,6 +17,7 @@ import { assertZoneSnapshotHealthy, filterVworldZones, mergeZoneFeatures } from 
 import {
   boundsIntersect,
   filterBuildingsInZone,
+  geometryDistanceMeters,
   geometryBounds,
   geometryCenter,
   matchBuildingIndustries
@@ -132,6 +133,32 @@ test("joins building footprints to stores using current and legacy PNUs", () => 
   assert.equal(result.byId.get("building-1"), "음식");
   assert.equal(result.byId.get("building-2"), "소매");
   assert.deepEqual([...result.matchedStoreIds].sort(), ["coordinate-store", "current-store", "legacy-store"]);
+
+  const unknownIndustry = matchBuildingIndustries([feature], [{ id: "unknown-industry-store", pnu: feature.properties.pnu, largeName: "", longitude: 126.92, latitude: 35.14 }]);
+  assert.equal(unknownIndustry.byId.get(feature.id), "업종 미확인");
+});
+
+test("recovers a nearby store when its PNU differs within the same lot", () => {
+  const building = {
+    id: "same-lot-building",
+    properties: { pnu: "1221010800102870001" },
+    geometry: { type: "Polygon", coordinates: [[[126.92, 35.14], [126.921, 35.14], [126.921, 35.141], [126.92, 35.141], [126.92, 35.14]]] }
+  };
+  const store = { id: "same-lot-store", pnu: "1221010800102870004", largeName: "음식", longitude: 126.92102, latitude: 35.1405 };
+  assert.ok(geometryDistanceMeters(store.longitude, store.latitude, building.geometry) < 3);
+  const result = matchBuildingIndustries([building], [store]);
+  assert.equal(result.byId.get(building.id), "음식");
+  assert.deepEqual([...result.matchedStoreIds], [store.id]);
+});
+
+test("does not guess between equally close buildings without a lot match", () => {
+  const buildings = [
+    { id: "left", properties: { pnu: "1221010800100010001" }, geometry: { type: "Polygon", coordinates: [[[126.92, 35.14], [126.9201, 35.14], [126.9201, 35.141], [126.92, 35.141], [126.92, 35.14]]] } },
+    { id: "right", properties: { pnu: "1221010800100020001" }, geometry: { type: "Polygon", coordinates: [[[126.9202, 35.14], [126.9203, 35.14], [126.9203, 35.141], [126.9202, 35.141], [126.9202, 35.14]]] } }
+  ];
+  const result = matchBuildingIndustries(buildings, [{ id: "ambiguous-store", pnu: "1221010800100990001", largeName: "소매", longitude: 126.92015, latitude: 35.1405 }]);
+  assert.equal(result.byId.size, 0);
+  assert.equal(result.matchedStoreIds.size, 0);
 });
 
 test("ships a complete building-outline cell snapshot", async () => {
