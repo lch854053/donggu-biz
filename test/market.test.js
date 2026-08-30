@@ -136,6 +136,22 @@ test("joins building footprints to stores using current and legacy PNUs", () => 
 
   const unknownIndustry = matchBuildingIndustries([feature], [{ id: "unknown-industry-store", pnu: feature.properties.pnu, largeName: "", longitude: 126.92, latitude: 35.14 }]);
   assert.equal(unknownIndustry.byId.get(feature.id), "업종 미확인");
+  assert.equal(unknownIndustry.storesById.has(feature.id), false);
+});
+
+test("classifies a building by its most common industry and keeps known stores for hover details", () => {
+  const feature = {
+    id: "multi-store-building",
+    properties: { pnu: "1221010800102870025" },
+    geometry: { type: "Polygon", coordinates: [[[126.92, 35.14], [126.921, 35.14], [126.921, 35.141], [126.92, 35.141], [126.92, 35.14]]] }
+  };
+  const result = matchBuildingIndustries([feature], [
+    { id: "food-1", pnu: feature.properties.pnu, name: "첫 카페", largeName: "음식", smallName: "카페", address: "동구 1번지", longitude: 126.92, latitude: 35.14 },
+    { id: "food-2", pnu: feature.properties.pnu, name: "둘 카페", largeName: "음식", smallName: "카페", address: "동구 1번지", longitude: 126.92, latitude: 35.14 },
+    { id: "retail-1", pnu: feature.properties.pnu, name: "서점", largeName: "소매", smallName: "서점", address: "동구 1번지", longitude: 126.92, latitude: 35.14 }
+  ]);
+  assert.equal(result.byId.get(feature.id), "음식");
+  assert.deepEqual(result.storesById.get(feature.id).map((store) => store.id), ["food-1", "food-2", "retail-1"]);
 });
 
 test("recovers a nearby store when its PNU differs within the same lot", () => {
@@ -169,11 +185,14 @@ test("ships a complete building-outline cell snapshot", async () => {
   await Promise.all(manifest.cells.map((cell) => access(new URL(`../data/figure-ground/${cell.file}`, import.meta.url))));
 });
 
-test("lets the analysis panel choose its own commercial zone", async () => {
+test("puts building-outline analysis in the market map", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  assert.match(html, /id="panel-analysis"/);
-  assert.match(html, /id="outlineZoneFilter"/);
-  assert.doesNotMatch(html, /소상공인 조회에서 주요상권을 먼저 선택해 주세요/);
+  assert.match(html, /id="panel-market"/);
+  assert.match(html, /id="marketMap"/);
+  assert.match(html, /id="outlineIndustryToggle"[^>]*checked/);
+  assert.doesNotMatch(html, /id="panel-analysis"/);
+  assert.doesNotMatch(html, /id="tab-analysis"/);
+  assert.doesNotMatch(html, /id="outlineZoneFilter"/);
 });
 
 test("rejects invalid or sharply reduced zone snapshots", () => {

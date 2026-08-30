@@ -70,8 +70,7 @@ function activateService(panelName) {
     $(`panel-${tab.dataset.panel}`).hidden = !active;
   });
   closeClusterPanel();
-  if (panelName === "market" || panelName === "analysis") initializeMarket();
-  if (panelName === "analysis") initializeBuildingOutline();
+  if (panelName === "market") initializeMarket();
 }
 
 // Business lookup sub-navigation
@@ -557,12 +556,11 @@ const OUTLINE_OTHER_COLOR = "#c4879e";
 const OUTLINE_UNMATCHED_COLOR = "#586276";
 const OUTLINE_UNKNOWN_COLOR = "#8793a8";
 const OUTLINE_PLAIN_COLOR = "#aeb9cb";
-let outlineMap;
 let outlineManifest = null;
-let outlineZoneLayer;
 let outlineBuildingLayer;
 let outlineFeatures = [];
 let outlineIndustryById = new Map();
+let outlineStoresById = new Map();
 let outlineIndustryMode = true;
 let outlineLoadId = 0;
 const outlineCellCache = new Map();
@@ -619,7 +617,6 @@ async function initializeMarket() {
     $("marketState").hidden = true;
     $("marketWorkspace").hidden = false;
     setTimeout(() => marketMap.invalidateSize(), 0);
-    if (!$("panel-analysis").hidden) initializeBuildingOutline();
   } catch (error) {
     $("marketState").classList.add("is-error");
     $("marketState").textContent = `${error.message} 데이터 갱신 스크립트를 먼저 실행해 주세요.`;
@@ -715,24 +712,29 @@ function renderClusterPanel(stores) {
 
 function setOutlineState(message, isError = false) {
   const state = $("outlineState");
+  if (!state) return;
   state.hidden = false;
   state.classList.toggle("is-error", isError);
   state.textContent = message;
 }
 
 function clearOutlineLayers() {
-  outlineZoneLayer?.remove();
   outlineBuildingLayer?.remove();
-  outlineZoneLayer = null;
   outlineBuildingLayer = null;
   outlineFeatures = [];
   outlineIndustryById = new Map();
-  $("outlineWorkspace").hidden = true;
+  outlineStoresById = new Map();
+  $("outlineAnalysis").hidden = true;
   $("outlineLegend").replaceChildren();
+  $("outlineZoneName").textContent = "건물 윤곽";
   $("outlineZoneMeta").textContent = "";
-  if (outlineMap) {
-    outlineMap.setMaxBounds(null);
-    outlineMap.setMinZoom(12);
+  const state = $("outlineState");
+  state.hidden = true;
+  state.classList.remove("is-error");
+  state.textContent = "";
+  if (marketMap) {
+    marketMap.setMaxBounds(null);
+    marketMap.setMinZoom(0);
   }
 }
 
@@ -774,6 +776,45 @@ function outlineFeatureStyle(feature) {
     fillColor: color,
     fillOpacity: !outlineIndustryMode ? .38 : industry ? .78 : .12
   };
+}
+
+function outlineStoreName(store) {
+  return [store.name, store.branch].filter(Boolean).join(" ") || "업소명 미확인";
+}
+
+function outlineStoreIndustry(store) {
+  return store.smallName || store.middleName || store.largeName || "업종 미확인";
+}
+
+function outlineTooltipHtml(stores) {
+  return `<div class="building-tooltip-content">
+    <strong>연결 업소 ${stores.length.toLocaleString("ko-KR")}개</strong>
+    ${stores.map((store) => `<div class="building-tooltip-store">
+      <b>${escapeHtml(outlineStoreName(store))}</b>
+      <span>업종 · ${escapeHtml(outlineStoreIndustry(store))}</span>
+      <span>주소 · ${escapeHtml(store.address || store.lotAddress || "-")}</span>
+    </div>`).join("")}
+  </div>`;
+}
+
+function bindOutlineFeature(feature, layer) {
+  const stores = outlineStoresById.get(String(feature.id)) || [];
+  if (!stores.length) return;
+  layer.bindTooltip(outlineTooltipHtml(stores), {
+    sticky: true,
+    direction: "top",
+    className: "building-tooltip",
+    opacity: .98
+  });
+  layer.on({
+    mouseover() {
+      layer.setStyle({
+        weight: outlineIndustryMode ? 2.2 : 1.5,
+        fillOpacity: outlineIndustryMode ? .92 : .5
+      });
+    },
+    mouseout() { outlineBuildingLayer?.resetStyle(layer); }
+  });
 }
 
 function renderOutlineLegend() {
@@ -820,16 +861,16 @@ function renderOutlineZoneMeta(zone, stores, matchedStoreIds) {
 }
 
 async function loadBuildingOutline() {
-  if (!outlineMap) return;
   const zone = selectedZone();
   const requestId = ++outlineLoadId;
   clearOutlineLayers();
-  if (!zone) {
-    setOutlineState("주요상권을 선택해 주세요.");
-    return;
-  }
+  if (!zone || !marketMap) return;
 
-  setOutlineState(`${zone.properties?.name || "선택 상권"}의 건물 윤곽을 불러오는 중입니다.`);
+  const zoneName = zone.properties?.name || "선택 상권";
+  $("outlineAnalysis").hidden = false;
+  $("outlineZoneName").textContent = zoneName;
+  $("outlineZoneMeta").textContent = "건물 윤곽을 불러오는 중입니다.";
+  setOutlineState(`${zoneName}의 건물 윤곽을 불러오는 중입니다.`);
   try {
     const zoneBounds = geometryBounds(zone.geometry);
     if (!zoneBounds) throw new Error("선택 상권의 경계를 읽을 수 없습니다.");
@@ -847,54 +888,32 @@ async function loadBuildingOutline() {
     const stores = filterStores(allStores, { zoneGeometry: zone.geometry });
     const industryMatches = matchBuildingIndustries(outlineFeatures, stores);
     outlineIndustryById = industryMatches.byId;
+    outlineStoresById = industryMatches.storesById;
 
-    outlineZoneLayer = L.geoJSON(zone, {
-      interactive: false,
-      style: {
-        color: "#83b3ff",
-        weight: 2,
-        opacity: .9,
-        fillColor: "#5b98ff",
-        fillOpacity: .06
-      }
-    }).addTo(outlineMap);
     outlineBuildingLayer = L.geoJSON({ type: "FeatureCollection", features: outlineFeatures }, {
-      interactive: false,
-      style: outlineFeatureStyle
-    }).addTo(outlineMap);
-    outlineZoneLayer.bringToFront();
+      style: outlineFeatureStyle,
+      onEachFeature: bindOutlineFeature
+    }).addTo(marketMap);
 
-    const leafletBounds = outlineZoneLayer.getBounds();
+    const leafletBounds = zoneLeafletByNo.get(selectedZoneNo)?.getBounds() || L.geoJSON(zone).getBounds();
     if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
-    outlineMap.setMaxBounds(leafletBounds.pad(.08));
-    const fitZoom = outlineMap.getBoundsZoom(leafletBounds, false);
-    outlineMap.setMinZoom(Math.max(12, Math.min(fitZoom, 18)));
-    outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom: 18 });
+    marketMap.setMaxBounds(leafletBounds.pad(.08));
+    const fitZoom = marketMap.getBoundsZoom(leafletBounds, false);
+    marketMap.setMinZoom(Math.max(12, Math.min(fitZoom, 18)));
+    marketMap.fitBounds(leafletBounds, { padding: [32, 32], maxZoom: 18 });
 
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
-    $("outlineState").hidden = true;
-    $("outlineWorkspace").hidden = false;
-    setTimeout(() => outlineMap.invalidateSize(), 0);
+    if (outlineFeatures.length) {
+      $("outlineState").hidden = true;
+    } else {
+      setOutlineState("선택 상권에 표시할 건물 윤곽이 없습니다.");
+    }
   } catch (error) {
     if (requestId !== outlineLoadId) return;
     clearOutlineLayers();
     setOutlineState(`${error.message} 데이터가 배포되었는지 확인해 주세요.`, true);
   }
-}
-
-function initializeBuildingOutline() {
-  if (!outlineMap) {
-    outlineMap = L.map("buildingOutlineMap", {
-      zoomControl: true,
-      preferCanvas: true,
-      minZoom: 12,
-      maxZoom: 19,
-      maxBoundsViscosity: 1
-    }).setView(DONGGU_CENTER, 14);
-  }
-  setTimeout(() => outlineMap.invalidateSize(), 0);
-  loadBuildingOutline();
 }
 
 $("outlineIndustryToggle").addEventListener("change", (event) => {
@@ -978,11 +997,8 @@ function populateMarketFilters() {
   replaceOptions($("marketTableDongFilter"), dongs, "전체 행정동");
   replaceOptions($("marketTableIndustryFilter"), industries, "전체 업종");
   replaceOptions($("marketTableZoneFilter"), zones, "전체 주요상권");
-  replaceOptions($("outlineZoneFilter"), zones, "주요상권 선택");
-  $("outlineZoneFilter").value = selectedZoneNo;
   $("zoneFilter").disabled = !mainBizZones.length;
   $("marketTableZoneFilter").disabled = !mainBizZones.length;
-  $("outlineZoneFilter").disabled = !mainBizZones.length;
 }
 
 function marketTableCriteria() {
@@ -1092,7 +1108,7 @@ function applyMarketFilters() {
   closeClusterPanel();
   visibleStores = filterStores(activeMarketStores(), currentMarketFilters());
   markerCluster.clearLayers();
-  if ($("dongFilter").value || selectedZoneNo) {
+  if ($("dongFilter").value && !selectedZoneNo) {
     const visibleIds = new Set(visibleStores.map((store) => store.id));
     markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
   }
@@ -1125,30 +1141,26 @@ function renderSelectionOverview() {
       <div><dt>${countLabel}</dt><dd>${visibleStores.length.toLocaleString("ko-KR")}개</dd></div>
     </dl>
     <p class="selection-category-title">상위 업종 소분류 10개</p>
-    <div class="selection-categories">${summaryRows(countBy(visibleStores, "smallName"), visibleStores.length, 10, entityLabel)}</div>
-    ${zone ? '<button class="button button-secondary selection-analysis-button" id="openOutlineBtn" type="button">상권 분석 보기</button>' : ""}`;
-  $("openOutlineBtn")?.addEventListener("click", () => activateService("analysis"));
+    <div class="selection-categories">${summaryRows(countBy(visibleStores, "smallName"), visibleStores.length, 10, entityLabel)}</div>`;
 }
 
 function selectZone(number, fitBounds) {
   const selection = buildLocationSelection("zone", number);
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selectedZoneNo;
-  $("outlineZoneFilter").value = selectedZoneNo;
   $("dongFilter").value = selection.adminDong;
   syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
   applyMarketFilters();
   const layer = zoneLeafletByNo.get(selectedZoneNo);
   if (fitBounds && layer && !$("panel-market").hidden) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
-  if (outlineMap) loadBuildingOutline();
+  loadBuildingOutline();
 }
 
 $("dongFilter").addEventListener("change", (event) => {
   const selection = buildLocationSelection("dong", event.target.value);
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selection.zoneNo;
-  $("outlineZoneFilter").value = selection.zoneNo;
   syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
   applyMarketFilters();
@@ -1158,10 +1170,9 @@ $("dongFilter").addEventListener("change", (event) => {
   } else if (!event.target.value) {
     marketMap.setView(DONGGU_CENTER, 14);
   }
-  if (outlineMap) loadBuildingOutline();
+  loadBuildingOutline();
 });
 $("zoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
-$("outlineZoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
 $("resetMarketBtn").addEventListener("click", () => {
   $("dongFilter").value = "";
   selectZone("", false);
@@ -1197,7 +1208,6 @@ $("marketTableDownloadBtn").addEventListener("click", () => {
     "업소"
   );
 });
-$("analysisLookupBtn").addEventListener("click", () => activateService("market"));
 
 // National Pension workplace lookup
 // 이 서비스는 광주 동구만 다룬다. 조회도 스냅샷도 같은 지역 하나를 본다.
