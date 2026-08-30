@@ -46,6 +46,9 @@
     <button class="primary-tab" id="tab-market" role="tab" aria-selected="false" aria-controls="panel-market" data-panel="market">
       소상공인 조회
     </button>
+    <button class="primary-tab" id="tab-analysis" role="tab" aria-selected="false" aria-controls="panel-analysis" data-panel="analysis">
+      상권 분석
+    </button>
   </nav>
 
   <main id="main-content">
@@ -364,6 +367,42 @@
               <tbody id="marketTableBody"></tbody>
             </table>
           </div>
+        </section>
+      </div>
+    </section>
+
+    <section class="service-panel" id="panel-analysis" role="tabpanel" aria-labelledby="tab-analysis" hidden>
+      <div class="market-heading analysis-heading">
+        <div>
+          <h2>상권 분석</h2>
+          <p>소상공인 조회에서 주요상권을 선택하면 해당 경계 안의 건물 윤곽과 업종 분포를 확인합니다.</p>
+        </div>
+        <button class="button button-quiet" id="analysisLookupBtn" type="button">소상공인 조회로 돌아가기</button>
+      </div>
+
+      <div class="market-state" id="outlineState" role="status">소상공인 조회에서 주요상권을 먼저 선택해 주세요.</div>
+
+      <div class="outline-workspace" id="outlineWorkspace" hidden>
+        <aside class="outline-rail" aria-labelledby="outlineZoneName">
+          <div class="rail-heading">
+            <h3 id="outlineZoneName">선택 상권</h3>
+          </div>
+          <p class="outline-zone-meta" id="outlineZoneMeta"></p>
+          <label class="outline-toggle" for="outlineIndustryToggle">
+            <input id="outlineIndustryToggle" type="checkbox" checked>
+            <span>
+              <strong>업종 분류</strong>
+              <small>상권 내 점포가 포함된 건물의 우세 업종 기준</small>
+            </span>
+          </label>
+          <div class="outline-legend" id="outlineLegend"></div>
+          <div class="data-note">
+            <strong>지도 해석</strong>
+            <p>건물 도형은 Figure-Ground 정적 데이터이며, 업종 색상은 선택 상권 내부 점포를 건물 필지에 연결한 결과입니다. 점포가 연결되지 않은 건물은 업종 미확인으로 표시합니다.</p>
+          </div>
+        </aside>
+        <section class="outline-map-stage" aria-label="선택 상권 건물 윤곽 지도">
+          <div id="buildingOutlineMap"></div>
         </section>
       </div>
     </section>

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import {
   buildLocationFilter,
   buildLocationSelection,
@@ -14,6 +14,13 @@ import {
 } from "../lib/market.js";
 import { assertSnapshotHealthy } from "../lib/store-update.js";
 import { assertZoneSnapshotHealthy, filterVworldZones, mergeZoneFeatures } from "../lib/zone-update.js";
+import {
+  boundsIntersect,
+  filterBuildingsInZone,
+  geometryBounds,
+  geometryCenter,
+  matchBuildingIndustries
+} from "../lib/building-outline.js";
 
 const stores = [
   { name: "동명카페", branch: "", address: "동명로", lotAddress: "동명동", buildingName: "", adminDong: "동명동", largeCode: "I2", largeName: "음식", middleCode: "I212", smallCode: "I21201", smallName: "카페", longitude: 126.92, latitude: 35.15 },
@@ -91,6 +98,48 @@ test("sorts stores by name or large industry without mutating the source", () =>
   assert.deepEqual(sortStores(stores, "industry-asc").map((store) => store.name), ["충장서점", "동명카페"]);
   assert.deepEqual(sortStores(stores, "industry-desc").map((store) => store.name), ["동명카페", "충장서점"]);
   assert.deepEqual(stores.map((store) => store.name), ["동명카페", "충장서점"]);
+});
+
+test("finds building cell bounds and filters footprints by zone center", () => {
+  const zone = { type: "Polygon", coordinates: [[[126.9, 35.1], [127, 35.1], [127, 35.2], [126.9, 35.2], [126.9, 35.1]]] };
+  const inside = { id: "inside", geometry: { type: "Polygon", coordinates: [[[126.92, 35.12], [126.93, 35.12], [126.93, 35.13], [126.92, 35.13], [126.92, 35.12]]] } };
+  const outside = { id: "outside", geometry: { type: "Polygon", coordinates: [[[127.02, 35.12], [127.03, 35.12], [127.03, 35.13], [127.02, 35.13], [127.02, 35.12]]] } };
+  assert.deepEqual(geometryBounds(inside.geometry), [126.92, 35.12, 126.93, 35.13]);
+  const center = geometryCenter(inside.geometry);
+  assert.ok(Math.abs(center[0] - 126.925) < 1e-12);
+  assert.equal(center[1], 35.125);
+  assert.equal(boundsIntersect(geometryBounds(inside.geometry), geometryBounds(zone)), true);
+  assert.equal(boundsIntersect(geometryBounds(outside.geometry), geometryBounds(zone)), false);
+  assert.deepEqual(filterBuildingsInZone([inside, outside], zone), [inside]);
+});
+
+test("joins building footprints to stores using current and legacy PNUs", () => {
+  const feature = {
+    id: "building-1",
+    properties: { pnu: "1221010800102870025" },
+    geometry: { type: "Polygon", coordinates: [[[126.92, 35.14], [126.921, 35.14], [126.921, 35.141], [126.92, 35.141], [126.92, 35.14]]] }
+  };
+  const fallbackFeature = {
+    id: "building-2",
+    properties: { pnu: "1221010800102880025" },
+    geometry: { type: "Polygon", coordinates: [[[126.93, 35.14], [126.931, 35.14], [126.931, 35.141], [126.93, 35.141], [126.93, 35.14]]] }
+  };
+  const result = matchBuildingIndustries([feature, fallbackFeature], [
+    { id: "legacy-store", pnu: "2911010800102870025", largeName: "음식", longitude: 126.92, latitude: 35.14 },
+    { id: "current-store", pnu: "1221010800102870025", largeName: "음식", longitude: 126.92, latitude: 35.14 },
+    { id: "coordinate-store", pnu: "", largeName: "소매", longitude: 126.9305, latitude: 35.1405 }
+  ]);
+  assert.equal(result.byId.get("building-1"), "음식");
+  assert.equal(result.byId.get("building-2"), "소매");
+  assert.deepEqual([...result.matchedStoreIds].sort(), ["coordinate-store", "current-store", "legacy-store"]);
+});
+
+test("ships a complete building-outline cell snapshot", async () => {
+  const manifest = JSON.parse(await readFile(new URL("../data/figure-ground/manifest.json", import.meta.url), "utf8"));
+  assert.equal(manifest.schemaVersion, 2);
+  assert.equal(manifest.cells.length, 50);
+  assert.equal(manifest.cells.reduce((sum, cell) => sum + cell.count, 0), manifest.featureCount);
+  await Promise.all(manifest.cells.map((cell) => access(new URL(`../data/figure-ground/${cell.file}`, import.meta.url))));
 });
 
 test("rejects invalid or sharply reduced zone snapshots", () => {
