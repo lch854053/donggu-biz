@@ -375,12 +375,20 @@
       <div class="market-heading analysis-heading">
         <div>
           <h2>상권 분석</h2>
-          <p>소상공인 조회에서 주요상권을 선택하면 해당 경계 안의 건물 윤곽과 업종 분포를 확인합니다.</p>
+          <p>주요상권을 선택하면 해당 경계 안의 건물 윤곽과 업종 분포를 확인합니다.</p>
         </div>
-        <button class="button button-quiet" id="analysisLookupBtn" type="button">소상공인 조회로 돌아가기</button>
+        <div class="analysis-actions">
+          <label class="field analysis-zone-field">
+            <span>주요상권</span>
+            <select id="outlineZoneFilter" disabled>
+              <option value="">상권 목록을 불러오는 중...</option>
+            </select>
+          </label>
+          <button class="button button-quiet" id="analysisLookupBtn" type="button">소상공인 조회로 돌아가기</button>
+        </div>
       </div>
 
-      <div class="market-state" id="outlineState" role="status">소상공인 조회에서 주요상권을 먼저 선택해 주세요.</div>
+      <div class="market-state" id="outlineState" role="status">주요상권을 선택해 주세요.</div>
 
       <div class="outline-workspace" id="outlineWorkspace" hidden>
         <aside class="outline-rail" aria-labelledby="outlineZoneName">

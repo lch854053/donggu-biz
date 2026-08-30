@@ -822,7 +822,7 @@ async function loadBuildingOutline() {
   const requestId = ++outlineLoadId;
   clearOutlineLayers();
   if (!zone) {
-    setOutlineState("소상공인 조회에서 주요상권을 먼저 선택해 주세요.");
+    setOutlineState("주요상권을 선택해 주세요.");
     return;
   }
 
@@ -975,8 +975,11 @@ function populateMarketFilters() {
   replaceOptions($("marketTableDongFilter"), dongs, "전체 행정동");
   replaceOptions($("marketTableIndustryFilter"), industries, "전체 업종");
   replaceOptions($("marketTableZoneFilter"), zones, "전체 주요상권");
+  replaceOptions($("outlineZoneFilter"), zones, "주요상권 선택");
+  $("outlineZoneFilter").value = selectedZoneNo;
   $("zoneFilter").disabled = !mainBizZones.length;
   $("marketTableZoneFilter").disabled = !mainBizZones.length;
+  $("outlineZoneFilter").disabled = !mainBizZones.length;
 }
 
 function marketTableCriteria() {
@@ -1128,12 +1131,13 @@ function selectZone(number, fitBounds) {
   const selection = buildLocationSelection("zone", number);
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selectedZoneNo;
+  $("outlineZoneFilter").value = selectedZoneNo;
   $("dongFilter").value = selection.adminDong;
   syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
   applyMarketFilters();
   const layer = zoneLeafletByNo.get(selectedZoneNo);
-  if (fitBounds && layer) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
+  if (fitBounds && layer && !$("panel-market").hidden) marketMap.fitBounds(layer.getBounds(), { padding: [32, 32], maxZoom: 16 });
   if (outlineMap) loadBuildingOutline();
 }
 
@@ -1141,6 +1145,7 @@ $("dongFilter").addEventListener("change", (event) => {
   const selection = buildLocationSelection("dong", event.target.value);
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selection.zoneNo;
+  $("outlineZoneFilter").value = selection.zoneNo;
   syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
   applyMarketFilters();
@@ -1153,6 +1158,7 @@ $("dongFilter").addEventListener("change", (event) => {
   if (outlineMap) loadBuildingOutline();
 });
 $("zoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
+$("outlineZoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
 $("resetMarketBtn").addEventListener("click", () => {
   $("dongFilter").value = "";
   selectZone("", false);

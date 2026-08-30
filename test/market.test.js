@@ -142,6 +142,13 @@ test("ships a complete building-outline cell snapshot", async () => {
   await Promise.all(manifest.cells.map((cell) => access(new URL(`../data/figure-ground/${cell.file}`, import.meta.url))));
 });
 
+test("lets the analysis panel choose its own commercial zone", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /id="panel-analysis"/);
+  assert.match(html, /id="outlineZoneFilter"/);
+  assert.doesNotMatch(html, /소상공인 조회에서 주요상권을 먼저 선택해 주세요/);
+});
+
 test("rejects invalid or sharply reduced zone snapshots", () => {
   const coordinates = [[[126.9, 35.1], [126.91, 35.1], [126.91, 35.11], [126.9, 35.1]]];
   const feature = (no) => ({ properties: { no }, geometry: { type: "Polygon", coordinates } });

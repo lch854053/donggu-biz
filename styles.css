@@ -575,7 +575,9 @@ tbody tr:hover td { background: #f6f8fa; }
 .selection-analysis-button { width: 100%; margin-top: 16px; }
 
 .analysis-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.analysis-actions { display: flex; align-items: flex-end; gap: 10px; }
 .analysis-heading .button { flex: none; }
+.analysis-zone-field { width: 240px; margin: 0; }
 .outline-workspace {
   min-height: 650px;
   display: grid;
@@ -653,6 +655,8 @@ tbody tr:hover td { background: #f6f8fa; }
   #marketMap { min-height: 56vh; }
   .cluster-panel { top: 10px; right: 10px; width: calc(100% - 20px); max-height: calc(100% - 20px); }
   .analysis-heading { flex-direction: column; }
+  .analysis-actions { width: 100%; align-items: stretch; flex-direction: column; }
+  .analysis-zone-field { width: 100%; }
   .outline-workspace { display: flex; flex-direction: column; }
   .outline-rail { border-right: 0; border-bottom: 1px solid var(--line); }
   .outline-map-stage { min-height: 56vh; }
