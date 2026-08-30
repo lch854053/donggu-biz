@@ -629,9 +629,14 @@ tbody tr:hover td { background: #f6f8fa; }
 #buildingOutlineMap { width: 100%; height: 100%; min-height: 650px; }
 #buildingOutlineMap .leaflet-control-attribution { display: none; }
 .building-tooltip {
+  box-sizing: border-box;
+  width: min(360px, calc(100vw - 32px));
   max-width: min(360px, calc(100vw - 32px));
   max-height: min(420px, calc(100vh - 48px));
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  white-space: normal;
+  overscroll-behavior: contain;
   border: 1px solid var(--line-strong);
   border-radius: 8px;
   background: rgba(255, 255, 255, .98);
@@ -639,11 +644,11 @@ tbody tr:hover td { background: #f6f8fa; }
   box-shadow: 0 8px 22px rgba(23, 37, 54, .18);
 }
 .building-tooltip::before { border-top-color: var(--line-strong); }
-.building-tooltip-content { display: grid; gap: 8px; min-width: 220px; }
+.building-tooltip-content { display: grid; gap: 8px; min-width: 0; }
 .building-tooltip-content > strong { color: var(--text); font-size: 12px; }
 .building-tooltip-store { padding-top: 8px; border-top: 1px solid var(--line); display: grid; gap: 2px; }
 .building-tooltip-store b { font-size: 13px; }
-.building-tooltip-store span { color: var(--text-secondary); font-size: 11px; line-height: 1.45; }
+.building-tooltip-store span { color: var(--text-secondary); font-size: 11px; line-height: 1.45; overflow-wrap: anywhere; }
 
 #toast {
   position: fixed;

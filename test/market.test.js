@@ -53,6 +53,21 @@ test("compacts an API store row", () => {
   assert.equal(store.longitude, 126.92);
 });
 
+test("keeps the LocalData source category for supplemental licenses", () => {
+  const source = LOCALDATA_SOURCES.find((candidate) => candidate.slug === "health_functional_food_general_retailers");
+  const license = compactLicense({
+    MNG_NO: "5805000-134-2019-00001",
+    BPLC_NM: "강남전자",
+    BZSTAT_SE_NM: "건강기능식품일반판매업",
+    ROAD_NM_ADDR: "전남광주통합특별시 동구 독립로264번길 25",
+    LOTNO_ADDR: "전남광주통합특별시 동구 금남로1가 1",
+    SALS_STTS_CD: "01"
+  }, source);
+  assert.equal(license.largeName, "소매");
+  assert.equal(license.smallName, "건강기능식품일반판매업");
+  assert.equal(license.licenseType, "건강기능식품일반판매업");
+});
+
 test("converts LocalData EPSG:5174 coordinates to WGS84", () => {
   const coordinates = epsg5174ToWgs84("193104.410616951", "183418.411238483");
   assert.ok(coordinates);
@@ -365,6 +380,7 @@ test("ships a complete building-outline cell snapshot", async () => {
 test("keeps building-outline analysis under the market service", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../styles.css", import.meta.url), "utf8");
   assert.match(html, /id="panel-market"/);
   assert.match(html, /id="tab-market"[\s\S]*?>\s*상가·상권 조회/);
   assert.match(html, /id="marketTitle">동구 상가·상권 조회</);
@@ -387,6 +403,10 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.doesNotMatch(app, /outlineZoneLayer/);
   assert.doesNotMatch(app, /function initializeBuildingOutline\(\)[\s\S]*?tileLayer/);
   assert.match(app, /outlineMap\.fitBounds\(leafletBounds/);
+  assert.match(app, /className: "building-tooltip"[\s\S]*interactive: true/);
+  assert.match(app, /function clampOutlineTooltip\(tooltip\)/);
+  assert.match(styles, /\.building-tooltip \{[\s\S]*overflow-y: auto;/);
+  assert.match(styles, /\.building-tooltip \{[\s\S]*white-space: normal;/);
   assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
   assert.doesNotMatch(app, /marketMap\.setMinZoom\(Math\.max\(12/);
 });

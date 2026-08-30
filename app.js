@@ -791,6 +791,50 @@ function outlineStoreIndustry(store) {
   return store.smallName || store.middleName || store.largeName || "업종 미확인";
 }
 
+const OUTLINE_TOOLTIP_MARGIN = 12;
+
+function clampOutlineTooltip(tooltip) {
+  const element = tooltip?.getElement?.();
+  const mapElement = outlineMap?.getContainer?.();
+  if (!element || !mapElement) return;
+
+  const mapRect = mapElement.getBoundingClientRect();
+  const maxHeight = Math.max(1, Math.min(
+    420,
+    mapRect.height - OUTLINE_TOOLTIP_MARGIN * 2,
+    window.innerHeight - OUTLINE_TOOLTIP_MARGIN * 2
+  ));
+  const maxWidth = Math.max(1, Math.min(
+    360,
+    mapRect.width - OUTLINE_TOOLTIP_MARGIN * 2,
+    window.innerWidth - OUTLINE_TOOLTIP_MARGIN * 2
+  ));
+  element.style.maxHeight = `${maxHeight}px`;
+  element.style.maxWidth = `${maxWidth}px`;
+
+  const tooltipRect = element.getBoundingClientRect();
+  let shiftX = 0;
+  let shiftY = 0;
+  if (tooltipRect.right > mapRect.right - OUTLINE_TOOLTIP_MARGIN) {
+    shiftX -= tooltipRect.right - (mapRect.right - OUTLINE_TOOLTIP_MARGIN);
+  }
+  if (tooltipRect.left + shiftX < mapRect.left + OUTLINE_TOOLTIP_MARGIN) {
+    shiftX += mapRect.left + OUTLINE_TOOLTIP_MARGIN - (tooltipRect.left + shiftX);
+  }
+  if (tooltipRect.bottom > mapRect.bottom - OUTLINE_TOOLTIP_MARGIN) {
+    shiftY -= tooltipRect.bottom - (mapRect.bottom - OUTLINE_TOOLTIP_MARGIN);
+  }
+  if (tooltipRect.top + shiftY < mapRect.top + OUTLINE_TOOLTIP_MARGIN) {
+    shiftY += mapRect.top + OUTLINE_TOOLTIP_MARGIN - (tooltipRect.top + shiftY);
+  }
+  if (shiftX || shiftY) {
+    L.DomUtil.setPosition(
+      element,
+      L.DomUtil.getPosition(element).add(L.point(shiftX, shiftY))
+    );
+  }
+}
+
 function outlineTooltipHtml(stores) {
   return `<div class="building-tooltip-content">
     <strong>연결 업소 ${stores.length.toLocaleString("ko-KR")}개</strong>
@@ -809,7 +853,54 @@ function bindOutlineFeature(feature, layer) {
     sticky: true,
     direction: "top",
     className: "building-tooltip",
+    interactive: true,
     opacity: .98
+  });
+
+  const tooltip = layer.getTooltip();
+  let closeTimer = 0;
+  let positionFrame = 0;
+  const clearCloseTimer = () => {
+    if (!closeTimer) return;
+    window.clearTimeout(closeTimer);
+    closeTimer = 0;
+  };
+  const scheduleClose = () => {
+    clearCloseTimer();
+    closeTimer = window.setTimeout(() => {
+      closeTimer = 0;
+      if (!tooltip.getElement()?.matches(":hover")) layer.closeTooltip();
+    }, 180);
+  };
+  const schedulePosition = () => {
+    if (positionFrame) return;
+    positionFrame = window.requestAnimationFrame(() => {
+      positionFrame = 0;
+      clampOutlineTooltip(tooltip);
+    });
+  };
+
+  // Leaflet's default mouseout closes interactive tooltips before the user can scroll them.
+  layer.off("mouseout", layer.closeTooltip);
+  layer.on({
+    mouseover: clearCloseTimer,
+    mouseout: scheduleClose,
+    mousemove: schedulePosition,
+    tooltipopen({ tooltip: openedTooltip }) {
+      if (openedTooltip !== tooltip) return;
+      const element = openedTooltip.getElement();
+      if (element && !element.dataset.scrollReady) {
+        element.dataset.scrollReady = "true";
+        L.DomEvent.on(element, "mouseenter", clearCloseTimer);
+        L.DomEvent.on(element, "mouseleave", scheduleClose);
+        L.DomEvent.disableScrollPropagation(element);
+      }
+      schedulePosition();
+    },
+    remove() {
+      clearCloseTimer();
+      if (positionFrame) window.cancelAnimationFrame(positionFrame);
+    }
   });
   layer.on({
     mouseover() {
