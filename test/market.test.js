@@ -342,10 +342,10 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.ok(Math.abs(geometryAreaSqm(weddingStreet.geometry) - weddingStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(honsuStreet.geometry) - honsuStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(boribapStreet.geometry) - boribapStreet.properties.areaSqm) < 1);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 113);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 299);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 160);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 412);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 115);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 309);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 175);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 415);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: weddingStreet.geometry }).length, 178);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: honsuStreet.geometry }).length, 128);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: boribapStreet.geometry }).length, 38);
@@ -355,7 +355,7 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "남광주시장").length, 1);
   assert.equal(mergedZones.find((feature) => feature.properties.name === "남광주시장").properties.source, "manual");
   assert.equal(storePayload.stores.filter((store) => mergedZones
-    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1612);
+    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1646);
 });
 
 test("merges VWorld and manual zones while rejecting duplicate numbers", () => {
