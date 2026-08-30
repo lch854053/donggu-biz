@@ -25,7 +25,9 @@ import {
 import {
   compactLicense,
   compareStoreSources,
+  deduplicateBaseStores,
   deduplicateLicenseStores,
+  deduplicateStoreSources,
   epsg5174ToWgs84,
   LOCALDATA_SOURCES,
   mergeStoreSources,
@@ -134,6 +136,85 @@ test("merges active license records without double-counting known stores", () =>
   assert.deepEqual(result.comparison.matchTypeCounts, { "name-address": 1 });
   assert.equal(result.stores.length, 2);
   assert.deepEqual(result.added[0].sourceSlugs, ["bakeries", "general_restaurants"]);
+});
+
+test("matches a license record against a split branch name and detailed address", () => {
+  const base = {
+    ...stores[0],
+    id: "sdsc-gongcha",
+    name: "공차광주",
+    branch: "충장점",
+    address: "전남광주통합특별시 동구 중앙로 162-1",
+    lotAddress: "전남광주통합특별시 동구 황금동 5-7",
+    longitude: 126.913677204943,
+    latitude: 35.148372266374
+  };
+  const license = {
+    id: "license:rest_cafes:gongcha",
+    name: "공차 광주충장점",
+    branch: "",
+    sourceSlug: "rest_cafes",
+    largeCode: "I2",
+    address: "전남광주통합특별시 동구 중앙로 162-1, 1층 (황금동)",
+    lotAddress: "전남광주통합특별시 동구 황금동 5-7 1층",
+    longitude: 126.91369986751238,
+    latitude: 35.1484592395591
+  };
+  const result = mergeStoreSources([base], [license]);
+  assert.equal(result.comparison.matchedCount, 1);
+  assert.equal(result.added.length, 0);
+});
+
+test("deduplicates duplicate source rows without merging nearby different addresses", () => {
+  const duplicateBase = deduplicateBaseStores([
+    { ...stores[0], id: "base-1", name: "같은 업소", address: "동구 중앙로 1", lotAddress: "동구 황금동 1" },
+    { ...stores[0], id: "base-2", name: "같은 업소", address: "동구 중앙로 1", lotAddress: "동구 황금동 1" },
+    { ...stores[0], id: "base-3", name: "같은 업소", address: "동구 중앙로 2", lotAddress: "동구 황금동 2", longitude: 126.921, latitude: 35.151 },
+    { ...stores[0], id: "base-4", name: "같은 업소", address: "동구 중앙로 3", lotAddress: "동구 황금동 3" }
+  ]);
+  assert.equal(duplicateBase.length, 2);
+
+  const licenseRows = [
+    {
+      id: "license:one",
+      name: "공차 광주충장점",
+      branch: "",
+      sourceSlug: "rest_cafes",
+      address: "전남광주통합특별시 동구 중앙로 162-1, 1층",
+      lotAddress: "전남광주통합특별시 동구 황금동 5-7 1층",
+      longitude: 126.91369986751238,
+      latitude: 35.1484592395591
+    },
+    {
+      id: "license:two",
+      name: "공차광주",
+      branch: "충장점",
+      sourceSlug: "general_restaurants",
+      address: "전남광주통합특별시 동구 중앙로 162-1",
+      lotAddress: "전남광주통합특별시 동구 황금동 5-7",
+      longitude: 126.913677204943,
+      latitude: 35.148372266374
+    }
+  ];
+  assert.equal(deduplicateLicenseStores(licenseRows).length, 1);
+  assert.equal(deduplicateLicenseStores([
+    ...licenseRows,
+    { ...licenseRows[0], id: "license:three", address: "전남광주통합특별시 동구 중앙로 300", lotAddress: "전남광주통합특별시 동구 계림동 100-1", longitude: 126.92, latitude: 35.15 }
+  ]).length, 2);
+  const baseForLicense = {
+    ...stores[0],
+    id: "base-gongcha",
+    name: "공차광주",
+    branch: "충장점",
+    address: "전남광주통합특별시 동구 중앙로 162-1",
+    lotAddress: "전남광주통합특별시 동구 황금동 5-7",
+    longitude: 126.913677204943,
+    latitude: 35.148372266374
+  };
+  const result = deduplicateStoreSources([baseForLicense], licenseRows);
+  assert.equal(result.stores.length, 1);
+  assert.equal(result.licenseDuplicatesRemoved, 1);
+  assert.equal(result.matchedCount, 1);
 });
 
 test("filters stores by administrative dong, category and query", () => {
@@ -293,6 +374,7 @@ test("keeps building-outline analysis under the market service", async () => {
     [["table", "상가 조회"], ["map", "상권 지도"], ["analysis", "상권 분석"]]
   );
   assert.match(html, /id="marketTableNameInput"/);
+  assert.doesNotMatch(html, /id="marketTableNameInput"[^>]*placeholder=/);
   assert.match(html, /id="outlineZoneFilter"/);
   assert.match(html, /id="buildingOutlineMap"/);
   assert.match(html, /id="outlineIndustryToggle"[^>]*checked/);
@@ -301,11 +383,24 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.doesNotMatch(html, /id="tab-analysis"/);
   assert.match(app, /if \(\$\("dongFilter"\)\.value \|\| selectedZoneNo\)/);
   assert.match(app, /storeName: \$\("marketTableNameInput"\)\.value\.trim\(\)/);
+  assert.match(app, /\$\("marketTableNameInput"\)\.addEventListener\("keydown"[\s\S]*event\.key !== "Enter"[\s\S]*runMarketTableSearch\(\)/);
   assert.doesNotMatch(app, /outlineZoneLayer/);
   assert.doesNotMatch(app, /function initializeBuildingOutline\(\)[\s\S]*?tileLayer/);
   assert.match(app, /outlineMap\.fitBounds\(leafletBounds/);
   assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
   assert.doesNotMatch(app, /marketMap\.setMinZoom\(Math\.max\(12/);
+});
+
+test("ships the market snapshot without duplicate source rows", async () => {
+  const payload = await readFile(new URL("../data/stores_donggu.json", import.meta.url), "utf8").then(JSON.parse);
+  const base = payload.stores.filter((store) => !String(store.id).startsWith("license:"));
+  const licenses = payload.stores.filter((store) => String(store.id).startsWith("license:"));
+  const result = deduplicateStoreSources(base, licenses);
+  assert.equal(result.baseDuplicatesRemoved, 0);
+  assert.equal(result.licenseDuplicatesRemoved, 0);
+  assert.equal(result.matchedCount, 0);
+  assert.equal(result.stores.length, payload.stores.length);
+  assert.equal(payload.meta.totalCount, payload.stores.length);
 });
 
 test("rejects invalid or sharply reduced zone snapshots", () => {
@@ -354,12 +449,12 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.ok(Math.abs(geometryAreaSqm(weddingStreet.geometry) - weddingStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(honsuStreet.geometry) - honsuStreet.properties.areaSqm) < 1);
   assert.ok(Math.abs(geometryAreaSqm(boribapStreet.geometry) - boribapStreet.properties.areaSqm) < 1);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 117);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 322);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 182);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 429);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: weddingStreet.geometry }).length, 181);
-  assert.equal(filterStores(storePayload.stores, { zoneGeometry: honsuStreet.geometry }).length, 128);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: electronicsStreet.geometry }).length, 113);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: daeinMarket.geometry }).length, 319);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: namgwangjuMarket.geometry }).length, 180);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: printingStreet.geometry }).length, 422);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: weddingStreet.geometry }).length, 173);
+  assert.equal(filterStores(storePayload.stores, { zoneGeometry: honsuStreet.geometry }).length, 127);
   assert.equal(filterStores(storePayload.stores, { zoneGeometry: boribapStreet.geometry }).length, 38);
   const mergedZones = mergeZoneFeatures(vworldPayload, payload);
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "대인시장").length, 1);
@@ -367,7 +462,7 @@ test("loads the manually registered commercial-zone boundaries", async () => {
   assert.equal(mergedZones.filter((feature) => feature.properties.name === "남광주시장").length, 1);
   assert.equal(mergedZones.find((feature) => feature.properties.name === "남광주시장").properties.source, "manual");
   assert.equal(storePayload.stores.filter((store) => mergedZones
-    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1690);
+    .some((feature) => pointInGeometry(store.longitude, store.latitude, feature.geometry))).length, 1656);
 });
 
 test("merges VWorld and manual zones while rejecting duplicate numbers", () => {

@@ -4,6 +4,8 @@ import { fileURLToPath } from "node:url";
 import { compactStore, countBy } from "../lib/market.js";
 import { assertSnapshotHealthy } from "../lib/store-update.js";
 import {
+  deduplicateBaseStores,
+  deduplicateStoreSources,
   distanceMeters,
   compactLicense,
   isActiveLicense,
@@ -184,11 +186,15 @@ const baseStores = sourceItems
     return Number.isFinite(store.longitude) && Number.isFinite(store.latitude);
   })
   .sort((a, b) => a.id.localeCompare(b.id));
+const uniqueBaseStores = deduplicateBaseStores(baseStores);
+const baseDuplicateCount = baseStores.length - uniqueBaseStores.length;
 
-let stores = baseStores;
+let stores = uniqueBaseStores;
 let supplementalMeta = null;
+let postMergeDeduplication = null;
+let kakaoAddressMeta = null;
 if (localdataKey) {
-  const adminDongForLicense = await createLicenseAdminDongResolver(baseStores);
+  const adminDongForLicense = await createLicenseAdminDongResolver(uniqueBaseStores);
   const localdataResults = [];
   for (const source of LOCALDATA_SOURCES) {
     const result = await fetchLocaldataSource(source);
@@ -202,7 +208,7 @@ if (localdataKey) {
     });
     localdataResults.push({ ...result, activeItems, licenses });
   }
-  const merged = mergeStoreSources(baseStores, localdataResults.flatMap(({ licenses }) => licenses));
+  const merged = mergeStoreSources(uniqueBaseStores, localdataResults.flatMap(({ licenses }) => licenses));
   stores = merged.stores.sort((a, b) => a.id.localeCompare(b.id));
   const comparison = merged.comparison;
   supplementalMeta = {
@@ -231,7 +237,6 @@ if (localdataKey) {
 
 const addressCandidates = stores.filter((store) => /[*＊]/.test(`${store.address || ""} ${store.lotAddress || ""}`)
   && Number.isFinite(store.longitude) && Number.isFinite(store.latitude));
-let kakaoAddressMeta = null;
 if (!kakaoKey && addressCandidates.length) {
   throw new Error(`마스킹 주소 ${addressCandidates.length}건을 보강하려면 KAKAO_REST_API_KEY 환경변수가 필요합니다.`);
 }
@@ -249,6 +254,24 @@ if (kakaoKey) {
     ...enriched.stats
   };
   console.log(`[kakao] enriched ${enriched.stats.enrichedCount}/${enriched.stats.candidateCount} stores with ${enriched.stats.requestCount} coordinate requests and ${enriched.stats.keywordRequestCount} keyword fallbacks (${enriched.stats.unresolvedCount} unresolved)`);
+}
+
+if (supplementalMeta) {
+  const licenseRows = stores.filter((store) => String(store.id || "").startsWith("license:"));
+  const deduplicated = deduplicateStoreSources(uniqueBaseStores, licenseRows);
+  stores = deduplicated.stores.sort((a, b) => a.id.localeCompare(b.id));
+  postMergeDeduplication = {
+    baseInputCount: baseStores.length,
+    baseOutputCount: deduplicated.baseStores.length,
+    baseDuplicatesRemoved: baseDuplicateCount + deduplicated.baseDuplicatesRemoved,
+    licenseInputCount: licenseRows.length,
+    licenseUniqueCount: deduplicated.licenseStores.length,
+    licenseDuplicatesRemoved: deduplicated.licenseDuplicatesRemoved,
+    matchedCount: deduplicated.matchedCount,
+    outputAddedCount: deduplicated.added.length,
+    rowsRemoved: baseDuplicateCount + deduplicated.duplicateRowsRemoved
+  };
+  supplementalMeta = { ...supplementalMeta, postMergeDeduplication };
 }
 
 if (sourceItems.length !== totalCount) {
@@ -301,6 +324,11 @@ const payload = {
       kakaoAddressEnriched: kakaoAddressMeta.enrichedCount,
       kakaoAddressEnrichmentFailed: kakaoAddressMeta.failedCount,
       kakaoAddressEnrichmentUnresolved: kakaoAddressMeta.unresolvedCount
+    } : {}),
+    ...(postMergeDeduplication ? {
+      deduplicatedRows: postMergeDeduplication.rowsRemoved,
+      supplementalMatchedAfterEnrichment: postMergeDeduplication.matchedCount,
+      supplementalOutputAdded: postMergeDeduplication.outputAddedCount
     } : {})
   },
   stores

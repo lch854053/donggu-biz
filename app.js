@@ -1206,6 +1206,11 @@ $("resetMarketBtn").addEventListener("click", () => {
 });
 $("clusterPanelClose").addEventListener("click", closeClusterPanel);
 $("marketTableRunBtn").addEventListener("click", runMarketTableSearch);
+$("marketTableNameInput").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  runMarketTableSearch();
+});
 $("marketTableClearBtn").addEventListener("click", clearMarketTableSearch);
 $("marketTablePrevBtn").addEventListener("click", () => {
   marketTablePageNo -= 1;
