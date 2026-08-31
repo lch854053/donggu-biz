@@ -528,16 +528,21 @@ test("limits the commercial analysis map to the selected zone", async () => {
   assert.match(appSource, /minZoom:\s*OUTLINE_MAP_MIN_ZOOM/);
   assert.match(appSource, /maxZoom:\s*OUTLINE_MAP_MAX_ZOOM/);
   assert.match(appSource, /const OUTLINE_MAP_MIN_ZOOM = 12/);
-  assert.match(appSource, /const OUTLINE_MAP_MAX_ZOOM = 18/);
+  assert.match(appSource, /const OUTLINE_MAP_MAX_ZOOM = 19/);
   assert.match(appSource, /outlineMap\.setMaxBounds\(leafletBounds\.pad\(\.08\)\)/);
-  assert.match(appSource, /outlineMap\.setMinZoom\(Math\.max\(OUTLINE_MAP_MIN_ZOOM/);
+  assert.match(appSource, /const fitZoom = Math\.round\(outlineMap\.getBoundsZoom\(leafletBounds, false\)\)/);
+  assert.match(appSource, /const minZoom = Math\.max\(OUTLINE_MAP_MIN_ZOOM, fitZoom - 1\)/);
+  assert.match(appSource, /const maxZoom = Math\.max\(minZoom, Math\.min\(OUTLINE_MAP_MAX_ZOOM, fitZoom \+ 1\)\)/);
+  assert.match(appSource, /outlineMap\.setMaxZoom\(OUTLINE_MAP_MAX_ZOOM\)/);
 });
 
 test("draws the selected commercial zone as a gray ground behind buildings", async () => {
   const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(appSource, /outlineGroundLayer = L\.geoJSON\(zone/);
-  assert.match(appSource, /fillColor:\s*"#aeb7c1"/);
-  assert.match(appSource, /fillOpacity:\s*\.34/);
+  assert.match(appSource, /stroke:\s*false/);
+  assert.match(appSource, /fillColor:\s*"#c8ced4"/);
+  assert.match(appSource, /fillOpacity:\s*\.22/);
+  assert.doesNotMatch(appSource, /color:\s*"#7f8993"/);
   assert.match(appSource, /outlineGroundLayer\.bringToBack\(\)/);
   assert.match(appSource, /outlineGroundLayer\?\.remove\(\)/);
 });

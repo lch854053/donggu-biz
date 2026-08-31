@@ -580,7 +580,7 @@ const OUTLINE_UNMATCHED_COLOR = "#586276";
 const OUTLINE_UNKNOWN_COLOR = "#8793a8";
 const OUTLINE_PLAIN_COLOR = "#aeb9cb";
 const OUTLINE_MAP_MIN_ZOOM = 12;
-const OUTLINE_MAP_MAX_ZOOM = 18;
+const OUTLINE_MAP_MAX_ZOOM = 19;
 let outlineMap;
 let outlineManifest = null;
 let outlineGroundLayer;
@@ -784,6 +784,7 @@ function clearOutlineLayers() {
   if (outlineMap) {
     outlineMap.setMaxBounds(null);
     outlineMap.setMinZoom(OUTLINE_MAP_MIN_ZOOM);
+    outlineMap.setMaxZoom(OUTLINE_MAP_MAX_ZOOM);
   }
 }
 
@@ -923,11 +924,9 @@ async function loadBuildingOutline() {
     outlineGroundLayer = L.geoJSON(zone, {
       interactive: false,
       style: {
-        color: "#7f8993",
-        weight: 1.5,
-        opacity: .84,
-        fillColor: "#aeb7c1",
-        fillOpacity: .34
+        stroke: false,
+        fillColor: "#c8ced4",
+        fillOpacity: .22
       }
     }).addTo(outlineMap);
     outlineBuildingLayer = L.geoJSON({ type: "FeatureCollection", features: outlineFeatures }, {
@@ -939,9 +938,12 @@ async function loadBuildingOutline() {
     const leafletBounds = outlineGroundLayer.getBounds();
     if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
     outlineMap.setMaxBounds(leafletBounds.pad(.08));
-    const fitZoom = outlineMap.getBoundsZoom(leafletBounds, false);
-    outlineMap.setMinZoom(Math.max(OUTLINE_MAP_MIN_ZOOM, Math.min(fitZoom, OUTLINE_MAP_MAX_ZOOM)));
-    outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom: OUTLINE_MAP_MAX_ZOOM });
+    const fitZoom = Math.round(outlineMap.getBoundsZoom(leafletBounds, false));
+    const minZoom = Math.max(OUTLINE_MAP_MIN_ZOOM, fitZoom - 1);
+    const maxZoom = Math.max(minZoom, Math.min(OUTLINE_MAP_MAX_ZOOM, fitZoom + 1));
+    outlineMap.setMinZoom(minZoom);
+    outlineMap.setMaxZoom(Math.max(minZoom, maxZoom));
+    outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom });
 
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
