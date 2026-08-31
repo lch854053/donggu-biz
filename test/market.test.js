@@ -16,12 +16,13 @@ import { assertSnapshotHealthy } from "../lib/store-update.js";
 import { assertZoneSnapshotHealthy, filterVworldZones, mergeZoneFeatures } from "../lib/zone-update.js";
 import {
   boundsIntersect,
+  clipGeometryToBounds,
   filterBuildingsInZone,
-  geometryContainedBy,
   geometryDistanceMeters,
   geometryBounds,
   geometryCenter,
   geometryIntersects,
+  expandBoundsMeters,
   matchBuildingIndustries
 } from "../lib/building-outline.js";
 import {
@@ -316,12 +317,15 @@ test("keeps only road polygons that intersect the selected commercial zone", () 
   assert.equal(geometryIntersects(bboxOnly, zone), false);
 });
 
-test("excludes long road polygons that extend outside the selected commercial zone", () => {
+test("clips long road polygons to a bounded area around the selected zone", () => {
   const zone = { type: "Polygon", coordinates: [[[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]] };
-  const inside = { type: "Polygon", coordinates: [[[.5, .5], [1, .5], [1, 1], [.5, 1], [.5, .5]]] };
   const crossing = { type: "Polygon", coordinates: [[[-1, .8], [1, .8], [1, 1.2], [-1, 1.2], [-1, .8]]] };
-  assert.equal(geometryContainedBy(inside, zone), true);
-  assert.equal(geometryContainedBy(crossing, zone), false);
+  assert.equal(geometryIntersects(crossing, zone), true);
+  assert.deepEqual(clipGeometryToBounds(crossing, [-.25, 0, 2, 2]), {
+    type: "Polygon",
+    coordinates: [[[-.25, .8], [1, .8], [1, 1.2], [-.25, 1.2], [-.25, .8]]]
+  });
+  assert.deepEqual(expandBoundsMeters([0, 0, 1, 1], 0), [0, 0, 1, 1]);
 });
 
 test("joins building footprints to stores using current and legacy PNUs", () => {
@@ -549,7 +553,9 @@ test("limits the commercial analysis map to the selected zone", async () => {
   assert.match(appSource, /const OUTLINE_MAP_MAX_ZOOM = 19/);
   assert.match(appSource, /const OUTLINE_MAP_ZOOM_MARGIN = 2/);
   assert.match(appSource, /const OUTLINE_MAP_BOUNDS_PADDING = \.12/);
-  assert.match(appSource, /outlineMap\.setMaxBounds\(leafletBounds\.pad\(OUTLINE_MAP_BOUNDS_PADDING\)\)/);
+  assert.match(appSource, /const OUTLINE_ROAD_CLIP_BUFFER_METERS = 80/);
+  assert.match(appSource, /expandBoundsMeters\(zoneBounds, OUTLINE_ROAD_CLIP_BUFFER_METERS\)/);
+  assert.match(appSource, /outlineMap\.setMaxBounds\(movementBounds\)/);
   assert.match(appSource, /const fitZoom = Math\.round\(outlineMap\.getBoundsZoom\(leafletBounds, false\)\)/);
   assert.match(appSource, /const minZoom = Math\.max\(OUTLINE_MAP_MIN_ZOOM, fitZoom - OUTLINE_MAP_ZOOM_MARGIN\)/);
   assert.match(appSource, /const maxZoom = Math\.max\(minZoom, Math\.min\(OUTLINE_MAP_MAX_ZOOM, fitZoom \+ OUTLINE_MAP_ZOOM_MARGIN\)\)/);
@@ -586,7 +592,8 @@ test("loads roads only in the commercial analysis map", async () => {
   const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(appSource, /const OUTLINE_ROADS_URL = "data\/road-polygons-donggu\.geojson"/);
   assert.match(appSource, /outlineRoadLayer = L\.geoJSON/);
-  assert.match(appSource, /outlineRoadFeatures = roadFeatures\.filter\(\(feature\) => geometryContainedBy\(feature\.geometry, zone\.geometry\)\)/);
+  assert.match(appSource, /outlineRoadFeatures = roadFeatures\s*\.filter\(\(feature\) => geometryIntersects\(feature\.geometry, zone\.geometry\)\)/);
+  assert.match(appSource, /clipGeometryToBounds\(feature\.geometry, roadClipBounds\)/);
   assert.match(appSource, /fillColor: "#87919a"/);
   assert.match(appSource, /fillOpacity: \.42/);
   assert.match(appSource, /outlineRoadLayer\?\.remove\(\)/);

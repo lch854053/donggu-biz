@@ -29,9 +29,11 @@ import {
 } from "./lib/insurance-workplaces.js";
 import {
   boundsIntersect,
+  clipGeometryToBounds,
   filterBuildingsInZone,
-  geometryContainedBy,
   geometryBounds,
+  geometryIntersects,
+  expandBoundsMeters,
   matchBuildingIndustries
 } from "./lib/building-outline.js";
 
@@ -584,6 +586,7 @@ const OUTLINE_MAP_MIN_ZOOM = 12;
 const OUTLINE_MAP_MAX_ZOOM = 19;
 const OUTLINE_MAP_ZOOM_MARGIN = 2;
 const OUTLINE_MAP_BOUNDS_PADDING = .12;
+const OUTLINE_ROAD_CLIP_BUFFER_METERS = 80;
 const OUTLINE_ROADS_URL = "data/road-polygons-donggu.geojson";
 let outlineMap;
 let outlineManifest = null;
@@ -948,8 +951,14 @@ async function loadBuildingOutline() {
     const industryMatches = matchBuildingIndustries(outlineFeatures, stores);
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
-    // Exclude long road features that only cross the zone and draw their outside sections.
-    outlineRoadFeatures = roadFeatures.filter((feature) => geometryContainedBy(feature.geometry, zone.geometry));
+    const roadClipBounds = expandBoundsMeters(zoneBounds, OUTLINE_ROAD_CLIP_BUFFER_METERS);
+    outlineRoadFeatures = roadFeatures
+      .filter((feature) => geometryIntersects(feature.geometry, zone.geometry))
+      .map((feature) => {
+        const geometry = clipGeometryToBounds(feature.geometry, roadClipBounds);
+        return geometry ? { ...feature, geometry, bbox: geometryBounds(geometry) } : null;
+      })
+      .filter(Boolean);
 
     $("outlineWorkspace").hidden = false;
     outlineMap.invalidateSize();
@@ -977,7 +986,11 @@ async function loadBuildingOutline() {
 
     const leafletBounds = outlineGroundLayer.getBounds();
     if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
-    outlineMap.setMaxBounds(leafletBounds.pad(OUTLINE_MAP_BOUNDS_PADDING));
+    const movementBounds = L.latLngBounds(
+      [roadClipBounds[1], roadClipBounds[0]],
+      [roadClipBounds[3], roadClipBounds[2]]
+    ).pad(OUTLINE_MAP_BOUNDS_PADDING);
+    outlineMap.setMaxBounds(movementBounds);
     const fitZoom = Math.round(outlineMap.getBoundsZoom(leafletBounds, false));
     const minZoom = Math.max(OUTLINE_MAP_MIN_ZOOM, fitZoom - OUTLINE_MAP_ZOOM_MARGIN);
     const maxZoom = Math.max(minZoom, Math.min(OUTLINE_MAP_MAX_ZOOM, fitZoom + OUTLINE_MAP_ZOOM_MARGIN));
