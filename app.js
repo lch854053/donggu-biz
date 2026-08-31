@@ -30,8 +30,8 @@ import {
 import {
   boundsIntersect,
   filterBuildingsInZone,
+  geometryContainedBy,
   geometryBounds,
-  geometryIntersects,
   matchBuildingIndustries
 } from "./lib/building-outline.js";
 
@@ -582,6 +582,8 @@ const OUTLINE_UNKNOWN_COLOR = "#8793a8";
 const OUTLINE_PLAIN_COLOR = "#aeb9cb";
 const OUTLINE_MAP_MIN_ZOOM = 12;
 const OUTLINE_MAP_MAX_ZOOM = 19;
+const OUTLINE_MAP_ZOOM_MARGIN = 2;
+const OUTLINE_MAP_BOUNDS_PADDING = .12;
 const OUTLINE_ROADS_URL = "data/road-polygons-donggu.geojson";
 let outlineMap;
 let outlineManifest = null;
@@ -946,7 +948,8 @@ async function loadBuildingOutline() {
     const industryMatches = matchBuildingIndustries(outlineFeatures, stores);
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
-    outlineRoadFeatures = roadFeatures.filter((feature) => geometryIntersects(feature.geometry, zone.geometry));
+    // Exclude long road features that only cross the zone and draw their outside sections.
+    outlineRoadFeatures = roadFeatures.filter((feature) => geometryContainedBy(feature.geometry, zone.geometry));
 
     $("outlineWorkspace").hidden = false;
     outlineMap.invalidateSize();
@@ -974,10 +977,10 @@ async function loadBuildingOutline() {
 
     const leafletBounds = outlineGroundLayer.getBounds();
     if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
-    outlineMap.setMaxBounds(leafletBounds.pad(.08));
+    outlineMap.setMaxBounds(leafletBounds.pad(OUTLINE_MAP_BOUNDS_PADDING));
     const fitZoom = Math.round(outlineMap.getBoundsZoom(leafletBounds, false));
-    const minZoom = Math.max(OUTLINE_MAP_MIN_ZOOM, fitZoom - 1);
-    const maxZoom = Math.max(minZoom, Math.min(OUTLINE_MAP_MAX_ZOOM, fitZoom + 1));
+    const minZoom = Math.max(OUTLINE_MAP_MIN_ZOOM, fitZoom - OUTLINE_MAP_ZOOM_MARGIN);
+    const maxZoom = Math.max(minZoom, Math.min(OUTLINE_MAP_MAX_ZOOM, fitZoom + OUTLINE_MAP_ZOOM_MARGIN));
     outlineMap.setMinZoom(minZoom);
     outlineMap.setMaxZoom(Math.max(minZoom, maxZoom));
     outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom });
