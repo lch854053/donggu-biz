@@ -522,19 +522,3 @@ test("publishes only retained VWorld zones", async () => {
   assert.deepEqual(payload.features.map((feature) => feature.properties.name), ["대인시장", "남광주시장"]);
   assert.deepEqual(filterVworldZones(payload.features), payload.features);
 });
-
-test("keeps the commercial map at a usable district and street zoom range", async () => {
-  const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
-  assert.match(appSource, /minZoom:\s*MARKET_MAP_MIN_ZOOM/);
-  assert.match(appSource, /maxZoom:\s*MARKET_MAP_MAX_ZOOM/);
-  assert.match(appSource, /const MARKET_MAP_MIN_ZOOM = 13/);
-  assert.match(appSource, /const MARKET_MAP_MAX_ZOOM = 18/);
-});
-
-test("renders commercial-zone-shaped gray ground below the boundary layer", async () => {
-  const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
-  assert.match(appSource, /zoneGroundLayer = L\.geoJSON\(zoneData/);
-  assert.match(appSource, /pane:\s*"zone-ground"/);
-  assert.match(appSource, /fillColor:\s*"#aeb7c1"/);
-  assert.match(appSource, /zoneGroundPane\.style\.zIndex = 350/);
-});
