@@ -331,7 +331,7 @@ test("joins building footprints to stores using current and legacy PNUs", () => 
   assert.equal(unknownIndustry.storesById.has(feature.id), false);
 });
 
-test("classifies a building by its most common industry and keeps known stores for hover details", () => {
+test("classifies a building by its most common industry and keeps known stores for click details", () => {
   const feature = {
     id: "multi-store-building",
     properties: { pnu: "1221010800102870025" },
@@ -393,6 +393,10 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.doesNotMatch(html, /id="marketTableNameInput"[^>]*placeholder=/);
   assert.match(html, /id="outlineZoneFilter"/);
   assert.match(html, /id="buildingOutlineMap"/);
+  assert.match(html, /id="outlinePanel"[\s\S]*id="outlinePanelClose"/);
+  assert.match(html, /aria-label="건물 연결 업소 목록 닫기"/);
+  assert.match(html, /업종 데이터가 있는 건물을 클릭하면/);
+  assert.doesNotMatch(html, /업종 데이터가 있는 건물에 마우스를 올리면/);
   assert.match(html, /id="outlineIndustryToggle"[^>]*checked/);
   assert.match(html, /class="outline-legend" id="outlineLegend" hidden/);
   assert.doesNotMatch(html, /id="panel-analysis"/);
@@ -403,10 +407,12 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.doesNotMatch(app, /outlineZoneLayer/);
   assert.doesNotMatch(app, /function initializeBuildingOutline\(\)[\s\S]*?tileLayer/);
   assert.match(app, /outlineMap\.fitBounds\(leafletBounds/);
-  assert.match(app, /className: "building-tooltip"[\s\S]*interactive: true/);
-  assert.match(app, /function clampOutlineTooltip\(tooltip\)/);
-  assert.match(styles, /\.building-tooltip \{[\s\S]*overflow-y: auto;/);
-  assert.match(styles, /\.building-tooltip \{[\s\S]*white-space: normal;/);
+  assert.match(app, /outlineMap\.on\("click", closeOutlinePanel\)/);
+  assert.match(app, /function renderOutlinePanel\(stores\)/);
+  assert.match(app, /click\(event\)[\s\S]*renderOutlinePanel\(stores\)/);
+  assert.match(app, /L\.DomEvent\.stopPropagation\(event\)/);
+  assert.doesNotMatch(app, /building-tooltip|clampOutlineTooltip|outlineTooltipHtml/);
+  assert.doesNotMatch(styles, /building-tooltip/);
   assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
   assert.doesNotMatch(app, /marketMap\.setMinZoom\(Math\.max\(12/);
 });

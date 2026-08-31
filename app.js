@@ -70,6 +70,7 @@ function activateService(panelName) {
     $(`panel-${tab.dataset.panel}`).hidden = !active;
   });
   closeClusterPanel();
+  closeOutlinePanel();
   if (panelName === "market") initializeMarket();
 }
 
@@ -515,6 +516,26 @@ const MARKET_TABLE_PAGE_SIZE = 100;
 let marketTableRows = [];
 let marketTablePageNo = 1;
 let marketTableAppliedLabel = "";
+const MARKET_STORE_PANEL = {
+  panelId: "clusterPanel",
+  countId: "clusterPanelCount",
+  storeBodyId: "clusterStoreBody",
+  statsId: "clusterStats",
+  statsMetaId: "clusterStatsMeta",
+  pieId: "clusterPie",
+  legendId: "clusterLegend",
+  bodyId: "clusterPanelBody"
+};
+const OUTLINE_STORE_PANEL = {
+  panelId: "outlinePanel",
+  countId: "outlinePanelCount",
+  storeBodyId: "outlineStoreBody",
+  statsId: "outlineStats",
+  statsMetaId: "outlineStatsMeta",
+  pieId: "outlinePie",
+  legendId: "outlinePanelLegend",
+  bodyId: "outlinePanelBody"
+};
 
 const marketViewTabs = [...document.querySelectorAll(".market-view-tab")];
 function activateMarketView(viewName) {
@@ -525,6 +546,7 @@ function activateMarketView(viewName) {
     $(`market-view-${tab.dataset.marketView}`).hidden = !active;
   });
   closeClusterPanel();
+  closeOutlinePanel();
   if (viewName === "map") setTimeout(() => marketMap?.invalidateSize(), 0);
   if (viewName === "analysis") initializeBuildingOutline();
 }
@@ -664,11 +686,19 @@ function initializeMap() {
 }
 
 function closeClusterPanel() {
-  const panel = $("clusterPanel");
+  closeStorePanel(MARKET_STORE_PANEL);
+}
+
+function closeOutlinePanel() {
+  closeStorePanel(OUTLINE_STORE_PANEL);
+}
+
+function closeStorePanel(panelConfig) {
+  const panel = $(panelConfig.panelId);
   if (!panel || panel.hidden) return;
   panel.hidden = true;
-  $("clusterStoreBody").replaceChildren();
-  $("clusterStats").hidden = true;
+  $(panelConfig.storeBodyId).replaceChildren();
+  $(panelConfig.statsId).hidden = true;
 }
 
 function clusterIndustryRows(stores) {
@@ -679,7 +709,7 @@ function clusterIndustryRows(stores) {
   return { categories, rows };
 }
 
-function renderClusterIndustryChart(stores) {
+function renderStoreIndustryChart(stores, panelConfig) {
   const { categories, rows } = clusterIndustryRows(stores);
   let offset = 0;
   const segments = rows.map((row, index) => {
@@ -687,31 +717,39 @@ function renderClusterIndustryChart(stores) {
     offset += row.count / stores.length * 100;
     return `${CLUSTER_CHART_COLORS[index]} ${start}% ${offset}%`;
   });
-  const pie = $("clusterPie");
+  const pie = $(panelConfig.pieId);
   pie.style.background = `conic-gradient(${segments.join(",")})`;
   pie.setAttribute("aria-label", `총 ${stores.length}개 업소의 업종 분포`);
-  $("clusterStatsMeta").textContent = `총 ${stores.length.toLocaleString("ko-KR")}개 · ${categories.length.toLocaleString("ko-KR")}개 업종`;
-  $("clusterLegend").innerHTML = rows.map((row, index) => `<div>
+  $(panelConfig.statsMetaId).textContent = `총 ${stores.length.toLocaleString("ko-KR")}개 · ${categories.length.toLocaleString("ko-KR")}개 업종`;
+  $(panelConfig.legendId).innerHTML = rows.map((row, index) => `<div>
     <i style="background:${CLUSTER_CHART_COLORS[index]}"></i>
     <span>${escapeHtml(row.name)}</span>
     <strong>${row.count.toLocaleString("ko-KR")}개</strong>
   </div>`).join("");
-  $("clusterStats").hidden = false;
+  $(panelConfig.statsId).hidden = false;
 }
 
-function renderClusterPanel(stores) {
+function renderStorePanel(stores, panelConfig) {
   const sortedStores = [...stores].sort((left, right) => left.name.localeCompare(right.name, "ko"));
-  $("clusterPanelCount").textContent = `${sortedStores.length.toLocaleString("ko-KR")}개 업소`;
-  $("clusterStoreBody").innerHTML = sortedStores.map((store, index) => `<tr>
+  $(panelConfig.countId).textContent = `${sortedStores.length.toLocaleString("ko-KR")}개 업소`;
+  $(panelConfig.storeBodyId).innerHTML = sortedStores.map((store, index) => `<tr>
     <td class="seq">${index + 1}</td>
     <td>${escapeHtml([store.name, store.branch].filter(Boolean).join(" "))}</td>
     <td>${escapeHtml(store.smallName || store.middleName || store.largeName || "미분류")}</td>
     <td>${escapeHtml(store.address || store.lotAddress || "-")}</td>
   </tr>`).join("");
-  $("clusterStats").hidden = true;
-  if (sortedStores.length >= 5) renderClusterIndustryChart(sortedStores);
-  $("clusterPanel").hidden = false;
-  $("clusterPanelBody").scrollTop = 0;
+  $(panelConfig.statsId).hidden = true;
+  if (sortedStores.length >= 5) renderStoreIndustryChart(sortedStores, panelConfig);
+  $(panelConfig.panelId).hidden = false;
+  $(panelConfig.bodyId).scrollTop = 0;
+}
+
+function renderClusterPanel(stores) {
+  renderStorePanel(stores, MARKET_STORE_PANEL);
+}
+
+function renderOutlinePanel(stores) {
+  renderStorePanel(stores, OUTLINE_STORE_PANEL);
 }
 
 function setOutlineState(message, isError = false) {
@@ -723,6 +761,7 @@ function setOutlineState(message, isError = false) {
 }
 
 function clearOutlineLayers() {
+  closeOutlinePanel();
   outlineBuildingLayer?.remove();
   outlineBuildingLayer = null;
   outlineFeatures = [];
@@ -783,131 +822,14 @@ function outlineFeatureStyle(feature) {
   };
 }
 
-function outlineStoreName(store) {
-  return [store.name, store.branch].filter(Boolean).join(" ") || "업소명 미확인";
-}
-
-function outlineStoreIndustry(store) {
-  return store.smallName || store.middleName || store.largeName || "업종 미확인";
-}
-
-const OUTLINE_TOOLTIP_MARGIN = 12;
-
-function clampOutlineTooltip(tooltip) {
-  const element = tooltip?.getElement?.();
-  const mapElement = outlineMap?.getContainer?.();
-  if (!element || !mapElement) return;
-
-  const mapRect = mapElement.getBoundingClientRect();
-  const visibleRect = {
-    left: Math.max(mapRect.left + OUTLINE_TOOLTIP_MARGIN, OUTLINE_TOOLTIP_MARGIN),
-    top: Math.max(mapRect.top + OUTLINE_TOOLTIP_MARGIN, OUTLINE_TOOLTIP_MARGIN),
-    right: Math.min(mapRect.right - OUTLINE_TOOLTIP_MARGIN, window.innerWidth - OUTLINE_TOOLTIP_MARGIN),
-    bottom: Math.min(mapRect.bottom - OUTLINE_TOOLTIP_MARGIN, window.innerHeight - OUTLINE_TOOLTIP_MARGIN)
-  };
-  if (visibleRect.right <= visibleRect.left || visibleRect.bottom <= visibleRect.top) return;
-  const maxHeight = Math.max(1, Math.min(
-    420,
-    visibleRect.bottom - visibleRect.top
-  ));
-  const maxWidth = Math.max(1, Math.min(
-    360,
-    visibleRect.right - visibleRect.left
-  ));
-  element.style.maxHeight = `${maxHeight}px`;
-  element.style.maxWidth = `${maxWidth}px`;
-
-  const tooltipRect = element.getBoundingClientRect();
-  let shiftX = 0;
-  let shiftY = 0;
-  if (tooltipRect.right > visibleRect.right) {
-    shiftX -= tooltipRect.right - visibleRect.right;
-  }
-  if (tooltipRect.left + shiftX < visibleRect.left) {
-    shiftX += visibleRect.left - (tooltipRect.left + shiftX);
-  }
-  if (tooltipRect.bottom > visibleRect.bottom) {
-    shiftY -= tooltipRect.bottom - visibleRect.bottom;
-  }
-  if (tooltipRect.top + shiftY < visibleRect.top) {
-    shiftY += visibleRect.top - (tooltipRect.top + shiftY);
-  }
-  if (shiftX || shiftY) {
-    L.DomUtil.setPosition(
-      element,
-      L.DomUtil.getPosition(element).add(L.point(shiftX, shiftY))
-    );
-  }
-}
-
-function outlineTooltipHtml(stores) {
-  return `<div class="building-tooltip-content">
-    <strong>연결 업소 ${stores.length.toLocaleString("ko-KR")}개</strong>
-    ${stores.map((store) => `<div class="building-tooltip-store">
-      <b>${escapeHtml(outlineStoreName(store))}</b>
-      <span>업종 · ${escapeHtml(outlineStoreIndustry(store))}</span>
-      <span>주소 · ${escapeHtml(store.address || store.lotAddress || "-")}</span>
-    </div>`).join("")}
-  </div>`;
-}
-
 function bindOutlineFeature(feature, layer) {
   const stores = outlineStoresById.get(String(feature.id)) || [];
   if (!stores.length) return;
-  layer.bindTooltip(outlineTooltipHtml(stores), {
-    sticky: true,
-    direction: "top",
-    className: "building-tooltip",
-    interactive: true,
-    opacity: .98
-  });
-
-  const tooltip = layer.getTooltip();
-  let closeTimer = 0;
-  let positionFrame = 0;
-  const clearCloseTimer = () => {
-    if (!closeTimer) return;
-    window.clearTimeout(closeTimer);
-    closeTimer = 0;
-  };
-  const scheduleClose = () => {
-    clearCloseTimer();
-    closeTimer = window.setTimeout(() => {
-      closeTimer = 0;
-      if (!tooltip.getElement()?.matches(":hover")) layer.closeTooltip();
-    }, 180);
-  };
-  const schedulePosition = () => {
-    if (positionFrame) return;
-    positionFrame = window.requestAnimationFrame(() => {
-      positionFrame = 0;
-      clampOutlineTooltip(tooltip);
-    });
-  };
-
-  // Leaflet's default mouseout closes interactive tooltips before the user can scroll them.
-  layer.off("mouseout", layer.closeTooltip);
   layer.on({
-    mouseover: clearCloseTimer,
-    mouseout: scheduleClose,
-    mousemove: schedulePosition,
-    tooltipopen({ tooltip: openedTooltip }) {
-      if (openedTooltip !== tooltip) return;
-      const element = openedTooltip.getElement();
-      if (element && !element.dataset.scrollReady) {
-        element.dataset.scrollReady = "true";
-        L.DomEvent.on(element, "mouseenter", clearCloseTimer);
-        L.DomEvent.on(element, "mouseleave", scheduleClose);
-        L.DomEvent.disableScrollPropagation(element);
-      }
-      schedulePosition();
+    click(event) {
+      L.DomEvent.stopPropagation(event);
+      renderOutlinePanel(stores);
     },
-    remove() {
-      clearCloseTimer();
-      if (positionFrame) window.cancelAnimationFrame(positionFrame);
-    }
-  });
-  layer.on({
     mouseover() {
       layer.setStyle({
         weight: outlineIndustryMode ? 2.2 : 1.5,
@@ -1023,6 +945,7 @@ function initializeBuildingOutline() {
       zoomControl: true,
       preferCanvas: true
     }).setView(DONGGU_CENTER, 14);
+    outlineMap.on("click", closeOutlinePanel);
   }
   setTimeout(() => outlineMap.invalidateSize(), 0);
   loadBuildingOutline();
@@ -1301,6 +1224,7 @@ $("resetMarketBtn").addEventListener("click", () => {
   marketMap?.setView(DONGGU_CENTER, 14);
 });
 $("clusterPanelClose").addEventListener("click", closeClusterPanel);
+$("outlinePanelClose").addEventListener("click", closeOutlinePanel);
 $("marketTableRunBtn").addEventListener("click", runMarketTableSearch);
 $("marketTableNameInput").addEventListener("keydown", (event) => {
   if (event.key !== "Enter") return;
