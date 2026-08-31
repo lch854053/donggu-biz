@@ -20,6 +20,7 @@ import {
   geometryDistanceMeters,
   geometryBounds,
   geometryCenter,
+  geometryIntersects,
   matchBuildingIndustries
 } from "../lib/building-outline.js";
 import {
@@ -306,6 +307,14 @@ test("finds building cell bounds and filters footprints by zone center", () => {
   assert.deepEqual(filterBuildingsInZone([inside, outside], zone), [inside]);
 });
 
+test("keeps only road polygons that intersect the selected commercial zone", () => {
+  const zone = { type: "Polygon", coordinates: [[[0, 0], [2, 0], [0, 2], [0, 0]]] };
+  const touching = { type: "Polygon", coordinates: [[[1, .5], [1.5, .5], [1.5, 1], [1, 1], [1, .5]]] };
+  const bboxOnly = { type: "Polygon", coordinates: [[[1.6, 1.6], [1.8, 1.6], [1.8, 1.8], [1.6, 1.8], [1.6, 1.6]]] };
+  assert.equal(geometryIntersects(touching, zone), true);
+  assert.equal(geometryIntersects(bboxOnly, zone), false);
+});
+
 test("joins building footprints to stores using current and legacy PNUs", () => {
   const feature = {
     id: "building-1",
@@ -534,6 +543,10 @@ test("limits the commercial analysis map to the selected zone", async () => {
   assert.match(appSource, /const minZoom = Math\.max\(OUTLINE_MAP_MIN_ZOOM, fitZoom - 1\)/);
   assert.match(appSource, /const maxZoom = Math\.max\(minZoom, Math\.min\(OUTLINE_MAP_MAX_ZOOM, fitZoom \+ 1\)\)/);
   assert.match(appSource, /outlineMap\.setMaxZoom\(OUTLINE_MAP_MAX_ZOOM\)/);
+  const workspaceVisibleAt = appSource.indexOf('$("outlineWorkspace").hidden = false;');
+  const fitZoomAt = appSource.indexOf("const fitZoom = Math.round");
+  assert.ok(workspaceVisibleAt >= 0 && workspaceVisibleAt < fitZoomAt);
+  assert.match(appSource, /\$\("outlineWorkspace"\)\.hidden = false;\s*outlineMap\.invalidateSize\(\);/);
 });
 
 test("draws the selected commercial zone as a gray ground behind buildings", async () => {
@@ -562,8 +575,9 @@ test("loads roads only in the commercial analysis map", async () => {
   const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(appSource, /const OUTLINE_ROADS_URL = "data\/road-polygons-donggu\.geojson"/);
   assert.match(appSource, /outlineRoadLayer = L\.geoJSON/);
-  assert.match(appSource, /outlineRoadFeatures = roadFeatures\.filter/);
-  assert.match(appSource, /fillColor: "#59636e"/);
+  assert.match(appSource, /outlineRoadFeatures = roadFeatures\.filter\(\(feature\) => geometryIntersects\(feature\.geometry, zone\.geometry\)\)/);
+  assert.match(appSource, /fillColor: "#87919a"/);
+  assert.match(appSource, /fillOpacity: \.42/);
   assert.match(appSource, /outlineRoadLayer\?\.remove\(\)/);
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   assert.match(html, /실폭도로/);

@@ -31,6 +31,7 @@ import {
   boundsIntersect,
   filterBuildingsInZone,
   geometryBounds,
+  geometryIntersects,
   matchBuildingIndustries
 } from "./lib/building-outline.js";
 
@@ -945,8 +946,10 @@ async function loadBuildingOutline() {
     const industryMatches = matchBuildingIndustries(outlineFeatures, stores);
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
-    outlineRoadFeatures = roadFeatures.filter((feature) => boundsIntersect(feature.bbox || geometryBounds(feature.geometry), zoneBounds));
+    outlineRoadFeatures = roadFeatures.filter((feature) => geometryIntersects(feature.geometry, zone.geometry));
 
+    $("outlineWorkspace").hidden = false;
+    outlineMap.invalidateSize();
     outlineGroundLayer = L.geoJSON(zone, {
       interactive: false,
       style: {
@@ -959,8 +962,8 @@ async function loadBuildingOutline() {
       interactive: false,
       style: {
         stroke: false,
-        fillColor: "#59636e",
-        fillOpacity: .52
+        fillColor: "#87919a",
+        fillOpacity: .42
       }
     }).addTo(outlineMap);
     outlineBuildingLayer = L.geoJSON({ type: "FeatureCollection", features: outlineFeatures }, {
@@ -981,7 +984,6 @@ async function loadBuildingOutline() {
 
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
-    $("outlineWorkspace").hidden = false;
     if (outlineFeatures.length) {
       $("outlineState").hidden = true;
     } else {
