@@ -579,8 +579,11 @@ const OUTLINE_OTHER_COLOR = "#c4879e";
 const OUTLINE_UNMATCHED_COLOR = "#586276";
 const OUTLINE_UNKNOWN_COLOR = "#8793a8";
 const OUTLINE_PLAIN_COLOR = "#aeb9cb";
+const OUTLINE_MAP_MIN_ZOOM = 12;
+const OUTLINE_MAP_MAX_ZOOM = 18;
 let outlineMap;
 let outlineManifest = null;
+let outlineGroundLayer;
 let outlineBuildingLayer;
 let outlineFeatures = [];
 let outlineIndustryById = new Map();
@@ -762,7 +765,9 @@ function setOutlineState(message, isError = false) {
 
 function clearOutlineLayers() {
   closeOutlinePanel();
+  outlineGroundLayer?.remove();
   outlineBuildingLayer?.remove();
+  outlineGroundLayer = null;
   outlineBuildingLayer = null;
   outlineFeatures = [];
   outlineIndustryById = new Map();
@@ -778,7 +783,7 @@ function clearOutlineLayers() {
   state.textContent = "";
   if (outlineMap) {
     outlineMap.setMaxBounds(null);
-    outlineMap.setMinZoom(0);
+    outlineMap.setMinZoom(OUTLINE_MAP_MIN_ZOOM);
   }
 }
 
@@ -915,13 +920,28 @@ async function loadBuildingOutline() {
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
 
+    outlineGroundLayer = L.geoJSON(zone, {
+      interactive: false,
+      style: {
+        color: "#7f8993",
+        weight: 1.5,
+        opacity: .84,
+        fillColor: "#aeb7c1",
+        fillOpacity: .34
+      }
+    }).addTo(outlineMap);
     outlineBuildingLayer = L.geoJSON({ type: "FeatureCollection", features: outlineFeatures }, {
       style: outlineFeatureStyle,
       onEachFeature: bindOutlineFeature
     }).addTo(outlineMap);
+    outlineGroundLayer.bringToBack();
 
-    const leafletBounds = outlineBuildingLayer.getBounds();
-    if (leafletBounds.isValid()) outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom: 18 });
+    const leafletBounds = outlineGroundLayer.getBounds();
+    if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
+    outlineMap.setMaxBounds(leafletBounds.pad(.08));
+    const fitZoom = outlineMap.getBoundsZoom(leafletBounds, false);
+    outlineMap.setMinZoom(Math.max(OUTLINE_MAP_MIN_ZOOM, Math.min(fitZoom, OUTLINE_MAP_MAX_ZOOM)));
+    outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom: OUTLINE_MAP_MAX_ZOOM });
 
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
@@ -943,7 +963,10 @@ function initializeBuildingOutline() {
   if (!outlineMap) {
     outlineMap = L.map("buildingOutlineMap", {
       zoomControl: true,
-      preferCanvas: true
+      preferCanvas: true,
+      minZoom: OUTLINE_MAP_MIN_ZOOM,
+      maxZoom: OUTLINE_MAP_MAX_ZOOM,
+      maxBoundsViscosity: 1
     }).setView(DONGGU_CENTER, 14);
     outlineMap.on("click", closeOutlinePanel);
   }

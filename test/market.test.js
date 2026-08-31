@@ -522,3 +522,22 @@ test("publishes only retained VWorld zones", async () => {
   assert.deepEqual(payload.features.map((feature) => feature.properties.name), ["대인시장", "남광주시장"]);
   assert.deepEqual(filterVworldZones(payload.features), payload.features);
 });
+
+test("limits the commercial analysis map to the selected zone", async () => {
+  const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  assert.match(appSource, /minZoom:\s*OUTLINE_MAP_MIN_ZOOM/);
+  assert.match(appSource, /maxZoom:\s*OUTLINE_MAP_MAX_ZOOM/);
+  assert.match(appSource, /const OUTLINE_MAP_MIN_ZOOM = 12/);
+  assert.match(appSource, /const OUTLINE_MAP_MAX_ZOOM = 18/);
+  assert.match(appSource, /outlineMap\.setMaxBounds\(leafletBounds\.pad\(\.08\)\)/);
+  assert.match(appSource, /outlineMap\.setMinZoom\(Math\.max\(OUTLINE_MAP_MIN_ZOOM/);
+});
+
+test("draws the selected commercial zone as a gray ground behind buildings", async () => {
+  const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  assert.match(appSource, /outlineGroundLayer = L\.geoJSON\(zone/);
+  assert.match(appSource, /fillColor:\s*"#aeb7c1"/);
+  assert.match(appSource, /fillOpacity:\s*\.34/);
+  assert.match(appSource, /outlineGroundLayer\.bringToBack\(\)/);
+  assert.match(appSource, /outlineGroundLayer\?\.remove\(\)/);
+});
