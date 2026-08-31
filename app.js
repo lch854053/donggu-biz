@@ -500,6 +500,8 @@ $("validationClearBtn").addEventListener("click", () => {
 
 // Commercial district analysis
 const DONGGU_CENTER = [35.1467, 126.9231];
+const MARKET_MAP_MIN_ZOOM = 13;
+const MARKET_MAP_MAX_ZOOM = 18;
 let marketInitialized = false;
 let allStores = [];
 let visibleStores = [];
@@ -508,6 +510,7 @@ let marketMap;
 let markerCluster;
 let storeMarkers = [];
 let mainBizZones = [];
+let zoneGroundLayer;
 let zoneLayer;
 let selectedZoneNo = "";
 const zoneLeafletByNo = new Map();
@@ -633,6 +636,7 @@ async function initializeMarket() {
     } catch (error) {
       console.error("[mainbiz-zones] layer unavailable", error);
       mainBizZones = [];
+      zoneGroundLayer = null;
       zoneLayer = null;
       populateMarketFilters();
     }
@@ -663,11 +667,18 @@ function renderMarketMeta() {
 }
 
 function initializeMap() {
-  marketMap = L.map("marketMap", { zoomControl: true, preferCanvas: true }).setView(DONGGU_CENTER, 14);
+  marketMap = L.map("marketMap", {
+    zoomControl: true,
+    preferCanvas: true,
+    minZoom: MARKET_MAP_MIN_ZOOM,
+    maxZoom: MARKET_MAP_MAX_ZOOM
+  }).setView(DONGGU_CENTER, 14);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
+    maxZoom: MARKET_MAP_MAX_ZOOM,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
   }).addTo(marketMap);
+  const zoneGroundPane = marketMap.createPane("zone-ground");
+  zoneGroundPane.style.zIndex = 350;
   markerCluster = L.markerClusterGroup({
     chunkedLoading: true,
     chunkInterval: 100,
@@ -976,8 +987,24 @@ function zoneStyle(feature) {
   };
 }
 
+function zoneGroundStyle() {
+  return {
+    color: "#68727d",
+    weight: 1,
+    opacity: .62,
+    fillColor: "#aeb7c1",
+    fillOpacity: .36
+  };
+}
+
 function buildZoneLayer() {
-  zoneLayer = L.geoJSON({ type: "FeatureCollection", features: mainBizZones }, {
+  const zoneData = { type: "FeatureCollection", features: mainBizZones };
+  zoneGroundLayer = L.geoJSON(zoneData, {
+    pane: "zone-ground",
+    interactive: false,
+    style: zoneGroundStyle
+  }).addTo(marketMap);
+  zoneLayer = L.geoJSON(zoneData, {
     style: zoneStyle,
     onEachFeature(feature, layer) {
       const properties = feature.properties;
