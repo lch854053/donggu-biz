@@ -581,16 +581,20 @@ const OUTLINE_UNKNOWN_COLOR = "#8793a8";
 const OUTLINE_PLAIN_COLOR = "#aeb9cb";
 const OUTLINE_MAP_MIN_ZOOM = 12;
 const OUTLINE_MAP_MAX_ZOOM = 19;
+const OUTLINE_ROADS_URL = "data/road-polygons-donggu.geojson";
 let outlineMap;
 let outlineManifest = null;
 let outlineGroundLayer;
+let outlineRoadLayer;
 let outlineBuildingLayer;
 let outlineFeatures = [];
+let outlineRoadFeatures = [];
 let outlineIndustryById = new Map();
 let outlineStoresById = new Map();
 let outlineIndustryMode = true;
 let outlineLoadId = 0;
 const outlineCellCache = new Map();
+let outlineRoadFeaturesCache = null;
 
 async function initializeMarket() {
   if (marketInitialized) {
@@ -766,10 +770,13 @@ function setOutlineState(message, isError = false) {
 function clearOutlineLayers() {
   closeOutlinePanel();
   outlineGroundLayer?.remove();
+  outlineRoadLayer?.remove();
   outlineBuildingLayer?.remove();
   outlineGroundLayer = null;
+  outlineRoadLayer = null;
   outlineBuildingLayer = null;
   outlineFeatures = [];
+  outlineRoadFeatures = [];
   outlineIndustryById = new Map();
   outlineStoresById = new Map();
   $("outlineWorkspace").hidden = true;
@@ -810,6 +817,18 @@ async function loadOutlineCell(cell) {
   const features = Array.isArray(payload.features) ? payload.features : [];
   outlineCellCache.set(cell.id, features);
   return features;
+}
+
+async function loadOutlineRoads() {
+  if (outlineRoadFeaturesCache) return outlineRoadFeaturesCache;
+  const response = await fetch(OUTLINE_ROADS_URL, { cache: "no-cache" });
+  if (!response.ok) throw new Error(`실폭도로 데이터를 불러오지 못했습니다. HTTP ${response.status}`);
+  const payload = await response.json();
+  if (payload?.meta?.sigunguCode !== "12210" || !Array.isArray(payload.features)) {
+    throw new Error("실폭도로 데이터 형식이 올바르지 않습니다.");
+  }
+  outlineRoadFeaturesCache = payload.features;
+  return outlineRoadFeaturesCache;
 }
 
 function outlineFeatureStyle(feature) {
@@ -907,7 +926,13 @@ async function loadBuildingOutline() {
     if (!zoneBounds) throw new Error("선택 상권의 경계를 읽을 수 없습니다.");
     const manifest = await loadOutlineManifest();
     const cells = manifest.cells.filter((cell) => boundsIntersect(cell.bounds, zoneBounds));
-    const cellFeatures = await Promise.all(cells.map((cell) => loadOutlineCell(cell)));
+    const [cellFeatures, roadFeatures] = await Promise.all([
+      Promise.all(cells.map((cell) => loadOutlineCell(cell))),
+      loadOutlineRoads().catch((error) => {
+        console.warn("[road-polygons] unavailable", error);
+        return [];
+      })
+    ]);
     if (requestId !== outlineLoadId) return;
 
     const featureById = new Map();
@@ -920,6 +945,7 @@ async function loadBuildingOutline() {
     const industryMatches = matchBuildingIndustries(outlineFeatures, stores);
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
+    outlineRoadFeatures = roadFeatures.filter((feature) => boundsIntersect(feature.bbox || geometryBounds(feature.geometry), zoneBounds));
 
     outlineGroundLayer = L.geoJSON(zone, {
       interactive: false,
@@ -927,6 +953,14 @@ async function loadBuildingOutline() {
         stroke: false,
         fillColor: "#c8ced4",
         fillOpacity: .22
+      }
+    }).addTo(outlineMap);
+    outlineRoadLayer = L.geoJSON({ type: "FeatureCollection", features: outlineRoadFeatures }, {
+      interactive: false,
+      style: {
+        stroke: false,
+        fillColor: "#59636e",
+        fillOpacity: .52
       }
     }).addTo(outlineMap);
     outlineBuildingLayer = L.geoJSON({ type: "FeatureCollection", features: outlineFeatures }, {

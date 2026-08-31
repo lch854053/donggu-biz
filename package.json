@@ -13,7 +13,8 @@
     "enrich-store-addresses": "node scripts/enrich-store-addresses.mjs",
     "update-zones": "node scripts/update-mainbiz-zones.mjs",
     "update-nps": "node scripts/update-nps.mjs",
-    "apply-localdata": "node scripts/apply-localdata.mjs"
+    "apply-localdata": "node scripts/apply-localdata.mjs",
+    "import-road-polygons": "node scripts/import-road-polygons.mjs"
   },
   "engines": {
     "node": ">=20"

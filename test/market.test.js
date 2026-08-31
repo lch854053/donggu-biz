@@ -546,3 +546,25 @@ test("draws the selected commercial zone as a gray ground behind buildings", asy
   assert.match(appSource, /outlineGroundLayer\.bringToBack\(\)/);
   assert.match(appSource, /outlineGroundLayer\?\.remove\(\)/);
 });
+
+test("ships Dong-gu road polygons for the commercial analysis map", async () => {
+  const payload = await readFile(new URL("../data/road-polygons-donggu.geojson", import.meta.url), "utf8").then(JSON.parse);
+  assert.equal(payload.meta.sourceCrs, "EPSG:5179");
+  assert.equal(payload.meta.crs, "EPSG:4326");
+  assert.equal(payload.meta.sigunguCode, "12210");
+  assert.equal(payload.meta.featureCount, payload.features.length);
+  assert.equal(payload.features.length, 3068);
+  assert.ok(payload.features.every((feature) => ["Polygon", "MultiPolygon"].includes(feature.geometry?.type)));
+  assert.ok(payload.features.every((feature) => Array.isArray(feature.bbox) && feature.bbox.length === 4));
+});
+
+test("loads roads only in the commercial analysis map", async () => {
+  const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  assert.match(appSource, /const OUTLINE_ROADS_URL = "data\/road-polygons-donggu\.geojson"/);
+  assert.match(appSource, /outlineRoadLayer = L\.geoJSON/);
+  assert.match(appSource, /outlineRoadFeatures = roadFeatures\.filter/);
+  assert.match(appSource, /fillColor: "#59636e"/);
+  assert.match(appSource, /outlineRoadLayer\?\.remove\(\)/);
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /실폭도로/);
+});
