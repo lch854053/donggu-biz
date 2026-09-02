@@ -5,12 +5,25 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const profilePath = resolve(root, ".playwright/data-go-personal");
+const profilePath = process.env.PLAYWRIGHT_PROFILE_PATH
+  ? resolve(process.env.PLAYWRIGHT_PROFILE_PATH)
+  : resolve(root, ".playwright/data-go-personal");
+const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined;
 const portalOrigin = "https://www.data.go.kr";
 const loginUrl = `${portalOrigin}/uim/login/loginView.do`;
-const applicationPurpose = "광주 동구 사업자·상권 조회 서비스의 지역 업소 지도 및 통계 제공";
+const applicationPurpose = "개발";
 
 const priorityApplications = [
+  ["15155014", "인쇄사"],
+  ["15155020", "출판사"],
+  ["15154966", "공연장"],
+  ["15154848", "영화상영관"],
+  ["15155146", "박물관 및 미술관"],
+  ["15155139", "외국인관광도시민박업"],
+  ["15154923", "의료기기판매(임대)업"],
+  ["15155018", "등록체육시설업"],
+  ["15154933", "치과기공소"],
+  ["15155155", "대중문화예술기획업"],
   ["15154791", "안전상비의약품 판매업소"],
   ["15155253", "석유판매업"],
   ["15155258", "석유 및 석유대체연료 판매업체"],
@@ -24,6 +37,14 @@ const priorityApplications = [
 ];
 
 const optionalApplications = [
+  ["15155168", "집단급식소"],
+  ["15155159", "위탁급식영업"],
+  ["15154784", "집단급식소식품판매업"],
+  ["15155150", "식품제조가공업"],
+  ["15154871", "축산판매업"],
+  ["15154957", "동물생산업"],
+  ["15155065", "동물장묘업"],
+  ["15155024", "동물운송업"],
   ["15154864", "의료유사업"],
   ["15154897", "관광식당"],
   ["15154910", "외국인전용유흥음식점업"],
@@ -42,16 +63,16 @@ const args = new Set(process.argv.slice(2));
 const priorityOnly = args.has("--priority");
 const submit = args.has("--submit");
 const listOnly = args.has("--list");
+const requestedDatasetId = process.env.PLAYWRIGHT_DATASET_ID;
 const targets = priorityOnly
   ? applications.filter(({ datasetId }) => priorityApplications.some(([id]) => id === datasetId))
   : applications;
-
-function printTargets() {
-  for (const target of targets) console.log(`${target.datasetId}\t${target.title}\t${target.url}`);
-}
+const selectedTargets = requestedDatasetId
+  ? targets.filter(({ datasetId }) => datasetId === requestedDatasetId)
+  : targets;
 
 if (listOnly) {
-  printTargets();
+  for (const target of selectedTargets) console.log(`${target.datasetId}\t${target.title}\t${target.url}`);
   process.exit(0);
 }
 
@@ -67,6 +88,14 @@ async function ensureLoggedIn(page) {
   await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
   if (await isLoggedIn(page)) return;
   console.log("브라우저에서 공공데이터포털 개인회원 로그인을 완료하세요.");
+  if (process.env.PLAYWRIGHT_WAIT_FOR_LOGIN === "1") {
+    const deadline = Date.now() + 10 * 60 * 1000;
+    while (Date.now() < deadline) {
+      if (await isLoggedIn(page)) return;
+      await page.waitForTimeout(1000);
+    }
+    throw new Error("로그인 상태를 10분 안에 확인하지 못했습니다.");
+  }
   await ask("로그인 완료 후 이 터미널에서 Enter를 누르세요: ");
   if (!await isLoggedIn(page)) throw new Error("로그인 상태를 확인하지 못했습니다.");
 }
@@ -123,7 +152,21 @@ async function checkRequiredConsents(page) {
       return [element.name, element.id, element.getAttribute("aria-label"), label?.textContent, element.parentElement?.textContent]
         .filter(Boolean).join(" ");
     });
-    if (await elementIsRequired(checkbox) || /필수|이용약관|개인정보|동의/.test(context)) await checkbox.check();
+    if (await elementIsRequired(checkbox) || /필수|이용약관|개인정보|동의/.test(context)) {
+      try {
+        await checkbox.check({ force: true });
+      } catch {
+        const id = await checkbox.getAttribute("id");
+        const label = id ? page.locator(`label[for="${id}"]`) : null;
+        if (!label || !await visible(label)) throw new Error(`동의 항목을 선택하지 못했습니다: ${id || "unknown"}`);
+        await label.click({ force: true });
+      }
+    }
+  }
+
+  const licenseConsent = page.locator("#useScopeAgreAt");
+  if (await visible(licenseConsent) && !await licenseConsent.isChecked()) {
+    throw new Error("이용허락범위 동의를 선택하지 못했습니다.");
   }
 }
 
@@ -160,7 +203,7 @@ async function applyTarget(page, target) {
   await page.goto(target.url, { waitUntil: "domcontentloaded" });
   await waitForReady(page);
 
-  const applyButton = page.locator('button[title*="활용신청"]');
+  const applyButton = page.locator('button[title="활용신청 바로가기"]');
   if (!await visible(applyButton)) {
     return { status: "already-applied-or-unavailable", url: page.url() };
   }
@@ -176,22 +219,68 @@ async function applyTarget(page, target) {
   if (purposeField) await purposeField.fill(applicationPurpose);
   await checkRequiredConsents(selectedPage);
   const submitButton = await findSubmitButton(selectedPage);
-  if (!submitButton) return { status: "form-needs-manual-review", ...(await pageSummary(selectedPage)) };
+  if (!submitButton) {
+    const summary = await pageSummary(selectedPage);
+    return {
+      status: /\/iim\/api\/selectAcountList\.do/.test(summary.url) ? "already-applied" : "form-needs-manual-review",
+      ...summary
+    };
+  }
 
-  await submitButton.click();
-  await waitForReady(selectedPage);
-  const body = await selectedPage.locator("body").innerText().catch(() => "");
-  const completed = /신청.*완료|신청.*되었|활용신청.*완료|승인/.test(body);
-  if (selectedPage !== page) await selectedPage.close().catch(() => {});
-  return { status: completed ? "submitted" : "submitted-needs-review", url: selectedPage.url() };
+  const dialogMessages = [];
+  const dialogHandler = async (dialog) => {
+    dialogMessages.push(`${dialog.type()}: ${dialog.message()}`);
+    await dialog.accept();
+  };
+  selectedPage.on("dialog", dialogHandler);
+  try {
+    const saveResponsePromise = selectedPage.waitForResponse((response) =>
+      response.request().method() === "POST"
+      && response.url().includes("/iim/api/saveDevAcountRequest.do"), { timeout: 30000 }
+    ).catch(() => null);
+
+    await submitButton.click();
+    const saveResponse = await saveResponsePromise;
+    if (!saveResponse) {
+      return {
+        status: "submit-not-started",
+        url: selectedPage.url(),
+        reason: dialogMessages.at(-1) || "저장 요청이 발생하지 않았습니다.",
+        dialogs: dialogMessages
+      };
+    }
+
+    await selectedPage.waitForURL(/\/iim\/api\/selectAcountList\.do/, { timeout: 30000 }).catch(() => {});
+    await waitForReady(selectedPage);
+    const url = selectedPage.url();
+    const completed = /\/iim\/api\/selectAcountList\.do/.test(url);
+    if (!completed) {
+      return {
+        status: "submit-rejected",
+        url,
+        reason: dialogMessages.at(-1) || `저장 응답 HTTP ${saveResponse.status()} 후 목록으로 이동하지 않았습니다.`,
+        dialogs: dialogMessages
+      };
+    }
+
+    return {
+      status: "submitted",
+      url,
+      dialogs: dialogMessages
+    };
+  } finally {
+    selectedPage.off("dialog", dialogHandler);
+    if (selectedPage !== page) await selectedPage.close().catch(() => {});
+  }
 }
 
 let context;
 try {
-  console.log(`개인 서비스키 신청 대상 ${targets.length}개`);
-  printTargets();
+  console.log(`개인 서비스키 신청 대상 ${selectedTargets.length}개`);
+  for (const target of selectedTargets) console.log(`${target.datasetId}\t${target.title}\t${target.url}`);
   context = await chromium.launchPersistentContext(profilePath, {
     headless: false,
+    executablePath,
     locale: "ko-KR",
     viewport: { width: 1440, height: 1000 }
   });
@@ -201,14 +290,17 @@ try {
   if (!submit) {
     console.log("현재는 확인 모드입니다. 실제 신청은 --submit을 붙여 다시 실행하세요.");
   } else {
-    const confirmation = await ask("전체 대상에 활용신청을 제출하려면 APPLY_PERSONAL을 입력하세요: ");
+    const confirmation = process.env.PLAYWRIGHT_CONFIRM
+      || await ask("전체 대상에 활용신청을 제출하려면 APPLY_PERSONAL을 입력하세요: ");
     if (confirmation.trim() !== "APPLY_PERSONAL") throw new Error("일괄 신청을 취소했습니다.");
 
-    for (const target of targets) {
+    for (const target of selectedTargets) {
       try {
         const result = await applyTarget(page, target);
         console.log(`[${result.status}] ${target.datasetId} ${target.title}`);
-        if (result.status === "form-needs-manual-review") console.log(JSON.stringify(result));
+        if (result.status !== "submitted" && !result.status.startsWith("already-applied")) {
+          console.log(JSON.stringify(result));
+        }
       } catch (error) {
         console.error(`[failed] ${target.datasetId} ${target.title}: ${error.message}`);
       }
