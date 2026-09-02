@@ -119,26 +119,24 @@ async function fetchLocaldataPage(source, pageNo) {
 }
 
 async function fetchLocaldataSource(source) {
-  let first;
   try {
-    first = await fetchLocaldataPage(source, 1);
+    const first = await fetchLocaldataPage(source, 1);
+    const pageCount = Math.ceil(first.totalCount / LOCALDATA_PAGE_SIZE);
+    const items = [...first.items];
+    for (let pageNo = 2; pageNo <= pageCount; pageNo += 1) {
+      const page = await fetchLocaldataPage(source, pageNo);
+      items.push(...page.items);
+      console.log(`[localdata:${source.slug}] ${pageNo}/${pageCount} pages, ${items.length}/${first.totalCount} rows`);
+      await sleep(LOCALDATA_REQUEST_PAUSE_MS);
+    }
+    if (items.length !== first.totalCount) {
+      throw new Error(`${source.slug} 수집 건수 불일치: expected ${first.totalCount}, received ${items.length}`);
+    }
+    return { source, totalCount: first.totalCount, items };
   } catch (error) {
-    if (!error.authorization) throw error;
     console.warn(`[localdata:${source.slug}] skipped: ${error.message}`);
     return { source, totalCount: null, items: [], error };
   }
-  const pageCount = Math.ceil(first.totalCount / LOCALDATA_PAGE_SIZE);
-  const items = [...first.items];
-  for (let pageNo = 2; pageNo <= pageCount; pageNo += 1) {
-    const page = await fetchLocaldataPage(source, pageNo);
-    items.push(...page.items);
-    console.log(`[localdata:${source.slug}] ${pageNo}/${pageCount} pages, ${items.length}/${first.totalCount} rows`);
-    await sleep(LOCALDATA_REQUEST_PAUSE_MS);
-  }
-  if (items.length !== first.totalCount) {
-    throw new Error(`${source.slug} 수집 건수 불일치: expected ${first.totalCount}, received ${items.length}`);
-  }
-  return { source, totalCount: first.totalCount, items };
 }
 
 function legalDongNames(address) {
