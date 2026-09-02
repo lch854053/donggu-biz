@@ -1,4 +1,5 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { setDefaultResultOrder } from "node:dns";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compactStore, countBy } from "../lib/market.js";
@@ -22,8 +23,10 @@ import { enrichStoreAddresses } from "../lib/kakao-local.js";
 const API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong";
 const SIGNGU_CODE = "12210";
 const PAGE_SIZE = 1000;
-const MAX_RETRIES = 3;
-const LOCALDATA_MAX_RETRIES = 3;
+const MAX_RETRIES = 6;
+const LOCALDATA_MAX_RETRIES = 6;
+const MAX_RETRY_WAIT_MS = 30000;
+const REQUEST_TIMEOUT_MS = 20000;
 const LOCALDATA_REQUEST_PAUSE_MS = 120;
 const key = process.env.SDSC_SERVICE_KEY;
 const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
@@ -36,6 +39,12 @@ const outputPath = resolve(root, "data/stores_donggu.json");
 const tempPath = resolve(root, "data/.stores-donggu.tmp");
 
 const sleep = (ms) => new Promise((resolvePromise) => setTimeout(resolvePromise, ms));
+
+setDefaultResultOrder("ipv4first");
+
+function retryWait(attempt) {
+  return Math.min(MAX_RETRY_WAIT_MS, 1000 * 2 ** attempt);
+}
 
 async function fetchPage(pageNo) {
   const url = new URL(API_URL);
@@ -50,7 +59,7 @@ async function fetchPage(pageNo) {
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(20000) });
+      const response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       if (data?.header?.resultCode !== "00") {
@@ -58,8 +67,12 @@ async function fetchPage(pageNo) {
       }
       return data;
     } catch (error) {
-      if (attempt === MAX_RETRIES) throw error;
-      await sleep(attempt * 1000);
+      if (attempt === MAX_RETRIES) {
+        throw new Error(`[stores] ${pageNo}페이지 요청 실패: ${error.message}`, { cause: error });
+      }
+      const wait = retryWait(attempt);
+      console.warn(`[stores] ${pageNo}페이지 요청 실패 ${attempt}/${MAX_RETRIES} (${error.message}), ${wait / 1000}초 뒤 다시 시도합니다.`);
+      await sleep(wait);
     }
   }
 }
@@ -77,7 +90,7 @@ async function fetchLocaldataPage(source, pageNo) {
 
   for (let attempt = 1; attempt <= LOCALDATA_MAX_RETRIES; attempt += 1) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+      const response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
       const text = await response.text();
       let payload;
       try {
@@ -94,8 +107,13 @@ async function fetchLocaldataPage(source, pageNo) {
       }
       return parseLocaldataResponse(payload);
     } catch (error) {
-      if (error.authorization || attempt === LOCALDATA_MAX_RETRIES) throw error;
-      await sleep(attempt * 1000);
+      if (error.authorization) throw error;
+      if (attempt === LOCALDATA_MAX_RETRIES) {
+        throw new Error(`[localdata:${source.slug}] ${pageNo}페이지 요청 실패: ${error.message}`, { cause: error });
+      }
+      const wait = retryWait(attempt);
+      console.warn(`[localdata:${source.slug}] ${pageNo}페이지 요청 실패 ${attempt}/${LOCALDATA_MAX_RETRIES} (${error.message}), ${wait / 1000}초 뒤 다시 시도합니다.`);
+      await sleep(wait);
     }
   }
 }
