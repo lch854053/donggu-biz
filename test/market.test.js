@@ -416,6 +416,11 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.doesNotMatch(html, /id="marketTableNameInput"[^>]*placeholder=/);
   assert.match(html, /id="outlineZoneFilter"/);
   assert.match(html, /id="buildingOutlineMap"/);
+  assert.match(html, /id="outlineStatistics"[^>]*hidden/);
+  assert.match(html, /id="outlineLargePie"/);
+  assert.match(html, /id="outlineSmallPie"/);
+  assert.match(html, /id="outlineLargeLegend"/);
+  assert.match(html, /id="outlineSmallLegend"/);
   assert.match(html, /id="outlinePanel"[\s\S]*id="outlinePanelClose"/);
   assert.match(html, /aria-label="건물 연결 업소 목록 닫기"/);
   assert.match(html, /업종 데이터가 있는 건물을 클릭하면/);
@@ -433,6 +438,9 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(app, /outlineMap\.on\("click", closeOutlinePanel\)/);
   assert.match(app, /function renderOutlinePanel\(stores\)/);
   assert.match(app, /click\(event\)[\s\S]*renderOutlinePanel\(stores\)/);
+  assert.match(app, /function renderOutlineZoneStatistics\(stores, zoneName\)/);
+  assert.match(app, /function outlineIndustryColor\(industry\)/);
+  assert.match(app, /chartIndustryColor\(row\.name, index\)/);
   assert.match(app, /L\.DomEvent\.stopPropagation\(event\)/);
   assert.doesNotMatch(app, /building-tooltip|clampOutlineTooltip|outlineTooltipHtml/);
   assert.doesNotMatch(styles, /building-tooltip/);

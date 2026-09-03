@@ -515,6 +515,10 @@ let zoneLayer;
 let selectedZoneNo = "";
 const zoneLeafletByNo = new Map();
 const CLUSTER_CHART_COLORS = ["#1d5e8c", "#49a36f", "#e09b32", "#8b67ad", "#d66161", "#93a0ad"];
+const SMALL_CHART_COLORS = [
+  ...CLUSTER_CHART_COLORS,
+  "#5b98ff", "#f2ce68", "#45d69a", "#e88eaf", "#6fcbd7", "#94cf73", "#90a4bf", "#c4879e"
+];
 const MARKET_TABLE_PAGE_SIZE = 100;
 let marketTableRows = [];
 let marketTablePageNo = 1;
@@ -601,6 +605,20 @@ let outlineIndustryMode = true;
 let outlineLoadId = 0;
 const outlineCellCache = new Map();
 let outlineRoadFeaturesCache = null;
+
+function outlineIndustryColor(industry) {
+  if (industry === "점포 미연결") return OUTLINE_UNMATCHED_COLOR;
+  if (industry === "업종 미확인" || industry === "미분류") return OUTLINE_UNKNOWN_COLOR;
+  if (industry === "기타") return OUTLINE_OTHER_COLOR;
+  return OUTLINE_INDUSTRY_COLORS.get(industry) || OUTLINE_OTHER_COLOR;
+}
+
+function chartIndustryColor(industry, index) {
+  if (OUTLINE_INDUSTRY_COLORS.has(industry)) return OUTLINE_INDUSTRY_COLORS.get(industry);
+  if (industry === "기타") return OUTLINE_OTHER_COLOR;
+  if (industry === "업종 미확인" || industry === "미분류") return OUTLINE_UNKNOWN_COLOR;
+  return SMALL_CHART_COLORS[index % SMALL_CHART_COLORS.length];
+}
 
 async function initializeMarket() {
   if (marketInitialized) {
@@ -728,18 +746,79 @@ function renderStoreIndustryChart(stores, panelConfig) {
   const segments = rows.map((row, index) => {
     const start = offset;
     offset += row.count / stores.length * 100;
-    return `${CLUSTER_CHART_COLORS[index]} ${start}% ${offset}%`;
+    return `${chartIndustryColor(row.name, index)} ${start}% ${offset}%`;
   });
   const pie = $(panelConfig.pieId);
   pie.style.background = `conic-gradient(${segments.join(",")})`;
   pie.setAttribute("aria-label", `총 ${stores.length}개 업소의 업종 분포`);
   $(panelConfig.statsMetaId).textContent = `총 ${stores.length.toLocaleString("ko-KR")}개 · ${categories.length.toLocaleString("ko-KR")}개 업종`;
   $(panelConfig.legendId).innerHTML = rows.map((row, index) => `<div>
-    <i style="background:${CLUSTER_CHART_COLORS[index]}"></i>
+    <i style="background:${chartIndustryColor(row.name, index)}"></i>
     <span>${escapeHtml(row.name)}</span>
     <strong>${row.count.toLocaleString("ko-KR")}개</strong>
   </div>`).join("");
   $(panelConfig.statsId).hidden = false;
+}
+
+function topIndustryRows(stores, field, limit = 10) {
+  const categories = countBy(stores, (store) => store[field] || "미분류");
+  const rows = categories.slice(0, limit);
+  const otherCount = categories.slice(limit).reduce((total, item) => total + item.count, 0);
+  if (otherCount) rows.push({ name: "기타", count: otherCount });
+  return { categories, rows };
+}
+
+function renderIndustryPieChart(stores, config) {
+  const { categories, rows } = topIndustryRows(stores, config.field);
+  const total = stores.length;
+  let offset = 0;
+  const segments = rows.map((row, index) => {
+    const start = offset;
+    offset += total ? row.count / total * 100 : 0;
+    return `${chartIndustryColor(row.name, index)} ${start}% ${offset}%`;
+  });
+  const pie = $(config.pieId);
+  pie.style.background = segments.length ? `conic-gradient(${segments.join(",")})` : "var(--line)";
+  pie.setAttribute("aria-label", `${config.title} 총 ${total.toLocaleString("ko-KR")}개 업소의 업종 분포`);
+  $(config.legendId).innerHTML = rows.map((row, index) => `<div class="outline-stat-legend-row">
+    <i style="background:${chartIndustryColor(row.name, index)}"></i>
+    <span title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</span>
+    <strong>${row.count.toLocaleString("ko-KR")}개</strong>
+  </div>`).join("");
+  return categories.length;
+}
+
+function clearOutlineStatistics() {
+  const statistics = $("outlineStatistics");
+  if (!statistics) return;
+  statistics.hidden = true;
+  $("outlineStatisticsMeta").textContent = "";
+  ["outlineLargePie", "outlineSmallPie"].forEach((id) => {
+    $(id).style.removeProperty("background");
+    $(id).removeAttribute("aria-label");
+  });
+  ["outlineLargeLegend", "outlineSmallLegend"].forEach((id) => $(id).replaceChildren());
+}
+
+function renderOutlineZoneStatistics(stores, zoneName) {
+  if (!stores.length) {
+    clearOutlineStatistics();
+    return;
+  }
+  const largeCategoryCount = renderIndustryPieChart(stores, {
+    field: "largeName",
+    title: "업종 대분류",
+    pieId: "outlineLargePie",
+    legendId: "outlineLargeLegend"
+  });
+  const smallCategoryCount = renderIndustryPieChart(stores, {
+    field: "smallName",
+    title: "업종 소분류",
+    pieId: "outlineSmallPie",
+    legendId: "outlineSmallLegend"
+  });
+  $("outlineStatisticsMeta").textContent = `${zoneName} · ${stores.length.toLocaleString("ko-KR")}개 업소 · 대분류 ${largeCategoryCount}개 · 소분류 ${smallCategoryCount}개 · 상위 10개 + 기타`;
+  $("outlineStatistics").hidden = false;
 }
 
 function renderStorePanel(stores, panelConfig) {
@@ -775,6 +854,7 @@ function setOutlineState(message, isError = false) {
 
 function clearOutlineLayers() {
   closeOutlinePanel();
+  clearOutlineStatistics();
   outlineGroundLayer?.remove();
   outlineRoadLayer?.remove();
   outlineBuildingLayer?.remove();
@@ -839,11 +919,7 @@ async function loadOutlineRoads() {
 
 function outlineFeatureStyle(feature) {
   const industry = outlineIndustryById.get(String(feature.id));
-  const color = !outlineIndustryMode
-    ? OUTLINE_PLAIN_COLOR
-    : industry
-      ? OUTLINE_INDUSTRY_COLORS.get(industry) || OUTLINE_OTHER_COLOR
-      : OUTLINE_UNMATCHED_COLOR;
+  const color = !outlineIndustryMode ? OUTLINE_PLAIN_COLOR : industry ? outlineIndustryColor(industry) : OUTLINE_UNMATCHED_COLOR;
   return {
     color: outlineIndustryMode && industry ? color : "#8490aa",
     weight: outlineIndustryMode && industry ? 1.15 : .7,
@@ -890,11 +966,7 @@ function renderOutlineLegend() {
   const rows = [...counts.entries()]
     .sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0], "ko"))
     .map(([industry, count]) => {
-      const color = industry === "점포 미연결"
-        ? OUTLINE_UNMATCHED_COLOR
-        : industry === "업종 미확인"
-          ? OUTLINE_UNKNOWN_COLOR
-          : OUTLINE_INDUSTRY_COLORS.get(industry) || OUTLINE_OTHER_COLOR;
+      const color = outlineIndustryColor(industry);
       return `<div class="outline-legend-row">
         <span class="outline-legend-label"><i style="background:${color}"></i>${escapeHtml(industry)}</span>
         <strong>${count.toLocaleString("ko-KR")}동</strong>
@@ -1000,6 +1072,7 @@ async function loadBuildingOutline() {
 
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
+    renderOutlineZoneStatistics(stores, zoneName);
     if (outlineFeatures.length) {
       $("outlineState").hidden = true;
     } else {

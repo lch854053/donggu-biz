@@ -586,6 +586,41 @@ tbody tr:hover td { background: #f6f8fa; }
   background: var(--surface);
   overflow: hidden;
 }
+.outline-statistics {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.outline-statistics-head {
+  margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.outline-statistics-head h3,
+.outline-statistics-head p { margin: 0; }
+.outline-statistics-head h3 { font-size: 16px; }
+.outline-statistics-head p { margin-top: 3px; color: var(--text-muted); font: 11px/1.5 var(--mono); }
+.outline-statistics-note { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+
+.outline-statistics-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.outline-stat-card { min-width: 0; margin: 0; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-soft); }
+.outline-stat-card figcaption { margin-bottom: 14px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.outline-stat-card figcaption strong { font-size: 14px; }
+.outline-stat-card figcaption span { color: var(--text-muted); font-size: 11px; }
+.outline-stat-chart { display: grid; grid-template-columns: 170px minmax(0, 1fr); align-items: center; gap: 18px; }
+.outline-stat-pie { width: 170px; height: 170px; flex: none; border: 8px solid #fff; border-radius: 50%; box-shadow: 0 0 0 1px var(--line); }
+.outline-stat-legend { min-width: 0; max-height: 220px; overflow: auto; display: grid; gap: 6px; }
+.outline-stat-legend-row { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 7px; color: var(--text-secondary); font-size: 12px; }
+.outline-stat-legend-row i { width: 9px; height: 9px; border-radius: 2px; }
+.outline-stat-legend-row span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.outline-stat-legend-row strong { color: var(--text); font: 600 11px/1.4 var(--mono); white-space: nowrap; }
+
 .outline-rail { padding: 16px; overflow: auto; border-right: 1px solid var(--line); }
 .outline-zone-meta { margin: -8px 0 18px; color: var(--text-secondary); font: 12px/1.6 var(--mono); }
 .outline-toggle {
@@ -679,6 +714,7 @@ tbody tr:hover td { background: #f6f8fa; }
   .outline-map-stage { min-height: 56vh; }
   #buildingOutlineMap { min-height: 56vh; }
   .outline-legend { left: 10px; bottom: 10px; max-width: calc(100% - 20px); max-height: min(320px, calc(100% - 20px)); }
+  .outline-statistics-grid { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 520px) {
@@ -697,6 +733,12 @@ tbody tr:hover td { background: #f6f8fa; }
   .cluster-store-table th:nth-child(4), .cluster-store-table td:nth-child(4) { display: table-cell; }
   .cluster-chart { align-items: flex-start; }
   .cluster-pie { width: 108px; height: 108px; }
+  .outline-statistics { padding: 14px; }
+  .outline-statistics-head { flex-direction: column; gap: 4px; }
+  .outline-stat-chart { grid-template-columns: 124px minmax(0, 1fr); gap: 12px; }
+  .outline-stat-pie { width: 124px; height: 124px; }
+  .outline-stat-legend-row { font-size: 11px; }
+  .outline-stat-legend-row strong { font-size: 10px; }
   /* 통합 보험 표는 좁은 화면에서 사업자번호와 업종을 접고 소재지를 남긴다. */
   #npsResultSection th:nth-child(5), #npsResultSection td:nth-child(5) { display: table-cell; }
   #npsResultSection th:nth-child(7), #npsResultSection td:nth-child(7) { display: none; }
