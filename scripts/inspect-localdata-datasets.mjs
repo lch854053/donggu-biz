@@ -26,7 +26,7 @@ const outputPath = resolve(root, "data/localdata_dataset_endpoints.json");
 const loginUrl = "https://www.data.go.kr/uim/login/loginView.do";
 
 function parseArgs(argv) {
-  const args = { ids: [], search: [], useCandidates: true, myPage: false };
+  const args = { ids: [], search: [], useCandidates: true, myPage: false, expand: false };
   for (const argument of argv) {
     const [flag, value = ""] = argument.split("=");
     if (flag === "--ids") {
@@ -37,6 +37,8 @@ function parseArgs(argv) {
       args.useCandidates = false;
     } else if (flag === "--mypage") {
       args.myPage = true;
+    } else if (flag === "--expand") {
+      args.expand = true;
     } else if (flag) {
       throw new Error(`알 수 없는 인자입니다: ${flag}`);
     }
@@ -89,28 +91,35 @@ function createEndpointCollector(page) {
   };
 }
 
-// 상세기능 행은 페이지를 떠나지 않는 스크립트 링크로 열린다. 이동하지 않는 요소만 눌러 펼친다.
+// 펼치기는 요청주소가 정적 화면에 없을 때만 쓰는 보조 수단이다. 아무 요소나 오래 누르면
+// 화면이 멈춘 것처럼 보이므로 전체 시간을 제한하고 진행 상황을 남긴다.
+const EXPAND_BUDGET_MS = 12000;
+
 async function expandDetailSections(page) {
-  const triggers = page.locator('a[href="#"], a[href^="javascript"], a[onclick], button, [role="tab"], [data-toggle]');
-  const count = Math.min(await triggers.count(), 80);
+  const deadline = Date.now() + EXPAND_BUDGET_MS;
+  const triggers = page.locator('a[href="#"], a[href^="javascript"], [role="tab"], [data-toggle]');
+  const count = Math.min(await triggers.count().catch(() => 0), 25);
+  let clicked = 0;
   for (let index = 0; index < count; index += 1) {
+    if (Date.now() > deadline) break;
     const trigger = triggers.nth(index);
     const label = (await trigger.innerText().catch(() => "")).replace(/\s+/g, " ").trim();
-    if (/로그아웃|로그인|삭제|취소|신청|닫기|이전|다음/.test(label)) continue;
-    await trigger.click({ timeout: 1500 }).catch(() => {});
-    await page.waitForTimeout(250);
+    if (/로그아웃|로그인|삭제|취소|신청|닫기|이전|다음|목록/.test(label)) continue;
+    await trigger.click({ timeout: 1200, noWaitAfter: true }).catch(() => {});
+    clicked += 1;
+    await page.waitForTimeout(200);
   }
-  await page.waitForTimeout(400);
+  console.log(`    (상세기능 펼치기 ${clicked}회, ${Math.round((EXPAND_BUDGET_MS - (deadline - Date.now())) / 1000)}초)`);
 }
 
-async function collectEndpoints(page, url) {
+async function collectEndpoints(page, url, { expand = false } = {}) {
   const collector = createEndpointCollector(page);
   try {
     await page.goto(url, { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(500);
     let html = await page.content();
     let endpoints = extractApiEndpoints(html);
-    if (!endpoints.length) {
+    if (!endpoints.length && expand) {
       await expandDetailSections(page);
       html = await page.content();
       endpoints = extractApiEndpoints(html);
@@ -123,9 +132,9 @@ async function collectEndpoints(page, url) {
   }
 }
 
-async function inspectDataset(page, { datasetId, title }) {
+async function inspectDataset(page, { datasetId, title }, options) {
   const url = datasetDetailUrl(datasetId);
-  const { endpoints, html } = await collectEndpoints(page, url);
+  const { endpoints, html } = await collectEndpoints(page, url, options);
   const text = await pageText(page);
   const heading = await page.locator("h1, .page-tit, .tit").first().innerText().catch(() => "");
   return {
@@ -139,7 +148,7 @@ async function inspectDataset(page, { datasetId, title }) {
 }
 
 // 마이페이지 개발계정 상세에는 승인된 API의 요청주소가 오퍼레이션별로 그대로 적혀 있다.
-async function inspectMyAccounts(page) {
+async function inspectMyAccounts(page, options) {
   await page.goto("https://www.data.go.kr/iim/api/selectAcountList.do", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(600);
   const listHtml = await page.content();
@@ -149,8 +158,11 @@ async function inspectMyAccounts(page) {
     for (const snippet of findEndpointDiagnostics(listHtml)) console.log(`    ↳ ${snippet}`);
   }
   const accounts = [];
+  let index = 0;
   for (const link of links) {
-    const { endpoints, html } = await collectEndpoints(page, link.url);
+    index += 1;
+    console.log(`  [${index}/${links.length}] ${link.title || link.url}`);
+    const { endpoints, html } = await collectEndpoints(page, link.url, options);
     if (!endpoints.length) {
       accounts.push({ title: link.title, url: link.url, endpoints: [], diagnostics: findEndpointDiagnostics(html) });
       continue;
@@ -178,7 +190,8 @@ const datasetTargets = args.useCandidates
   : args.ids.map((datasetId) => ({ datasetId, title: "" }));
 const searchTargets = args.useCandidates
   ? [...new Set((candidates.newCandidates || [])
-      .filter(({ datasetId }) => !datasetId)
+      // 이미 없는 것으로 확인된 업종은 다시 검색하지 않는다.
+      .filter(({ datasetId, status }) => !datasetId && status === "endpoint-unknown")
       .map(({ title }) => searchKeywordFromTitle(title)))]
   : args.search;
 
@@ -200,17 +213,19 @@ try {
     viewport: { width: 1440, height: 1000 }
   });
   const page = context.pages()[0] || await context.newPage();
+  page.setDefaultTimeout(15000);
+  page.setDefaultNavigationTimeout(30000);
   await ensureLoggedIn(page, ask);
 
   if (args.myPage) {
     console.log("\n[마이페이지 개발계정] 승인된 API의 요청주소를 읽습니다.");
-    report.myAccounts = await inspectMyAccounts(page);
+    report.myAccounts = await inspectMyAccounts(page, { expand: args.expand });
     console.log(`개발계정 ${report.myAccounts.listedCount}건 중 ${report.myAccounts.accounts.length}건에서 요청주소를 찾았습니다.`);
   }
 
   for (const target of datasetTargets) {
     try {
-      const result = await inspectDataset(page, target);
+      const result = await inspectDataset(page, target, { expand: args.expand });
       report.datasets.push(result);
       const endpoint = result.endpoints[0]?.endpoint || "(엔드포인트를 찾지 못함)";
       console.log(`${result.datasetId}\t${result.applicationState}\t${endpoint}\t${result.title}`);
