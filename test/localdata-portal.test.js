@@ -89,3 +89,22 @@ test("reports what the page held when no endpoint was found", () => {
   assert.match(snippets[0], /요청주소/);
   assert.deepEqual(findEndpointDiagnostics("관련 표기가 전혀 없는 페이지"), []);
 });
+
+test("finds account links that are wired through onclick scripts, not href", () => {
+  const html = `
+    <tr onclick="location.href='/iim/api/selectDevAcountView.do?id=8'">등록체육시설업</tr>
+    <script>fn_go("selectAPIAcountView.do?publicDataPk=15155018")</script>
+  `;
+  const urls = extractAccountLinks(html).map(({ url }) => url);
+  assert.deepEqual(urls, [
+    "https://www.data.go.kr/iim/api/selectDevAcountView.do?id=8",
+    "https://www.data.go.kr/iim/api/selectAPIAcountView.do?publicDataPk=15155018"
+  ]);
+});
+
+test("ignores the login script's endPoint variable when reporting diagnostics", () => {
+  const loginScript = `anyidAdaptor.ssoLoginPageSub = function(baseUrl, endPoint, acrValues){
+    sessionStorage.setItem('returnUrl', endPoint); subUrl = "?endPoint=" + encodeURIComponent(endPoint); }`;
+  assert.deepEqual(findEndpointDiagnostics(loginScript), []);
+  assert.equal(findEndpointDiagnostics("<td>요청주소</td>").length, 1);
+});

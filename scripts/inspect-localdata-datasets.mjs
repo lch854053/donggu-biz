@@ -69,30 +69,63 @@ async function ensureLoggedIn(page, ask) {
   await ask("로그인 완료 후 이 터미널에서 Enter를 누르세요: ");
 }
 
-// 상세기능은 접힌 영역이나 탭 안에 있을 수 있어, 눌러서 펼친 뒤 다시 훑는다.
+// 요청주소가 정적 DOM에 없고 상세기능을 펼칠 때 AJAX로만 오는 화면이 있어,
+// 응답 본문까지 함께 훑는다.
+function createEndpointCollector(page) {
+  const seen = new Map();
+  const handler = async (response) => {
+    const url = response.url();
+    if (!/data\.go\.kr/.test(url)) return;
+    const type = response.headers()["content-type"] || "";
+    if (!/json|html|text|javascript/.test(type)) return;
+    const body = await response.text().catch(() => "");
+    if (!body || body.length > 4_000_000) return;
+    for (const found of extractApiEndpoints(body)) seen.set(found.slug, found);
+  };
+  page.on("response", handler);
+  return {
+    endpoints: () => [...seen.values()],
+    stop: () => page.off("response", handler)
+  };
+}
+
+// 상세기능 행은 페이지를 떠나지 않는 스크립트 링크로 열린다. 이동하지 않는 요소만 눌러 펼친다.
 async function expandDetailSections(page) {
-  const triggers = page.locator('a, button, [role="tab"]');
-  const count = Math.min(await triggers.count(), 60);
+  const triggers = page.locator('a[href="#"], a[href^="javascript"], a[onclick], button, [role="tab"], [data-toggle]');
+  const count = Math.min(await triggers.count(), 80);
   for (let index = 0; index < count; index += 1) {
     const trigger = triggers.nth(index);
     const label = (await trigger.innerText().catch(() => "")).replace(/\s+/g, " ").trim();
-    if (!/상세기능|요청변수|출력결과|미리보기|더보기/.test(label)) continue;
-    await trigger.click({ timeout: 2000 }).catch(() => {});
-    await page.waitForTimeout(300);
+    if (/로그아웃|로그인|삭제|취소|신청|닫기|이전|다음/.test(label)) continue;
+    await trigger.click({ timeout: 1500 }).catch(() => {});
+    await page.waitForTimeout(250);
+  }
+  await page.waitForTimeout(400);
+}
+
+async function collectEndpoints(page, url) {
+  const collector = createEndpointCollector(page);
+  try {
+    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(500);
+    let html = await page.content();
+    let endpoints = extractApiEndpoints(html);
+    if (!endpoints.length) {
+      await expandDetailSections(page);
+      html = await page.content();
+      endpoints = extractApiEndpoints(html);
+    }
+    const merged = new Map();
+    for (const found of [...endpoints, ...collector.endpoints()]) merged.set(found.slug, found);
+    return { endpoints: [...merged.values()], html };
+  } finally {
+    collector.stop();
   }
 }
 
 async function inspectDataset(page, { datasetId, title }) {
   const url = datasetDetailUrl(datasetId);
-  await page.goto(url, { waitUntil: "domcontentloaded" });
-  await page.waitForTimeout(500);
-  let html = await page.content();
-  let endpoints = extractApiEndpoints(html);
-  if (!endpoints.length) {
-    await expandDetailSections(page);
-    html = await page.content();
-    endpoints = extractApiEndpoints(html);
-  }
+  const { endpoints, html } = await collectEndpoints(page, url);
   const text = await pageText(page);
   const heading = await page.locator("h1, .page-tit, .tit").first().innerText().catch(() => "");
   return {
@@ -109,19 +142,19 @@ async function inspectDataset(page, { datasetId, title }) {
 async function inspectMyAccounts(page) {
   await page.goto("https://www.data.go.kr/iim/api/selectAcountList.do", { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(600);
-  const links = extractAccountLinks(await page.content());
+  const listHtml = await page.content();
+  const links = extractAccountLinks(listHtml);
+  if (!links.length) {
+    console.log("개발계정 목록에서 상세 링크를 찾지 못했습니다. 페이지 진단:");
+    for (const snippet of findEndpointDiagnostics(listHtml)) console.log(`    ↳ ${snippet}`);
+  }
   const accounts = [];
   for (const link of links) {
-    await page.goto(link.url, { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(400);
-    let html = await page.content();
-    let endpoints = extractApiEndpoints(html);
+    const { endpoints, html } = await collectEndpoints(page, link.url);
     if (!endpoints.length) {
-      await expandDetailSections(page);
-      html = await page.content();
-      endpoints = extractApiEndpoints(html);
+      accounts.push({ title: link.title, url: link.url, endpoints: [], diagnostics: findEndpointDiagnostics(html) });
+      continue;
     }
-    if (!endpoints.length) continue;
     accounts.push({ title: link.title, url: link.url, endpoints });
     console.log(`${endpoints.map(({ endpoint }) => endpoint).join(" ")}\t${link.title}`);
   }

@@ -84,7 +84,9 @@ async function probe(endpoint, statusCode) {
 async function loadCandidates() {
   try {
     const payload = JSON.parse(await readFile(candidatesPath, "utf8"));
-    return [...(payload.pendingApplications || []), ...(payload.newCandidates || [])];
+    // 엔드포인트를 유추조차 못 한 후보는 조회할 대상이 없으므로 제외한다.
+    return [...(payload.pendingApplications || []), ...(payload.newCandidates || [])]
+      .filter((candidate) => candidate.endpoint);
   } catch (error) {
     if (error?.code !== "ENOENT") throw error;
     return [];

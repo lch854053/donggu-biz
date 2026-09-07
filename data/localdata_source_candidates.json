@@ -1,6 +1,6 @@
 {
   "meta": {
-    "note": "행정안전부 지방행정 인허가 조회서비스 중 아직 lib/store-license.js의 LOCALDATA_SOURCES에 없는 원천입니다. pendingApplications는 활용신청이 끝났으나 요청주소를 아직 확인하지 못한 데이터셋이고, newCandidates는 추가 제안입니다. datasetId가 있는 항목은 포털 검색으로 확인했고, endpoint 값은 기존 원천의 명명 규칙에서 유추한 것이라 검증되지 않았습니다.",
+    "note": "행정안전부 지방행정 인허가 조회서비스 중 아직 LOCALDATA_SOURCES에 없는 원천입니다. pendingApplications는 활용신청이 승인됐으나 요청주소를 아직 확인하지 못한 데이터셋입니다. newCandidates의 status는 endpoint-unknown(행안부 데이터셋 확인, 요청주소 미확인), other-ministry(행안부에는 없고 다른 부처에 있음), unavailable(포털 API 검색에서 확인되지 않음)을 뜻합니다. endpoint 값은 유추한 것이라 검증되지 않았습니다.",
     "endpointsVerified": false,
     "adminCode": "5805000",
     "portal": "https://www.data.go.kr",
@@ -15,7 +15,8 @@
         "title": "행정안전부_교육_학원·교습소",
         "reason": "포털 검색 결과 행정안전부 인허가 개방 대상이 아니며 시·도 교육청 소관입니다."
       }
-    ]
+    ],
+    "searchVerifiedAt": "2026-09-07"
   },
   "pendingApplications": [
     {
@@ -130,33 +131,32 @@
       "largeName": "소매",
       "middleCode": "",
       "middleName": "",
-      "reason": "인허가 원천 중 거의 유일하게 사업자등록번호를 포함해 사업자 조회 탭과 상가 탭을 연결할 수 있습니다."
+      "reason": "인허가 원천 중 거의 유일하게 사업자등록번호를 포함해 사업자 조회 탭과 상가 탭을 연결할 수 있습니다.",
+      "status": "endpoint-unknown"
     },
     {
       "priority": 3,
       "datasetId": "",
       "title": "행정안전부_기타_자동차관리사업 조회서비스",
-      "slug": "car_management",
-      "endpoint": "https://apis.data.go.kr/1741000/car_management/info",
       "largeCode": "S1",
       "largeName": "수리",
       "middleCode": "",
       "middleName": "",
       "reason": "정비·매매·폐차가 현재 63개 원천에 전혀 없습니다.",
-      "searchNote": "포털 API 검색에서 행정안전부 인허가 서비스로 확인되지 않았습니다. 키워드를 바꿔 재검색이 필요합니다."
+      "searchNote": "포털 API 검색 결과 행정안전부 인허가 개방 목록에 없습니다(자동차야영장업 15154788만 존재). 정비·매매는 지자체 개별 데이터셋이나 한국교통안전공단 15057939를 따로 검토해야 합니다.",
+      "status": "unavailable"
     },
     {
       "priority": 3,
       "datasetId": "",
       "title": "행정안전부_기타_부동산중개업 조회서비스",
-      "slug": "real_estate_agents",
-      "endpoint": "https://apis.data.go.kr/1741000/real_estate_agents/info",
       "largeCode": "L1",
       "largeName": "부동산",
       "middleCode": "",
       "middleName": "",
       "reason": "상권 활성도 선행지표로 자주 쓰입니다.",
-      "searchNote": "포털 API 검색에서 행정안전부 인허가 서비스로 확인되지 않았습니다. 키워드를 바꿔 재검색이 필요합니다."
+      "searchNote": "행정안전부 인허가 개방 목록에 없습니다. 대신 국토교통부_부동산 중개업 정보 15123990(WMS/WFS/속성정보)이 전국 단위로 제공됩니다.",
+      "status": "other-ministry"
     },
     {
       "priority": 3,
@@ -168,59 +168,56 @@
       "largeName": "과학·기술",
       "middleCode": "",
       "middleName": "",
-      "reason": "상권 간판 정비 사업 실무와 직접 맞물립니다."
+      "reason": "상권 간판 정비 사업 실무와 직접 맞물립니다.",
+      "status": "endpoint-unknown"
     },
     {
       "priority": 4,
       "datasetId": "",
       "title": "행정안전부_생활_결혼중개업 조회서비스",
-      "slug": "marriage_brokerages",
-      "endpoint": "https://apis.data.go.kr/1741000/marriage_brokerages/info",
       "largeCode": "S2",
       "largeName": "수리·개인",
       "middleCode": "",
       "middleName": "",
       "reason": "생활서비스 공백 업종입니다.",
-      "searchNote": "포털 API 검색에서 행정안전부 인허가 서비스로 확인되지 않았습니다. 키워드를 바꿔 재검색이 필요합니다."
+      "searchNote": "행정안전부 인허가 개방 목록에 없습니다. 대신 성평등가족부_국내 결혼중개업 15109764, 국제 결혼중개업 15109765가 있습니다.",
+      "status": "other-ministry"
     },
     {
       "priority": 4,
       "datasetId": "",
       "title": "행정안전부_생활_이사화물주선업 조회서비스",
-      "slug": "moving_services",
-      "endpoint": "https://apis.data.go.kr/1741000/moving_services/info",
       "largeCode": "H1",
       "largeName": "운수·창고",
       "middleCode": "",
       "middleName": "",
       "reason": "생활서비스 공백 업종입니다.",
-      "searchNote": "포털 API 검색에서 행정안전부 인허가 서비스로 확인되지 않았습니다. 키워드를 바꿔 재검색이 필요합니다."
+      "searchNote": "포털 API 검색 결과 행정안전부 인허가 개방 목록에 없습니다.",
+      "status": "unavailable"
     },
     {
       "priority": 4,
       "datasetId": "",
       "title": "행정안전부_생활_장례식장업 조회서비스",
-      "slug": "funeral_halls",
-      "endpoint": "https://apis.data.go.kr/1741000/funeral_halls/info",
       "largeCode": "S2",
       "largeName": "수리·개인",
       "middleCode": "",
       "middleName": "",
       "reason": "생활서비스 공백 업종입니다.",
-      "searchNote": "포털 API 검색에서 행정안전부 인허가 서비스로 확인되지 않았습니다. 키워드를 바꿔 재검색이 필요합니다."
+      "searchNote": "포털 API 검색 결과가 없습니다.",
+      "status": "unavailable"
     },
     {
       "priority": 5,
       "datasetId": "",
       "title": "행정안전부_생활_다중이용업소 조회서비스",
-      "slug": "multi_use_businesses",
-      "endpoint": "https://apis.data.go.kr/1741000/multi_use_businesses/info",
       "largeCode": "",
       "largeName": "",
       "middleCode": "",
       "middleName": "",
       "reason": "안전 점검 레이어입니다. 다른 원천과 대부분 중복되므로 별도 표시로만 쓰는 편이 안전합니다.",
-      "searchNote": "포털 API 검색에서 행정안전부 인허가 서비스로 확인되지 않았습니다. 키워드를 바꿔 재검색이 필요합니다."
+      "searchNote": "포털 API 검색 결과 행정안전부 인허가 개방 목록에 없습니다. 소방청 소관이며 전국 단위 API가 확인되지 않습니다.",
+      "status": "unavailable"
     }
   ]
 }
