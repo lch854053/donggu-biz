@@ -412,7 +412,7 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(html, /id="marketMap"/);
   assert.deepEqual(
     [...html.matchAll(/data-market-view="([^"]+)">([^<]+)</g)].map(([, view, label]) => [view, label]),
-    [["table", "상가 조회"], ["map", "상권 지도"], ["analysis", "상권 분석"]]
+    [["table", "상가 조회"], ["map", "상권 지도"], ["analysis", "상권 분석"], ["closure", "폐업 분석"]]
   );
   assert.match(html, /id="marketTableNameInput"/);
   assert.doesNotMatch(html, /id="marketTableNameInput"[^>]*placeholder=/);

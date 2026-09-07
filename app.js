@@ -7,6 +7,13 @@ import {
   sortStores
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
+import {
+  closureFilterOptions,
+  closureLifespanMedianDays,
+  closureRateTableWithLifespan,
+  closureYearCounts,
+  filterClosureRows
+} from "./lib/closure-view.js";
 import { DONGGU_ADMIN_DONGS } from "./lib/admin-dong.js";
 import {
   INDUSTRY_SECTIONS,
@@ -556,6 +563,7 @@ function activateMarketView(viewName) {
   closeOutlinePanel();
   if (viewName === "map") setTimeout(() => marketMap?.invalidateSize(), 0);
   if (viewName === "analysis") initializeBuildingOutline();
+  if (viewName === "closure") initializeClosureView();
 }
 
 marketViewTabs.forEach((tab, index) => {
@@ -674,6 +682,8 @@ async function initializeMarket() {
     $("marketWorkspace").hidden = false;
     setTimeout(() => marketMap.invalidateSize(), 0);
     if (!$("market-view-analysis").hidden) initializeBuildingOutline();
+    // 폐업 분석을 먼저 열어 두면 분모가 비어 있으므로, 상가 자료가 도착한 뒤 다시 센다.
+    if (closureInitialized) runClosureQuery();
   } catch (error) {
     $("marketState").classList.add("is-error");
     $("marketState").textContent = `${error.message} 데이터 갱신 스크립트를 먼저 실행해 주세요.`;
@@ -1304,6 +1314,7 @@ function applyMarketFilters() {
     const visibleIds = new Set(visibleStores.map((store) => store.id));
     markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
   }
+  renderClosureMarkers();
   renderSelectionOverview();
 }
 
@@ -1410,6 +1421,256 @@ $("marketTableDownloadBtn").addEventListener("click", () => {
   );
 });
 $("analysisLookupBtn").addEventListener("click", () => activateMarketView("map"));
+
+// Closed and suspended license analysis
+// 영업 중 스냅샷과 폐업 이력은 원천과 기준일이 달라, 폐업률은 지역·업종 사이의
+// 상대 비교로만 쓴다. 화면에도 같은 문장을 고정해 둔다.
+const CLOSURE_SNAPSHOT_URL = "data/closed_licenses_donggu.json";
+const CLOSURE_TREND_LIMIT = 15;
+const CLOSURE_RATE_LIMIT = 30;
+let closureInitialized = false;
+let closureMeta = null;
+let closureLicenses = [];
+let closureRateMode = "dong";
+let closureMarkerCluster = null;
+let closureMarkers = [];
+
+function closureStatusLabel() {
+  return $("closureStatusFilter").value === "suspended" ? "휴업" : "폐업";
+}
+
+// 휴업 기록에는 폐업일자가 없다. 연도 조건을 그대로 걸면 결과가 조용히 0건이 되므로
+// 휴업을 고르면 연도 선택을 잠그고 조건에서도 뺀다.
+function closureYearFilterEnabled() {
+  return ($("closureStatusFilter").value || "closed") === "closed";
+}
+
+function syncClosureYearFields() {
+  const enabled = closureYearFilterEnabled();
+  for (const id of ["closureFromYear", "closureToYear"]) {
+    const field = $(id);
+    field.disabled = !enabled;
+    if (!enabled) field.value = "";
+  }
+}
+
+function currentClosureFilters() {
+  const useYears = closureYearFilterEnabled();
+  const fromYear = Number($("closureFromYear").value);
+  const toYear = Number($("closureToYear").value);
+  return {
+    adminDong: $("closureDongFilter").value,
+    largeName: $("closureIndustryFilter").value,
+    fromYear: useYears && Number.isFinite(fromYear) && fromYear ? fromYear : null,
+    toYear: useYears && Number.isFinite(toYear) && toYear ? toYear : null,
+    statusKind: $("closureStatusFilter").value || "closed"
+  };
+}
+
+// 폐업률의 분자와 분모는 같은 조건이어야 뜻이 통한다. 영업 중 업소에도 같은 업종·행정동 조건을 건다.
+function closureComparableStores({ adminDong, largeName }) {
+  return allStores.filter((store) => {
+    if (adminDong && store.adminDong !== adminDong) return false;
+    if (largeName && store.largeName !== largeName) return false;
+    return true;
+  });
+}
+
+async function initializeClosureView() {
+  if (closureInitialized) return;
+  closureInitialized = true;
+  try {
+    const response = await fetch(CLOSURE_SNAPSHOT_URL, { cache: "no-cache" });
+    if (!response.ok) throw new Error(`폐업·휴업 자료를 불러오지 못했습니다. HTTP ${response.status}`);
+    const payload = await response.json();
+    closureMeta = payload.meta || {};
+    closureLicenses = Array.isArray(payload.licenses) ? payload.licenses : [];
+    if (!closureLicenses.length) throw new Error("폐업·휴업 자료에 표시할 기록이 없습니다.");
+    fillClosureFilters();
+    renderClosureMeta();
+    $("closureState").hidden = true;
+    $("closureWorkspace").hidden = false;
+    runClosureQuery();
+  } catch (error) {
+    closureInitialized = false;
+    $("closureState").classList.add("is-error");
+    $("closureState").textContent = `${error.message} npm run update-closed-licenses를 먼저 실행해 주세요.`;
+  }
+}
+
+function fillClosureFilters() {
+  const options = closureFilterOptions(closureLicenses);
+  replaceOptions($("closureDongFilter"), options.adminDongs.map((name) => ({ value: name, label: name })), "전체 행정동");
+  replaceOptions($("closureIndustryFilter"), options.largeNames.map((name) => ({ value: name, label: name })), "전체 업종");
+  const years = [];
+  for (let year = options.maxYear; year >= options.minYear; year -= 1) years.push({ value: String(year), label: `${year}년` });
+  replaceOptions($("closureFromYear"), years, "전체 연도");
+  replaceOptions($("closureToYear"), years, "전체 연도");
+}
+
+function renderClosureMeta() {
+  const generated = closureMeta.generatedAt
+    ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(closureMeta.generatedAt))
+    : "미확인";
+  const parts = [
+    closureMeta.source || "행정안전부 지방행정 인허가 데이터(폐업·휴업)",
+    `${closureMeta.sinceYear}년 이후 폐업 기준`,
+    `갱신일 ${generated}`,
+    `${Number(closureMeta.totalCount || 0).toLocaleString("ko-KR")}건`
+  ];
+  $("closureMeta").textContent = parts.filter(Boolean).join(" · ");
+}
+
+function runClosureQuery() {
+  syncClosureYearFields();
+  const filters = currentClosureFilters();
+  const rows = filterClosureRows(closureLicenses, filters);
+  const label = closureStatusLabel();
+  $("closureCount").textContent = `${rows.length.toLocaleString("ko-KR")}건`;
+  renderClosureKpis(rows, label);
+  renderClosureTrend(rows, label);
+  renderClosureRateTable(rows, filters, label);
+  renderClosureMarkers();
+}
+
+function renderClosureKpis(rows, label) {
+  const median = closureLifespanMedianDays(rows);
+  const years = closureYearCounts(rows);
+  const dated = years.reduce((total, entry) => total + entry.count, 0);
+  $("closureKpiCount").textContent = rows.length.toLocaleString("ko-KR");
+  $("closureKpiCountNote").textContent = `${label} 기준`;
+  $("closureKpiLifespan").textContent = median === null ? "–" : `${(median / 365).toFixed(1)}년`;
+  $("closureKpiPerYear").textContent = years.length ? Math.round(dated / years.length).toLocaleString("ko-KR") : "–";
+  $("closureKpiPerYearNote").textContent = years.length
+    ? `${years[0].year}~${years.at(-1).year}년 ${dated.toLocaleString("ko-KR")}건 기준`
+    : "폐업일자가 있는 건 기준";
+}
+
+function renderClosureTrend(rows, label) {
+  const years = closureYearCounts(rows).slice(-CLOSURE_TREND_LIMIT).reverse();
+  const undated = rows.length - years.reduce((total, entry) => total + entry.count, 0);
+  // 휴업 기록에는 폐업일자 자체가 없으므로 "읽을 수 없다"고 말하면 자료 오류로 오해된다.
+  $("closureTrendNote").textContent = label === "휴업"
+    ? "휴업 기록에는 폐업일자가 없어 연도별 분포를 만들 수 없습니다."
+    : undated > 0
+      ? `폐업일자를 읽을 수 없는 ${undated.toLocaleString("ko-KR")}건은 제외했습니다.`
+      : `${label} ${rows.length.toLocaleString("ko-KR")}건의 연도별 분포입니다.`;
+  if (!years.length) {
+    $("closureTrend").innerHTML = `<p class="summary-empty">조건에 맞는 ${label} 기록이 없습니다.</p>`;
+    return;
+  }
+  const max = Math.max(...years.map(({ count }) => count));
+  $("closureTrend").innerHTML = years.map(({ year, count }) => `<div class="summary-row">
+    <div class="summary-label"><span>${year}년</span><strong>${count.toLocaleString("ko-KR")}</strong></div>
+    <div class="summary-track"><span style="width:${Math.round(count / max * 100)}%"></span></div>
+  </div>`).join("");
+}
+
+function renderClosureRateTable(rows, filters, label) {
+  const byDong = closureRateMode === "dong";
+  const stores = closureComparableStores(filters);
+  const table = closureRateTableWithLifespan(stores, rows, (row) => (byDong ? row.adminDong : row.largeName));
+  $("closureRateKeyHead").textContent = byDong ? "행정동" : "업종 대분류";
+  $("closureRateCountHead").textContent = label;
+  $("closureRateShareHead").textContent = `${label}률`;
+  $("closure-rate-title").textContent = `${label}률`;
+  $("closureRateNote").textContent = stores.length
+    ? `영업 중 ${stores.length.toLocaleString("ko-KR")}건과 ${label} ${rows.length.toLocaleString("ko-KR")}건을 같은 조건으로 비교합니다.`
+    : "영업 중 상가 자료를 불러오지 못해 폐업 건수만 표시합니다.";
+  $("closureUnknownNote").textContent = table.unknownClosedCount
+    ? `행정동을 확정하지 못한 ${label} ${table.unknownClosedCount.toLocaleString("ko-KR")}건은 표에서 제외했습니다. 폐업 기록은 주소가 오래돼 행정동 판정이 자주 실패하므로, 이 건들을 그대로 두면 미확인 항목의 폐업률이 실제보다 크게 부풀려집니다.`
+    : "";
+  const visible = table.rows.filter((row) => row.closedCount > 0).slice(0, CLOSURE_RATE_LIMIT);
+  if (!visible.length) {
+    $("closureRateBody").innerHTML = `<tr class="empty-row"><td colspan="6">조건에 맞는 ${label} 기록이 없습니다.</td></tr>`;
+    return;
+  }
+  $("closureRateBody").innerHTML = visible.map((row, index) => `<tr>
+    <td class="mono">${index + 1}</td>
+    <td>${escapeHtml(row.name)}</td>
+    <td class="mono">${row.activeCount.toLocaleString("ko-KR")}</td>
+    <td class="mono">${row.closedCount.toLocaleString("ko-KR")}</td>
+    <td class="mono">${row.activeCount ? `${(row.closureRate * 100).toFixed(1)}%` : "–"}</td>
+    <td class="mono">${row.medianLifespanDays === null ? "–" : `${(row.medianLifespanDays / 365).toFixed(1)}년`}</td>
+  </tr>`).join("");
+}
+
+// 지도에는 조회 조건과 무관하게 선택한 행정동·주요상권의 폐업 이력만 겹쳐 본다.
+function renderClosureMarkers() {
+  if (!marketMap || !closureLicenses.length) return;
+  const enabled = $("closureMarkerToggle").checked;
+  if (!enabled) {
+    if (closureMarkerCluster) closureMarkerCluster.clearLayers();
+    return;
+  }
+  if (!closureMarkerCluster) {
+    closureMarkerCluster = L.markerClusterGroup({
+      chunkedLoading: true,
+      maxClusterRadius: 46,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: false,
+      spiderfyOnMaxZoom: false,
+      iconCreateFunction: (cluster) => L.divIcon({
+        className: "closure-cluster",
+        html: `<span>${cluster.getChildCount()}</span>`,
+        iconSize: [34, 34]
+      })
+    }).addTo(marketMap);
+  }
+  if (!closureMarkers.length) {
+    const icon = L.divIcon({ className: "closure-dot", iconSize: [10, 10] });
+    closureMarkers = closureLicenses
+      .filter((row) => row.statusKind === "closed" && Number.isFinite(row.longitude) && Number.isFinite(row.latitude))
+      .map((row) => {
+        const marker = L.marker([row.latitude, row.longitude], { icon, title: row.name });
+        marker.license = row;
+        marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.smallName || row.largeName || "")}</span><span>${escapeHtml(row.address || "")}</span><span>폐업 ${escapeHtml(closureDateLabel(row.closedDate))}</span></div>`);
+        return marker;
+      });
+  }
+  const zone = selectedZone();
+  const adminDong = $("dongFilter").value;
+  closureMarkerCluster.clearLayers();
+  if (!zone && !adminDong) return;
+  closureMarkerCluster.addLayers(closureMarkers.filter((marker) => {
+    const row = marker.license;
+    if (adminDong && row.adminDong !== adminDong) return false;
+    if (zone && !pointInGeometry(row.longitude, row.latitude, zone.geometry)) return false;
+    return true;
+  }));
+}
+
+function closureDateLabel(value) {
+  const digits = String(value ?? "").replace(/[^0-9]/g, "");
+  return digits.length === 8 ? `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}` : "일자 미상";
+}
+
+function resetClosureFilters() {
+  $("closureDongFilter").value = "";
+  $("closureIndustryFilter").value = "";
+  $("closureFromYear").value = "";
+  $("closureToYear").value = "";
+  $("closureStatusFilter").value = "closed";
+  runClosureQuery();
+}
+
+$("closureStatusFilter").addEventListener("change", syncClosureYearFields);
+$("closureRunBtn").addEventListener("click", runClosureQuery);
+$("closureClearBtn").addEventListener("click", resetClosureFilters);
+$("closureRateByDong").addEventListener("click", () => setClosureRateMode("dong"));
+$("closureRateByIndustry").addEventListener("click", () => setClosureRateMode("industry"));
+$("closureMarkerToggle").addEventListener("change", async () => {
+  // 지도에서 먼저 켜는 경우가 있어, 폐업 자료를 아직 안 읽었으면 읽고 나서 그린다.
+  if ($("closureMarkerToggle").checked) await initializeClosureView();
+  renderClosureMarkers();
+});
+
+function setClosureRateMode(mode) {
+  closureRateMode = mode;
+  $("closureRateByDong").classList.toggle("is-active", mode === "dong");
+  $("closureRateByIndustry").classList.toggle("is-active", mode === "industry");
+  runClosureQuery();
+}
 
 // National Pension workplace lookup
 // 이 서비스는 광주 동구만 다룬다. 조회도 스냅샷도 같은 지역 하나를 본다.
