@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { LOCALDATA_SOURCES } from "../lib/store-license.js";
 import {
   datasetDetailUrl,
   datasetSearchUrl,
@@ -107,4 +108,32 @@ test("ignores the login script's endPoint variable when reporting diagnostics", 
     sessionStorage.setItem('returnUrl', endPoint); subUrl = "?endPoint=" + encodeURIComponent(endPoint); }`;
   assert.deepEqual(findEndpointDiagnostics(loginScript), []);
   assert.equal(findEndpointDiagnostics("<td>요청주소</td>").length, 1);
+});
+
+test("reads the portal's End Point field, which omits the operation path", () => {
+  const pageText = `
+    행정안전부_자원환경_쓰레기종량제봉투판매업 조회서비스
+    End Point
+    https://apis.data.go.kr/1741000/pay_as_you_throw_bag_retailers
+  `;
+  assert.deepEqual(extractApiEndpoints(pageText), [{
+    slug: "pay_as_you_throw_bag_retailers",
+    endpoint: "https://apis.data.go.kr/1741000/pay_as_you_throw_bag_retailers/info"
+  }]);
+});
+
+test("folds the base End Point and its operation URLs into one entry", () => {
+  const endpoints = extractApiEndpoints(`
+    https://apis.data.go.kr/1741000/tele_sales
+    https://apis.data.go.kr/1741000/tele_sales/info
+  `);
+  assert.equal(endpoints.length, 1);
+  assert.equal(endpoints[0].endpoint, "https://apis.data.go.kr/1741000/tele_sales/info");
+});
+
+test("produces exactly the endpoint already configured for that dataset", () => {
+  const configured = LOCALDATA_SOURCES.find((source) => source.datasetId === "15155015");
+  const [extracted] = extractApiEndpoints("End Point https://apis.data.go.kr/1741000/pay_as_you_throw_bag_retailers");
+  assert.equal(extracted.slug, configured.slug);
+  assert.equal(extracted.endpoint, configured.endpoint);
 });
