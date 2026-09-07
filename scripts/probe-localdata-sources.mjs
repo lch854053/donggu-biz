@@ -57,7 +57,15 @@ function verdict({ httpStatus, serviceCode, parsed, parseError }) {
   return { status: "error", message: parseError || `HTTP ${httpStatus}${serviceCode ? `, code ${serviceCode}` : ""}` };
 }
 
+// 게이트웨이가 이따금 한 요청만 늦어지므로, 통신 실패는 한 번 더 확인한 뒤에 보고한다.
 async function probe(endpoint, statusCode) {
+  const first = await probeOnce(endpoint, statusCode);
+  if (first.status !== "error") return first;
+  await sleep(1000);
+  return probeOnce(endpoint, statusCode);
+}
+
+async function probeOnce(endpoint, statusCode) {
   const url = new URL(endpoint);
   url.search = new URLSearchParams({
     serviceKey: localdataKey,

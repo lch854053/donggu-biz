@@ -14,6 +14,8 @@ const loginUrl = `${portalOrigin}/uim/login/loginView.do`;
 const applicationPurpose = "개발";
 
 const priorityApplications = [
+  ["15154963", "통신판매업"],
+  ["15155004", "옥외광고업"],
   ["15155014", "인쇄사"],
   ["15155020", "출판사"],
   ["15154966", "공연장"],
