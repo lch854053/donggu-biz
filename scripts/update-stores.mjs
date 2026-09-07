@@ -7,27 +7,24 @@ import { assertSnapshotHealthy } from "../lib/store-update.js";
 import {
   deduplicateBaseStores,
   deduplicateStoreSources,
-  distanceMeters,
   compactLicense,
   isActiveLicense,
   latestSourceTimestamp,
-  LOCALDATA_ADMIN_CODE,
-  LOCALDATA_PAGE_SIZE,
   LOCALDATA_SOURCES,
-  mergeStoreSources,
-  parseLocaldataResponse
+  LOCALDATA_STATUS_CODES,
+  mergeStoreSources
 } from "../lib/store-license.js";
-import { adminDongForAddress, createAdminDongLookup, normalizeAdminDongName } from "../lib/admin-dong.js";
+import { fetchLocaldataSource } from "../lib/localdata-client.js";
+import { createLicenseAdminDongResolver } from "../lib/license-admin-dong.js";
+import { createAdminDongLookup } from "../lib/admin-dong.js";
 import { enrichStoreAddresses } from "../lib/kakao-local.js";
 
 const API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong";
 const SIGNGU_CODE = "12210";
 const PAGE_SIZE = 1000;
 const MAX_RETRIES = 6;
-const LOCALDATA_MAX_RETRIES = 6;
 const MAX_RETRY_WAIT_MS = 30000;
 const REQUEST_TIMEOUT_MS = 20000;
-const LOCALDATA_REQUEST_PAUSE_MS = 120;
 const key = process.env.SDSC_SERVICE_KEY;
 const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
 const kakaoKey = process.env.KAKAO_REST_API_KEY;
@@ -77,107 +74,14 @@ async function fetchPage(pageNo) {
   }
 }
 
-async function fetchLocaldataPage(source, pageNo) {
-  const url = new URL(source.endpoint);
-  url.search = new URLSearchParams({
-    serviceKey: localdataKey,
-    pageNo: String(pageNo),
-    numOfRows: String(LOCALDATA_PAGE_SIZE),
-    returnType: "json",
-    "cond[OPN_ATMY_GRP_CD::EQ]": LOCALDATA_ADMIN_CODE,
-    "cond[SALS_STTS_CD::EQ]": "01"
-  }).toString();
-
-  for (let attempt = 1; attempt <= LOCALDATA_MAX_RETRIES; attempt += 1) {
-    try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
-      const text = await response.text();
-      let payload;
-      try {
-        payload = JSON.parse(text);
-      } catch {
-        throw new Error(`HTTP ${response.status}: JSON 응답이 아닙니다.`);
-      }
-      if (!response.ok) {
-        const serviceError = payload?.OpenAPI_ServiceResponse?.cmmMsgHeader || {};
-        const error = new Error(serviceError.errMsg || `HTTP ${response.status}`);
-        error.code = String(serviceError.returnReasonCode || "");
-        error.authorization = error.code === "30";
-        throw error;
-      }
-      return parseLocaldataResponse(payload);
-    } catch (error) {
-      if (error.authorization) throw error;
-      if (attempt === LOCALDATA_MAX_RETRIES) {
-        throw new Error(`[localdata:${source.slug}] ${pageNo}페이지 요청 실패: ${error.message}`, { cause: error });
-      }
-      const wait = retryWait(attempt);
-      console.warn(`[localdata:${source.slug}] ${pageNo}페이지 요청 실패 ${attempt}/${LOCALDATA_MAX_RETRIES} (${error.message}), ${wait / 1000}초 뒤 다시 시도합니다.`);
-      await sleep(wait);
-    }
-  }
-}
-
-async function fetchLocaldataSource(source) {
-  try {
-    const first = await fetchLocaldataPage(source, 1);
-    const pageCount = Math.ceil(first.totalCount / LOCALDATA_PAGE_SIZE);
-    const items = [...first.items];
-    for (let pageNo = 2; pageNo <= pageCount; pageNo += 1) {
-      const page = await fetchLocaldataPage(source, pageNo);
-      items.push(...page.items);
-      console.log(`[localdata:${source.slug}] ${pageNo}/${pageCount} pages, ${items.length}/${first.totalCount} rows`);
-      await sleep(LOCALDATA_REQUEST_PAUSE_MS);
-    }
-    if (items.length !== first.totalCount) {
-      throw new Error(`${source.slug} 수집 건수 불일치: expected ${first.totalCount}, received ${items.length}`);
-    }
-    return { source, totalCount: first.totalCount, items };
-  } catch (error) {
-    console.warn(`[localdata:${source.slug}] skipped: ${error.message}`);
-    return { source, totalCount: null, items: [], error };
-  }
-}
-
-function legalDongNames(address) {
-  return [...new Set(String(address || "").match(/[가-힣]+동/g) || [])];
-}
-
-async function createLicenseAdminDongResolver(baseStores) {
-  let addressLookup = new Map();
+async function loadAdminDongLookup() {
   try {
     const lookupPath = resolve(root, "data/insurance_admin_dongs.json");
-    addressLookup = createAdminDongLookup(JSON.parse(await readFile(lookupPath, "utf8")));
+    return createAdminDongLookup(JSON.parse(await readFile(lookupPath, "utf8")));
   } catch (error) {
     if (error?.code !== "ENOENT") throw error;
+    return new Map();
   }
-
-  const storesByLegalDong = new Map();
-  for (const store of baseStores) {
-    if (!store.legalDong || !store.adminDong) continue;
-    if (!storesByLegalDong.has(store.legalDong)) storesByLegalDong.set(store.legalDong, []);
-    storesByLegalDong.get(store.legalDong).push(store);
-  }
-
-  return (address, coordinates) => {
-    const explicit = normalizeAdminDongName(String(address || "").replace(/[(),]/g, " "));
-    if (explicit) return explicit;
-    const known = adminDongForAddress(address, addressLookup);
-    if (known) return known;
-
-    const legalStores = legalDongNames(address).flatMap((name) => storesByLegalDong.get(name) || []);
-    const nearestLegalStore = legalStores
-      .filter((store) => Number.isFinite(store.longitude) && Number.isFinite(store.latitude))
-      .map((store) => ({ store, distance: distanceMeters(coordinates, store) }))
-      .sort((left, right) => left.distance - right.distance)[0];
-    if (nearestLegalStore && nearestLegalStore.distance <= 250) return nearestLegalStore.store.adminDong;
-
-    const nearestStore = baseStores
-      .filter((store) => Number.isFinite(store.longitude) && Number.isFinite(store.latitude))
-      .map((store) => ({ store, distance: distanceMeters(coordinates, store) }))
-      .sort((left, right) => left.distance - right.distance)[0];
-    return nearestStore && nearestStore.distance <= 120 ? nearestStore.store.adminDong : "";
-  };
 }
 
 const first = await fetchPage(1);
@@ -210,10 +114,13 @@ let supplementalMeta = null;
 let postMergeDeduplication = null;
 let kakaoAddressMeta = null;
 if (localdataKey) {
-  const adminDongForLicense = await createLicenseAdminDongResolver(uniqueBaseStores);
+  const adminDongForLicense = createLicenseAdminDongResolver(uniqueBaseStores, await loadAdminDongLookup());
   const localdataResults = [];
   for (const source of LOCALDATA_SOURCES) {
-    const result = await fetchLocaldataSource(source);
+    const result = await fetchLocaldataSource(source, {
+      serviceKey: localdataKey,
+      statusCode: LOCALDATA_STATUS_CODES.active
+    });
     const activeItems = result.items.filter(isActiveLicense);
     const licenses = activeItems.map((item) => {
       const compacted = compactLicense(item, source);
