@@ -489,165 +489,60 @@
     <section class="service-panel" id="panel-stats" role="tabpanel" aria-labelledby="tab-stats" hidden>
       <div class="market-heading">
         <div>
-          <h2>동구 폐업 통계</h2>
-          <p id="statsMeta">폐업·휴업 자료를 불러오는 중입니다.</p>
+          <h2>동구 사업자 상가 통계</h2>
         </div>
       </div>
 
       <div class="market-state" id="statsState" role="status">폐업·휴업 파일을 읽고 있습니다.</div>
 
       <div class="stats-workspace" id="statsWorkspace" hidden>
-        <section class="input-station stats-filters" aria-labelledby="stats-filter-title">
-          <div class="station-heading">
-            <div>
-              <h2 id="stats-filter-title">조회 조건</h2>
-              <p>아래 모든 그래프에 같은 조건이 적용됩니다.</p>
-            </div>
-            <span class="count-badge" id="statsCount">0건</span>
+        <section class="stats-theme" aria-labelledby="stats-closure-title">
+          <div class="stats-theme-head">
+            <h3 id="stats-closure-title">폐업 통계</h3>
+            <p id="statsMeta"></p>
           </div>
-          <div class="query-grid stats-query">
-            <label class="field">
-              <span>행정동</span>
-              <select id="statsDongFilter"><option value="">전체 행정동</option></select>
-            </label>
-            <label class="field">
-              <span>업종 대분류</span>
-              <select id="statsIndustryFilter"><option value="">전체 업종</option></select>
-            </label>
-            <label class="field">
-              <span>시작 연도</span>
-              <select id="statsFromYear"></select>
-            </label>
-            <label class="field">
-              <span>종료 연도</span>
-              <select id="statsToYear"></select>
-            </label>
-            <label class="field">
-              <span>구분</span>
-              <select id="statsStatusFilter">
-                <option value="closed">폐업</option>
-                <option value="suspended">휴업</option>
-              </select>
-            </label>
-          </div>
-          <div class="action-row">
-            <button class="button button-primary" id="statsRunBtn" type="button">조회</button>
-            <button class="button button-quiet" id="statsClearBtn" type="button">초기화</button>
+
+          <figure class="chart-card chart-card-wide" id="statsTrendCard">
+            <figcaption>
+              <strong id="statsTrendTitle">연도별 폐업</strong>
+            </figcaption>
+            <div class="chart-plot" id="statsTrendChart"></div>
+            <details class="chart-table">
+              <summary>표로 보기</summary>
+              <div class="table-wrap">
+                <table class="market-store-table">
+                  <thead><tr><th>연도</th><th>폐업</th></tr></thead>
+                  <tbody id="statsTrendTable"></tbody>
+                </table>
+              </div>
+            </details>
+          </figure>
+
+          <div class="chart-grid">
+            <figure class="chart-card">
+              <figcaption><strong>행정동별 폐업률</strong></figcaption>
+              <div class="chart-plot" id="statsDongRateChart"></div>
+            </figure>
+
+            <figure class="chart-card">
+              <figcaption><strong>업종별 폐업률</strong></figcaption>
+              <div class="chart-plot" id="statsIndustryRateChart"></div>
+            </figure>
+
+            <figure class="chart-card">
+              <figcaption><strong>행정동별 영업기간 중앙값</strong></figcaption>
+              <div class="chart-plot" id="statsDongLifespanChart"></div>
+            </figure>
+
+            <figure class="chart-card">
+              <figcaption><strong>업종별 영업기간 중앙값</strong></figcaption>
+              <div class="chart-plot" id="statsIndustryLifespanChart"></div>
+            </figure>
           </div>
         </section>
-
-        <section class="closure-kpis" id="statsKpis" aria-label="폐업 요약">
-          <div class="closure-kpi">
-            <span>조회 건수</span>
-            <strong id="statsKpiCount">0</strong>
-            <small id="statsKpiCountNote">선택 조건 기준</small>
-          </div>
-          <div class="closure-kpi">
-            <span>영업기간 중앙값</span>
-            <strong id="statsKpiLifespan">–</strong>
-            <small>인허가일부터 폐업일까지</small>
-          </div>
-          <div class="closure-kpi">
-            <span>연평균 폐업</span>
-            <strong id="statsKpiPerYear">–</strong>
-            <small id="statsKpiPerYearNote">폐업일자가 있는 건 기준</small>
-          </div>
-        </section>
-
-        <figure class="chart-card chart-card-wide" id="statsTrendCard">
-          <figcaption>
-            <strong id="statsTrendTitle">연도별 폐업</strong>
-            <span id="statsTrendNote"></span>
-          </figcaption>
-          <div class="chart-plot" id="statsTrendChart"></div>
-          <details class="chart-table">
-            <summary>표로 보기</summary>
-            <div class="table-wrap">
-              <table class="market-store-table">
-                <thead><tr><th>연도</th><th id="statsTrendValueHead">폐업</th></tr></thead>
-                <tbody id="statsTrendTable"></tbody>
-              </table>
-            </div>
-          </details>
-        </figure>
-
-        <div class="chart-grid">
-          <figure class="chart-card" id="statsDongRateCard">
-            <figcaption>
-              <strong id="statsDongRateTitle">행정동별 폐업률</strong>
-              <span id="statsDongRateNote"></span>
-            </figcaption>
-            <div class="chart-plot" id="statsDongRateChart"></div>
-            <details class="chart-table">
-              <summary>표로 보기</summary>
-              <div class="table-wrap">
-                <table class="market-store-table">
-                  <thead><tr><th>행정동</th><th>영업 중</th><th id="statsDongRateCountHead">폐업</th><th>비율</th></tr></thead>
-                  <tbody id="statsDongRateTable"></tbody>
-                </table>
-              </div>
-            </details>
-          </figure>
-
-          <figure class="chart-card" id="statsIndustryRateCard">
-            <figcaption>
-              <strong id="statsIndustryRateTitle">업종별 폐업률</strong>
-              <span id="statsIndustryRateNote"></span>
-            </figcaption>
-            <div class="chart-plot" id="statsIndustryRateChart"></div>
-            <details class="chart-table">
-              <summary>표로 보기</summary>
-              <div class="table-wrap">
-                <table class="market-store-table">
-                  <thead><tr><th>업종 대분류</th><th>영업 중</th><th id="statsIndustryRateCountHead">폐업</th><th>비율</th></tr></thead>
-                  <tbody id="statsIndustryRateTable"></tbody>
-                </table>
-              </div>
-            </details>
-          </figure>
-
-          <figure class="chart-card" id="statsDongLifespanCard">
-            <figcaption>
-              <strong>행정동별 영업기간 중앙값</strong>
-              <span id="statsDongLifespanNote"></span>
-            </figcaption>
-            <div class="chart-plot" id="statsDongLifespanChart"></div>
-            <details class="chart-table">
-              <summary>표로 보기</summary>
-              <div class="table-wrap">
-                <table class="market-store-table">
-                  <thead><tr><th>행정동</th><th>영업기간 중앙값</th><th>표본</th></tr></thead>
-                  <tbody id="statsDongLifespanTable"></tbody>
-                </table>
-              </div>
-            </details>
-          </figure>
-
-          <figure class="chart-card" id="statsIndustryLifespanCard">
-            <figcaption>
-              <strong>업종별 영업기간 중앙값</strong>
-              <span id="statsIndustryLifespanNote"></span>
-            </figcaption>
-            <div class="chart-plot" id="statsIndustryLifespanChart"></div>
-            <details class="chart-table">
-              <summary>표로 보기</summary>
-              <div class="table-wrap">
-                <table class="market-store-table">
-                  <thead><tr><th>업종 대분류</th><th>영업기간 중앙값</th><th>표본</th></tr></thead>
-                  <tbody id="statsIndustryLifespanTable"></tbody>
-                </table>
-              </div>
-            </details>
-          </figure>
-        </div>
-
-        <div class="data-note closure-caveat">
-          <strong>이 수치를 읽는 기준</strong>
-          <p>폐업률의 분모는 서로 다른 두 자료의 합입니다. 영업 중 업소는 소상공인시장진흥공단 상가정보와 행정안전부 인허가를 합친 값이고, 폐업은 인허가 자료에만 있습니다. 인허가 대상이 아닌 업종은 폐업해도 잡히지 않으므로 실제 폐업률은 이보다 낮으며, 지역·업종 사이의 상대 비교로만 사용해야 합니다.</p>
-          <p id="statsUnknownNote"></p>
-        </div>
       </div>
     </section>
+
   </main>
 
   <div id="toast" role="status" aria-live="polite"></div>
