@@ -18,7 +18,7 @@
    THESIS: 사업자 한 건의 상태와 동구 전체 상가의 맥락을 같은 업무대 위에서 확인한다. 장식적인 대시보드 대신 조회와 판단이 바로 이어지는 관제 화면을 만든다.
    OWN-WORLD: 흰 바탕, 선명한 청색 동작색, 얇은 구조선, 상태색과 고정폭 숫자로 구성된 공공 업무 도구 언어를 사용한다.
    STORY: 사용자는 조회 종류를 고르고, 조건을 입력하며, 결과의 출처와 기준일을 확인한 뒤 주요상권·상권 분석, 4대보험 사업장 통계 또는 결과 내보내기로 업무를 끝낸다.
-   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상가·상권 조회 하위 탭은 상가 조회·상권 지도·상권 분석 흐름을 제공한다.
+   FIRST VIEWPORT: 상단 제품 식별과 동급 탭 아래에 핵심 입력 또는 통계가 즉시 보이고, 상가·상권 조회 하위 탭은 상가 조회·상권 지도·상권 분석·폐업 분석 흐름을 제공한다.
   FORM: 통합 관제형, 구조 후보 5번, seed 859829d4.
   FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
   -->
@@ -245,6 +245,7 @@
         <button class="sub-tab market-view-tab is-active" id="market-view-tab-table" role="tab" aria-selected="true" aria-controls="market-view-table" data-market-view="table">상가 조회</button>
         <button class="sub-tab market-view-tab" id="market-view-tab-map" role="tab" aria-selected="false" aria-controls="market-view-map" data-market-view="map">상권 지도</button>
         <button class="sub-tab market-view-tab" id="market-view-tab-analysis" role="tab" aria-selected="false" aria-controls="market-view-analysis" data-market-view="analysis">상권 분석</button>
+        <button class="sub-tab market-view-tab" id="market-view-tab-closure" role="tab" aria-selected="false" aria-controls="market-view-closure" data-market-view="closure">폐업 분석</button>
       </nav>
 
       <div class="market-state" id="marketState" role="status">상가정보 파일을 읽고 있습니다.</div>
@@ -263,6 +264,13 @@
           <label class="field">
             <span>주요상권</span>
             <select id="zoneFilter"><option value="">전체 지역</option></select>
+          </label>
+          <label class="outline-toggle closure-marker-toggle" for="closureMarkerToggle">
+            <input id="closureMarkerToggle" type="checkbox">
+            <span>
+              <strong>폐업 업소 표시</strong>
+              <small>선택한 행정동·주요상권의 2016년 이후 폐업 이력</small>
+            </span>
           </label>
           <section class="selection-analysis" aria-labelledby="selection-analysis-title">
             <div class="rail-heading">
@@ -408,6 +416,111 @@
              </figure>
            </div>
          </section>
+      </div>
+
+      <div class="market-view-panel" id="market-view-closure" role="tabpanel" aria-labelledby="market-view-tab-closure" hidden>
+        <div class="market-heading analysis-heading">
+          <div>
+            <h2>폐업 분석</h2>
+            <p id="closureMeta">폐업·휴업 자료를 불러오는 중입니다.</p>
+          </div>
+        </div>
+
+        <div class="market-state" id="closureState" role="status">폐업·휴업 파일을 읽고 있습니다.</div>
+
+        <div class="closure-workspace" id="closureWorkspace" hidden>
+          <section class="input-station" aria-labelledby="closure-filter-title">
+            <div class="station-heading">
+              <div>
+                <h2 id="closure-filter-title">폐업 조건검색</h2>
+                <p>행정안전부 인허가의 폐업·휴업 이력을 조회합니다.</p>
+              </div>
+              <span class="count-badge" id="closureCount">0건</span>
+            </div>
+            <div class="query-grid closure-query">
+              <label class="field">
+                <span>행정동</span>
+                <select id="closureDongFilter"><option value="">전체 행정동</option></select>
+              </label>
+              <label class="field">
+                <span>업종 대분류</span>
+                <select id="closureIndustryFilter"><option value="">전체 업종</option></select>
+              </label>
+              <label class="field">
+                <span>시작 연도</span>
+                <select id="closureFromYear"></select>
+              </label>
+              <label class="field">
+                <span>종료 연도</span>
+                <select id="closureToYear"></select>
+              </label>
+              <label class="field">
+                <span>구분</span>
+                <select id="closureStatusFilter">
+                  <option value="closed">폐업</option>
+                  <option value="suspended">휴업</option>
+                </select>
+              </label>
+            </div>
+            <div class="action-row">
+              <button class="button button-primary" id="closureRunBtn" type="button">조회</button>
+              <button class="button button-quiet" id="closureClearBtn" type="button">초기화</button>
+            </div>
+          </section>
+
+          <section class="closure-kpis" id="closureKpis" aria-label="폐업 요약">
+            <div class="closure-kpi">
+              <span>조회 건수</span>
+              <strong id="closureKpiCount">0</strong>
+              <small id="closureKpiCountNote">선택 조건 기준</small>
+            </div>
+            <div class="closure-kpi">
+              <span>영업기간 중앙값</span>
+              <strong id="closureKpiLifespan">–</strong>
+              <small>인허가일부터 폐업일까지</small>
+            </div>
+            <div class="closure-kpi">
+              <span>연평균 폐업</span>
+              <strong id="closureKpiPerYear">–</strong>
+              <small id="closureKpiPerYearNote">폐업일자가 있는 건 기준</small>
+            </div>
+          </section>
+
+          <section class="result-section closure-section" aria-labelledby="closure-trend-title">
+            <div class="result-toolbar">
+              <div>
+                <h2 id="closure-trend-title">연도별 폐업</h2>
+                <p class="source-note" id="closureTrendNote"></p>
+              </div>
+            </div>
+            <div class="closure-trend" id="closureTrend"></div>
+          </section>
+
+          <section class="result-section closure-section" aria-labelledby="closure-rate-title">
+            <div class="result-toolbar">
+              <div>
+                <h2 id="closure-rate-title">폐업률</h2>
+                <p class="source-note" id="closureRateNote"></p>
+              </div>
+              <div class="closure-rate-toggle" role="group" aria-label="폐업률 기준">
+                <button class="button button-secondary is-active" id="closureRateByDong" type="button">행정동별</button>
+                <button class="button button-secondary" id="closureRateByIndustry" type="button">업종별</button>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table class="market-store-table closure-rate-table">
+                <thead><tr><th>#</th><th id="closureRateKeyHead">행정동</th><th>영업 중</th><th id="closureRateCountHead">폐업</th><th id="closureRateShareHead">폐업률</th><th>영업기간 중앙값</th></tr></thead>
+                <tbody id="closureRateBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <div class="data-note closure-caveat">
+            <strong>이 수치를 읽는 기준</strong>
+            <p>폐업률의 분모는 서로 다른 두 자료의 합입니다. 영업 중 업소는 소상공인시장진흥공단 상가정보와 행정안전부 인허가를 합친 값이고, 폐업은 인허가 자료에만 있습니다. 인허가 대상이 아닌 업종은 폐업해도 잡히지 않으므로 실제 폐업률은 이보다 낮으며, 지역·업종 사이의 상대 비교로만 사용해야 합니다.</p>
+            <p id="closureUnknownNote"></p>
+          </div>
+        </div>
       </div>
 
       <div class="market-view-panel" id="market-view-table" role="tabpanel" aria-labelledby="market-view-tab-table">

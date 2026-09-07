@@ -9,11 +9,19 @@ import {
   parseLocaldataResponse
 } from "../lib/store-license.js";
 
-const REQUEST_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = 60000;
 const REQUEST_PAUSE_MS = 200;
 
 const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
 if (!localdataKey) throw new Error("LOCALDATA_SERVICE_KEY 환경변수가 필요합니다.");
+// 안내 문구의 자리표시자를 그대로 붙여 넣으면 모든 원천이 코드 30으로 떨어져 승인 문제처럼 보인다.
+if (/[^\x20-\x7E]/.test(localdataKey) || localdataKey.trim().length < 20) {
+  throw new Error(`LOCALDATA_SERVICE_KEY가 서비스키 형태가 아닙니다(${localdataKey.length}자). 공공데이터포털의 일반 인증키를 넣으세요.`);
+}
+// 인코딩 키를 넣으면 URLSearchParams가 퍼센트 표기를 한 번 더 감싸 게이트웨이가 키를 알아보지 못한다.
+if (/%[0-9A-Fa-f]{2}/.test(localdataKey)) {
+  console.warn("[probe] 서비스키에 퍼센트 표기가 있습니다. 공공데이터포털의 '일반 인증키(Decoding)'를 사용하세요.");
+}
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const candidatesPath = resolve(root, "data/localdata_source_candidates.json");
@@ -49,7 +57,15 @@ function verdict({ httpStatus, serviceCode, parsed, parseError }) {
   return { status: "error", message: parseError || `HTTP ${httpStatus}${serviceCode ? `, code ${serviceCode}` : ""}` };
 }
 
+// 게이트웨이가 이따금 한 요청만 늦어지므로, 통신 실패는 한 번 더 확인한 뒤에 보고한다.
 async function probe(endpoint, statusCode) {
+  const first = await probeOnce(endpoint, statusCode);
+  if (first.status !== "error") return first;
+  await sleep(1000);
+  return probeOnce(endpoint, statusCode);
+}
+
+async function probeOnce(endpoint, statusCode) {
   const url = new URL(endpoint);
   url.search = new URLSearchParams({
     serviceKey: localdataKey,
@@ -84,7 +100,9 @@ async function probe(endpoint, statusCode) {
 async function loadCandidates() {
   try {
     const payload = JSON.parse(await readFile(candidatesPath, "utf8"));
-    return [...(payload.pendingApplications || []), ...(payload.newCandidates || [])];
+    // 엔드포인트를 유추조차 못 한 후보는 조회할 대상이 없으므로 제외한다.
+    return [...(payload.pendingApplications || []), ...(payload.newCandidates || [])]
+      .filter((candidate) => candidate.endpoint);
   } catch (error) {
     if (error?.code !== "ENOENT") throw error;
     return [];
@@ -112,8 +130,13 @@ for (const group of groups) {
   }
 }
 
+const probed = Object.values(counts).reduce((total, value) => total + value, 0);
 console.log(`\n[probe] ready ${counts.ready || 0} / unapproved ${counts.unapproved || 0} / missing ${counts.missing || 0} / error ${counts.error || 0}`);
-if (counts.unapproved) {
+// 이미 수집에 쓰던 원천까지 한꺼번에 미승인으로 나오면 승인이 아니라 서비스키를 의심해야 한다.
+if (probed && counts.unapproved === probed) {
+  console.log("[probe] 모든 원천이 미승인으로 나왔습니다. 개별 승인 문제가 아니라 서비스키가 승인 계정과 다를 가능성이 높습니다.");
+  console.log("[probe] 저장소 Secret LOCALDATA_SERVICE_KEY(없으면 SDSC_SERVICE_KEY)에 등록해 둔 키와 같은 값인지 확인하세요.");
+} else if (counts.unapproved) {
   console.log("[probe] unapproved 원천은 npm run apply-localdata로 활용신청을 제출하세요.");
 }
 if (counts.ready) {
