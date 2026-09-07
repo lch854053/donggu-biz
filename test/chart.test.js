@@ -61,7 +61,7 @@ test("shrinks the rounded end so a tiny bar keeps its shape", () => {
   assert.equal(barCornerRadius(0, 24), 0);
 });
 
-test("the statistics tab ships the four charts with a table twin each", async () => {
+test("the statistics tab groups its charts under a theme heading", async () => {
   const { readFile } = await import("node:fs/promises");
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const app = await readFile(new URL("../app.js", import.meta.url), "utf8");
@@ -70,15 +70,16 @@ test("the statistics tab ships the four charts with a table twin each", async ()
     ["business", "market", "stats"]
   );
   assert.match(html, /id="panel-stats"[^>]*hidden/);
+  assert.match(html, /<h2>동구 사업자 상가 통계<\/h2>/);
+  // 주제마다 소제목과 출처 줄을 갖는다. 다음 주제 통계도 같은 자리에 덧붙는다.
+  assert.match(html, /<h3 id="stats-closure-title">폐업 통계<\/h3>/);
+  assert.match(html, /id="statsMeta"/);
   for (const id of ["statsTrendChart", "statsDongRateChart", "statsIndustryRateChart", "statsDongLifespanChart", "statsIndustryLifespanChart"]) {
     assert.match(html, new RegExp(`id="${id}"`), id);
   }
-  // 그래프는 값을 읽는 유일한 통로가 아니다. 카드마다 표가 함께 있어야 한다.
-  assert.equal([...html.matchAll(/class="chart-table"/g)].length, 5);
-  assert.equal([...html.matchAll(/<summary>표로 보기<\/summary>/g)].length, 5);
-  // 조건은 그래프마다가 아니라 위쪽 한 줄에만 둔다.
-  assert.equal([...html.matchAll(/id="statsRunBtn"/g)].length, 1);
-  assert.doesNotMatch(html, /market-view-closure|폐업 분석/);
+  // 막대는 값을 끝에 직접 적으므로 표를 따로 두지 않고, 추이만 표를 함께 둔다.
+  assert.equal([...html.matchAll(/class="chart-table"/g)].length, 1);
+  assert.doesNotMatch(html, /statsRunBtn|statsKpi|closure-caveat|market-view-closure|폐업 분석/);
   assert.match(app, /if \(panelName === "stats"\) initializeStats\(\)/);
-  assert.doesNotMatch(app, /initializeClosureView/);
+  assert.doesNotMatch(app, /initializeClosureView|runStatsQuery/);
 });

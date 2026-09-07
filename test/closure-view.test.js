@@ -2,7 +2,6 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import {
-  closureFilterOptions,
   closureLifespanMedianDays,
   closureRateTable,
   closureRateTableWithLifespan,
@@ -29,14 +28,6 @@ const rows = [
   closed({ statusKind: "suspended", closedDate: "" }),
   closed({ closedDate: "99991231", adminDong: "" })
 ];
-
-test("offers only the values present in the snapshot", () => {
-  const options = closureFilterOptions(rows);
-  assert.deepEqual(options.adminDongs, ["동명동", "충장동"]);
-  assert.deepEqual(options.largeNames, ["소매", "음식"]);
-  assert.equal(options.minYear, 2020);
-  assert.equal(options.maxYear, 2021);
-});
 
 test("filters by status, admin dong, category and closure year", () => {
   assert.equal(filterClosureRows(rows, {}).length, 4);
@@ -94,10 +85,6 @@ test("the committed closure snapshot supports the analysis view", async () => {
   const payload = JSON.parse(await readFile(path, "utf8"));
   const licenses = payload.licenses || [];
   assert.ok(licenses.length > 1000, "폐업 스냅샷이 비어 있습니다");
-  const options = closureFilterOptions(licenses);
-  assert.ok(options.adminDongs.length >= 10);
-  assert.ok(options.largeNames.length >= 5);
-  assert.equal(options.maxYear >= options.minYear, true);
   const table = closureRateTableWithLifespan(
     [],
     filterClosureRows(licenses, {}),

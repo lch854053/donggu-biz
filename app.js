@@ -8,13 +8,7 @@ import {
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
 import { axisTicks, barBands, barCornerRadius, barWidth, linePath, linePoints } from "./lib/chart.js";
-import {
-  closureFilterOptions,
-  closureLifespanMedianDays,
-  closureRateTableWithLifespan,
-  closureYearCounts,
-  filterClosureRows
-} from "./lib/closure-view.js";
+import { closureRateTableWithLifespan, closureYearCounts, filterClosureRows } from "./lib/closure-view.js";
 import { DONGGU_ADMIN_DONGS } from "./lib/admin-dong.js";
 import {
   INDUSTRY_SECTIONS,
@@ -684,7 +678,7 @@ async function initializeMarket() {
     setTimeout(() => marketMap.invalidateSize(), 0);
     if (!$("market-view-analysis").hidden) initializeBuildingOutline();
     // 폐업 분석을 먼저 열어 두면 분모가 비어 있으므로, 상가 자료가 도착한 뒤 다시 센다.
-    runStatsQuery();
+    renderStats();
   } catch (error) {
     $("marketState").classList.add("is-error");
     $("marketState").textContent = `${error.message} 데이터 갱신 스크립트를 먼저 실행해 주세요.`;
@@ -1424,10 +1418,10 @@ $("marketTableDownloadBtn").addEventListener("click", () => {
 $("analysisLookupBtn").addEventListener("click", () => activateMarketView("map"));
 
 // Closure statistics
-// 영업 중 스냅샷과 폐업 이력은 원천과 기준일이 달라, 폐업률은 지역·업종 사이의
-// 상대 비교로만 쓴다. 화면에도 같은 문장을 고정해 둔다.
+// 통계 탭은 조건 없이 스냅샷 전체를 그린다. 아래에 다른 주제 통계가 같은 형태로 덧붙는다.
 const CLOSURE_SNAPSHOT_URL = "data/closed_licenses_donggu.json";
 const STATS_BAR_LIMIT = 14;
+const STATS_LIFESPAN_MIN_SAMPLE = 5;
 const CHART_MARK_COLOR = "var(--accent)";
 let closureSnapshotPromise = null;
 let statsReady = false;
@@ -1435,47 +1429,6 @@ let closureMeta = null;
 let closureLicenses = [];
 let closureMarkerCluster = null;
 let closureMarkers = [];
-
-function statsStatusLabel() {
-  return $("statsStatusFilter").value === "suspended" ? "휴업" : "폐업";
-}
-
-// 휴업 기록에는 폐업일자가 없다. 연도 조건을 그대로 걸면 결과가 조용히 0건이 되므로
-// 휴업을 고르면 연도 선택을 잠그고 조건에서도 뺀다.
-function statsYearFilterEnabled() {
-  return ($("statsStatusFilter").value || "closed") === "closed";
-}
-
-function syncStatsYearFields() {
-  const enabled = statsYearFilterEnabled();
-  for (const id of ["statsFromYear", "statsToYear"]) {
-    const field = $(id);
-    field.disabled = !enabled;
-    if (!enabled) field.value = "";
-  }
-}
-
-function currentStatsFilters() {
-  const useYears = statsYearFilterEnabled();
-  const fromYear = Number($("statsFromYear").value);
-  const toYear = Number($("statsToYear").value);
-  return {
-    adminDong: $("statsDongFilter").value,
-    largeName: $("statsIndustryFilter").value,
-    fromYear: useYears && Number.isFinite(fromYear) && fromYear ? fromYear : null,
-    toYear: useYears && Number.isFinite(toYear) && toYear ? toYear : null,
-    statusKind: $("statsStatusFilter").value || "closed"
-  };
-}
-
-// 폐업률의 분자와 분모는 같은 조건이어야 뜻이 통한다. 영업 중 업소에도 같은 업종·행정동 조건을 건다.
-function comparableStores({ adminDong, largeName }) {
-  return allStores.filter((store) => {
-    if (adminDong && store.adminDong !== adminDong) return false;
-    if (largeName && store.largeName !== largeName) return false;
-    return true;
-  });
-}
 
 async function loadClosureSnapshot() {
   if (!closureSnapshotPromise) {
@@ -1502,25 +1455,18 @@ async function initializeStats() {
     // 폐업률의 분모인 영업 중 상가는 상가·상권 조회가 읽어 둔다. 통계 탭을 먼저 열어도 채워지게 한다.
     initializeMarket();
     statsReady = true;
-    fillStatsFilters();
     renderStatsMeta();
     $("statsState").hidden = true;
     $("statsWorkspace").hidden = false;
-    runStatsQuery();
+    renderStats();
   } catch (error) {
+    // 화면을 이미 열어 둔 뒤 실패하면 안내가 숨은 요소에 갇힌다. 다시 드러내고 작업면을 감춘다.
+    statsReady = false;
+    $("statsWorkspace").hidden = true;
+    $("statsState").hidden = false;
     $("statsState").classList.add("is-error");
     $("statsState").textContent = `${error.message} npm run update-closed-licenses를 먼저 실행해 주세요.`;
   }
-}
-
-function fillStatsFilters() {
-  const options = closureFilterOptions(closureLicenses);
-  replaceOptions($("statsDongFilter"), options.adminDongs.map((name) => ({ value: name, label: name })), "전체 행정동");
-  replaceOptions($("statsIndustryFilter"), options.largeNames.map((name) => ({ value: name, label: name })), "전체 업종");
-  const years = [];
-  for (let year = options.maxYear; year >= options.minYear; year -= 1) years.push({ value: String(year), label: `${year}년` });
-  replaceOptions($("statsFromYear"), years, "전체 연도");
-  replaceOptions($("statsToYear"), years, "전체 연도");
 }
 
 function renderStatsMeta() {
@@ -1529,127 +1475,68 @@ function renderStatsMeta() {
     : "미확인";
   $("statsMeta").textContent = [
     closureMeta.source || "행정안전부 지방행정 인허가 데이터(폐업·휴업)",
-    `${closureMeta.sinceYear}년 이후 폐업 기준`,
-    `갱신일 ${generated}`,
-    `${Number(closureMeta.totalCount || 0).toLocaleString("ko-KR")}건`
+    `${closureMeta.sinceYear}년 이후 폐업 ${Number(closureMeta.totalCount || 0).toLocaleString("ko-KR")}건`,
+    `갱신일 ${generated}`
   ].filter(Boolean).join(" · ");
 }
 
-const daysToYears = (days) => `${(days / 365).toFixed(1)}년`;
-
-function runStatsQuery() {
+function renderStats() {
   if (!statsReady) return;
-  syncStatsYearFields();
-  const filters = currentStatsFilters();
-  const rows = filterClosureRows(closureLicenses, filters);
-  const label = statsStatusLabel();
-  const stores = comparableStores(filters);
-  $("statsCount").textContent = `${rows.length.toLocaleString("ko-KR")}건`;
-  renderStatsKpis(rows, label);
-  renderStatsTrend(rows, label);
-  renderStatsRateCharts(rows, stores, label);
-  renderStatsLifespanCharts(rows, label);
+  const rows = filterClosureRows(closureLicenses, { statusKind: "closed" });
+  renderStatsTrend(rows);
+  renderStatsRateCharts(rows);
+  renderStatsLifespanCharts(rows);
   renderClosureMarkers();
 }
 
-function renderStatsKpis(rows, label) {
-  const median = closureLifespanMedianDays(rows);
+function renderStatsTrend(rows) {
   const years = closureYearCounts(rows);
-  const dated = years.reduce((total, entry) => total + entry.count, 0);
-  $("statsKpiCount").textContent = rows.length.toLocaleString("ko-KR");
-  $("statsKpiCountNote").textContent = `${label} 기준`;
-  $("statsKpiLifespan").textContent = median === null ? "–" : daysToYears(median);
-  $("statsKpiPerYear").textContent = years.length ? Math.round(dated / years.length).toLocaleString("ko-KR") : "–";
-  $("statsKpiPerYearNote").textContent = years.length
-    ? `${years[0].year}~${years.at(-1).year}년 ${dated.toLocaleString("ko-KR")}건 기준`
-    : "폐업일자가 있는 건 기준";
-}
-
-function renderStatsTrend(rows, label) {
-  const years = closureYearCounts(rows);
-  const undated = rows.length - years.reduce((total, entry) => total + entry.count, 0);
-  $("statsTrendTitle").textContent = `연도별 ${label}`;
-  $("statsTrendValueHead").textContent = label;
-  $("statsTrendNote").textContent = label === "휴업"
-    ? "휴업 기록에는 폐업일자가 없어 연도별 분포를 만들 수 없습니다."
-    : undated > 0
-      ? `폐업일자를 읽을 수 없는 ${undated.toLocaleString("ko-KR")}건은 제외했습니다.`
-      : `${label} ${rows.length.toLocaleString("ko-KR")}건의 연도별 분포입니다.`;
   drawLineChart($("statsTrendChart"), {
     points: years.map(({ year, count }) => ({ label: `${year}년`, value: count })),
-    valueLabel: label,
+    valueLabel: "폐업",
     format: (value) => `${value.toLocaleString("ko-KR")}건`,
-    emptyText: `조건에 맞는 ${label} 기록이 없습니다.`
+    emptyText: "폐업 기록이 없습니다."
   });
   fillTableRows($("statsTrendTable"), years.map(({ year, count }) => [`${year}년`, count.toLocaleString("ko-KR")]), 2);
 }
 
-function renderStatsRateCharts(rows, stores, label) {
-  const dong = closureRateTableWithLifespan(stores, rows, (row) => row.adminDong);
-  const industry = closureRateTableWithLifespan(stores, rows, (row) => row.largeName);
-  $("statsDongRateTitle").textContent = `행정동별 ${label}률`;
-  $("statsIndustryRateTitle").textContent = `업종별 ${label}률`;
-  $("statsDongRateCountHead").textContent = label;
-  $("statsIndustryRateCountHead").textContent = label;
-  const note = stores.length
-    ? `영업 중 ${stores.length.toLocaleString("ko-KR")}건과 ${label} ${rows.length.toLocaleString("ko-KR")}건을 같은 조건으로 비교합니다.`
-    : "영업 중 상가 자료를 불러오지 못해 비율을 계산할 수 없습니다.";
-  $("statsDongRateNote").textContent = note;
-  $("statsIndustryRateNote").textContent = note;
-  $("statsUnknownNote").textContent = dong.unknownClosedCount
-    ? `행정동을 확정하지 못한 ${label} ${dong.unknownClosedCount.toLocaleString("ko-KR")}건은 그래프에서 제외했습니다. 폐업 기록은 주소가 오래돼 행정동 판정이 자주 실패하므로, 이 건들을 그대로 두면 미확인 항목의 비율이 실제보다 크게 부풀려집니다.`
-    : "";
-  for (const [table, elementIds] of [
-    [dong, ["statsDongRateChart", "statsDongRateTable"]],
-    [industry, ["statsIndustryRateChart", "statsIndustryRateTable"]]
+function renderStatsRateCharts(rows) {
+  for (const [keyFn, chartId] of [
+    [(row) => row.adminDong, "statsDongRateChart"],
+    [(row) => row.largeName, "statsIndustryRateChart"]
   ]) {
+    const table = closureRateTableWithLifespan(allStores, rows, keyFn);
     const ranked = table.rows
       .filter((row) => row.closedCount > 0 && row.activeCount > 0)
       .sort((left, right) => right.closureRate - left.closureRate)
       .slice(0, STATS_BAR_LIMIT);
-    drawBarChart($(elementIds[0]), {
+    drawBarChart($(chartId), {
       rows: ranked.map((row) => ({ label: row.name, value: row.closureRate * 100 })),
       format: (value) => `${value.toFixed(1)}%`,
-      tooltip: (row, index) => `${ranked[index].closedCount.toLocaleString("ko-KR")}건 / 영업 중 ${ranked[index].activeCount.toLocaleString("ko-KR")}건`,
-      valueLabel: `${label}률`,
-      emptyText: `비율을 낼 수 있는 ${label} 기록이 없습니다.`
+      tooltip: (row, index) => `폐업 ${ranked[index].closedCount.toLocaleString("ko-KR")}건 / 영업 중 ${ranked[index].activeCount.toLocaleString("ko-KR")}건`,
+      valueLabel: "폐업률",
+      emptyText: "비율을 낼 수 있는 폐업 기록이 없습니다."
     });
-    fillTableRows($(elementIds[1]), table.rows
-      .filter((row) => row.closedCount > 0)
-      .sort((left, right) => right.closedCount - left.closedCount)
-      .map((row) => [
-        row.name,
-        row.activeCount.toLocaleString("ko-KR"),
-        row.closedCount.toLocaleString("ko-KR"),
-        row.activeCount ? `${(row.closureRate * 100).toFixed(1)}%` : "–"
-      ]), 4);
   }
 }
 
-function renderStatsLifespanCharts(rows, label) {
-  for (const [keyFn, noteId, chartId, tableId] of [
-    [(row) => row.adminDong, "statsDongLifespanNote", "statsDongLifespanChart", "statsDongLifespanTable"],
-    [(row) => row.largeName, "statsIndustryLifespanNote", "statsIndustryLifespanChart", "statsIndustryLifespanTable"]
+function renderStatsLifespanCharts(rows) {
+  for (const [keyFn, chartId] of [
+    [(row) => row.adminDong, "statsDongLifespanChart"],
+    [(row) => row.largeName, "statsIndustryLifespanChart"]
   ]) {
     const table = closureRateTableWithLifespan([], rows, keyFn);
     const ranked = table.rows
-      .filter((row) => Number.isFinite(row.medianLifespanDays) && row.closedCount >= 5)
+      .filter((row) => Number.isFinite(row.medianLifespanDays) && row.closedCount >= STATS_LIFESPAN_MIN_SAMPLE)
       .sort((left, right) => right.medianLifespanDays - left.medianLifespanDays)
       .slice(0, STATS_BAR_LIMIT);
-    $(noteId).textContent = ranked.length
-      ? `${label} 5건 이상인 구간만 표시하며, 인허가일부터 폐업일까지를 잰 중앙값입니다.`
-      : `중앙값을 낼 수 있는 ${label} 기록이 없습니다.`;
     drawBarChart($(chartId), {
       rows: ranked.map((row) => ({ label: row.name, value: row.medianLifespanDays / 365 })),
       format: (value) => `${value.toFixed(1)}년`,
-      tooltip: (row, index) => `${ranked[index].closedCount.toLocaleString("ko-KR")}건 기준`,
+      tooltip: (row, index) => `폐업 ${ranked[index].closedCount.toLocaleString("ko-KR")}건 기준`,
       valueLabel: "영업기간 중앙값",
-      emptyText: `중앙값을 낼 수 있는 ${label} 기록이 없습니다.`
+      emptyText: "중앙값을 낼 수 있는 폐업 기록이 없습니다."
     });
-    fillTableRows($(tableId), table.rows
-      .filter((row) => Number.isFinite(row.medianLifespanDays))
-      .sort((left, right) => right.medianLifespanDays - left.medianLifespanDays)
-      .map((row) => [row.name, daysToYears(row.medianLifespanDays), row.closedCount.toLocaleString("ko-KR")]), 3);
   }
 }
 
@@ -1670,7 +1557,7 @@ function fillTableRows(tbody, rows, columnCount) {
   }));
 }
 
-// 그래프는 값을 읽는 유일한 통로가 아니다. 모든 수치는 카드마다 붙은 표에도 그대로 있다.
+// 막대는 끝에 값을 직접 적고 연도 추이는 표를 함께 둔다. 말풍선은 세부 수치를 덧붙일 뿐 값을 가두지 않는다.
 function chartTooltip(plot) {
   let tooltip = plot.querySelector(".chart-tooltip");
   if (!tooltip) {
@@ -1931,18 +1818,6 @@ function closureDateLabel(value) {
   return digits.length === 8 ? `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}` : "일자 미상";
 }
 
-function resetStatsFilters() {
-  $("statsDongFilter").value = "";
-  $("statsIndustryFilter").value = "";
-  $("statsFromYear").value = "";
-  $("statsToYear").value = "";
-  $("statsStatusFilter").value = "closed";
-  runStatsQuery();
-}
-
-$("statsStatusFilter").addEventListener("change", syncStatsYearFields);
-$("statsRunBtn").addEventListener("click", runStatsQuery);
-$("statsClearBtn").addEventListener("click", resetStatsFilters);
 $("closureMarkerToggle").addEventListener("change", async () => {
   // 지도에서 먼저 켜는 경우가 있어, 폐업 자료를 아직 안 읽었으면 읽고 나서 그린다.
   if ($("closureMarkerToggle").checked) {

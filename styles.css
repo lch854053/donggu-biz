@@ -838,24 +838,14 @@ tbody tr:hover td { background: #f6f8fa; }
   color: #fff;
   font: 600 11px/1 var(--mono);
 }
-.closure-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
-.closure-kpi {
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-soft);
-}
-.closure-kpi span { display: block; color: var(--text-secondary); font-size: 12px; }
-.closure-kpi strong { display: block; margin: 6px 0 4px; color: var(--text); font: 700 24px/1.2 var(--mono); }
-.closure-kpi small { display: block; color: var(--text-muted); font-size: 11px; line-height: 1.5; }
-.closure-caveat { padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
-.closure-caveat strong { color: var(--yellow); font-size: 12px; }
-.closure-caveat p { margin: 6px 0 0; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
-.closure-caveat p:empty { display: none; }
 
 /* Closure statistics charts */
-.stats-workspace { display: grid; gap: 20px; }
-.stats-filters { margin: 0; }
+/* 주제 하나가 소제목·출처·그래프 묶음이다. 다음 주제는 같은 형태로 아래에 덧붙는다. */
+.stats-workspace { display: grid; gap: 28px; }
+.stats-theme { display: grid; gap: 16px; }
+.stats-theme-head { padding-bottom: 2px; border-bottom: 1px solid var(--line); }
+.stats-theme-head h3 { margin: 0; color: var(--text); font-size: 17px; font-weight: 700; }
+.stats-theme-head p { margin: 5px 0 10px; color: var(--text-secondary); font-size: 12px; }
 /* 폐업률 두 장, 영업기간 두 장이 각각 한 줄에 나란히 서도록 두 열로 고정한다. */
 .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
 .chart-card {
@@ -865,7 +855,7 @@ tbody tr:hover td { background: #f6f8fa; }
   border-radius: var(--radius);
   background: var(--surface);
 }
-.chart-card figcaption { margin-bottom: 14px; }
+.chart-card figcaption { margin-bottom: 12px; }
 .chart-card figcaption strong { display: block; color: var(--text); font-size: 15px; font-weight: 700; }
 .chart-card figcaption span { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
 .chart-plot { position: relative; }
