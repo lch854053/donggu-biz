@@ -8,6 +8,7 @@
     "update-stores": "node scripts/update-stores.mjs",
     "update-closed-licenses": "node scripts/update-closed-licenses.mjs",
     "probe-localdata-sources": "node scripts/probe-localdata-sources.mjs",
+    "diagnose-localdata-key": "node scripts/diagnose-localdata-key.mjs",
     "inspect-localdata-datasets": "node scripts/inspect-localdata-datasets.mjs",
     "update-employment-insurance": "node scripts/import-employment-insurance.mjs",
     "update-corporate-matches": "node scripts/update-corporate-matches.mjs",
