@@ -9,7 +9,7 @@ import {
   parseLocaldataResponse
 } from "../lib/store-license.js";
 
-const REQUEST_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = 60000;
 const REQUEST_PAUSE_MS = 200;
 
 const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
