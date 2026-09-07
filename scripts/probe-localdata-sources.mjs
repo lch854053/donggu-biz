@@ -14,6 +14,10 @@ const REQUEST_PAUSE_MS = 200;
 
 const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
 if (!localdataKey) throw new Error("LOCALDATA_SERVICE_KEY 환경변수가 필요합니다.");
+// 안내 문구의 자리표시자를 그대로 붙여 넣으면 모든 원천이 코드 30으로 떨어져 승인 문제처럼 보인다.
+if (/[^\x20-\x7E]/.test(localdataKey) || localdataKey.trim().length < 20) {
+  throw new Error(`LOCALDATA_SERVICE_KEY가 서비스키 형태가 아닙니다(${localdataKey.length}자). 공공데이터포털의 일반 인증키를 넣으세요.`);
+}
 // 인코딩 키를 넣으면 URLSearchParams가 퍼센트 표기를 한 번 더 감싸 게이트웨이가 키를 알아보지 못한다.
 if (/%[0-9A-Fa-f]{2}/.test(localdataKey)) {
   console.warn("[probe] 서비스키에 퍼센트 표기가 있습니다. 공공데이터포털의 '일반 인증키(Decoding)'를 사용하세요.");
