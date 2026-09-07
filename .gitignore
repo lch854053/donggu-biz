@@ -3,5 +3,6 @@ node_modules/
 .vercel/
 .DS_Store
 data/.stores-*.tmp
+data/.closed-licenses-*.tmp
 data/road-polygons-*.tmp
 .playwright/

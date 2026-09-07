@@ -154,6 +154,13 @@ npm run apply-localdata -- --priority --submit
 npm run apply-localdata -- --submit
 ```
 
+승인 결과와 아직 도입하지 않은 후보 원천의 실재 여부는 `npm run probe-localdata-sources`로 확인합니다. 설정된 63개 원천과 `data/localdata_source_candidates.json`의 후보를 각각 1건씩만 조회해 `ready`(승인 완료·건수 확인), `unapproved`(엔드포인트는 있으나 활용 승인 없음), `missing`(엔드포인트 없음)으로 구분합니다. 후보 파일의 `endpoint`는 기존 원천의 명명 규칙에서 유추한 값이므로 `ready`로 확인된 원천만 `datasetId`와 함께 `lib/store-license.js`의 `LOCALDATA_SOURCES`로 옮깁니다.
+
+```bash
+npm run probe-localdata-sources
+npm run probe-localdata-sources -- --scope=candidates
+```
+
 국민연금 사업장 스냅샷은 `data/nps_donggu.json`에 저장되며 조회 화면의 업종·등록일·가입자 수를 채우는 데 쓰입니다. GitHub Actions `Update Dong-gu NPS snapshot` 워크플로가 매월 6일 04시(KST)에 돌리고, 저장소 Actions 탭에서 손으로도 실행할 수 있습니다. 목록 전량을 받은 뒤 사업장마다 상세조회를 한 번씩 더 부르고 주소 행정동도 보강하므로 `NPS_SERVICE_KEY`와 `JUSO_API_KEY` 저장소 Secret이 필요합니다. 공공데이터포털은 몇 분씩 연결되지 않을 때가 있어, 한 요청을 최대 6번까지 대기를 두 배씩(최대 30초) 늘려 가며 다시 부르고, 첫 조합이 오류로 끝나도 다음 조합을 이어서 시도합니다. data.go.kr 트래픽 한도(개발계정 기본 1일 1만 회)를 넘기면 운영계정 전환이나 한도 상향을 신청해야 합니다.
 
 스냅샷은 브라우저가 조회할 때 통째로 내려받으므로 화면이 실제로 읽는 값만 담습니다 — 같은 사업장인지 가리는 이름·사업자등록번호 앞 6자리·주소와, 목록 조회에 없어 채워야 하는 업종코드·업종명·등록일·탈퇴일·가입자 수입니다. 월별 이력의 `seq` 목록은 화면이 그때그때 받은 조회 결과에서 다시 만들므로 담지 않습니다.
@@ -165,6 +172,20 @@ npm run apply-localdata -- --submit
 현재 수동 등록 경계는 산수시장, 예술의 거리, 전자의 거리, 인쇄의 거리와 무등산 보리밥거리이며, 대인시장과 남광주시장은 VWorld 원본을 수동 보정 경계로 대체합니다.
 
 VWorld 주요상권 중 금남로4가역 1~4와 문화전당역 경계는 수집 결과와 화면에서 제외합니다.
+
+## 폐업·휴업 인허가 갱신
+
+`data/stores_donggu.json`은 영업 중 업소만 담으므로 폐업·휴업 이력은 같은 63개 인허가 원천을 영업상태코드 `03`(폐업)·`02`(휴업)로 다시 조회해 `data/closed_licenses_donggu.json`에 따로 보관합니다. 영업 중 스냅샷을 행정동 판정과 폐업률 계산의 기준으로 쓰므로 `npm run update-stores`를 먼저 실행해야 합니다.
+
+```bash
+npm run update-stores
+npm run update-closed-licenses
+npm run update-closed-licenses -- --since=2010 --statuses=closed
+```
+
+`--since`는 폐업일자 기준 연도로 기본값은 2016이며, 폐업 이력은 누적 자료라 이 값이 스냅샷 크기와 분석 구간을 함께 정합니다. `--statuses`로 `closed`·`suspended` 중 수집 대상을 고를 수 있습니다. 폐업일자가 비어 있거나 9999년·8202년 같은 입력 오류인 행은 기준 연도로 잘라내지 않고 남기되 연도별 집계에서는 제외하고 `missingClosedDateCount`로 셉니다. 스냅샷이 비거나 이전 건수보다 20% 넘게 줄면 기존 파일을 덮어쓰지 않고 중단합니다.
+
+스냅샷에는 원천별 수집 건수와 함께 폐업 연도별·행정동별·업종별 집계, 개업일자와 폐업일자에서 계산한 영업기간 중앙값, 그리고 영업 중 업소 대비 폐업률이 들어갑니다. 폐업률은 원천과 기준일이 다른 두 자료를 합쳐 만든 값이므로 지역·업종 간 비교용 참고 지표이며, 특정 업소의 현재 상태를 뜻하지 않습니다. 인허가 자료에는 사업자등록번호가 없어 국세청 사업자 상태조회 결과와 연결하지 않습니다.
 
 ## 로컬 실행
 
