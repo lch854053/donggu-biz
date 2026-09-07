@@ -98,9 +98,11 @@ test("declares every approved supplemental LocalData source once", () => {
     "15155221", "15155090", "15155113", "15155103", "15154791", "15155253", "15155258", "15155022", "15155029",
     "15154981", "15155093", "15155099", "15155130", "15155015", "15154864", "15154897", "15154910", "15154903",
     "15154983", "15154948", "15155014", "15155020", "15154966", "15154848", "15155139", "15154923",
-    "15154933", "15154871"
+    "15154933", "15154871",
+    "15155146", "15155018", "15155155", "15155168", "15155159", "15154784", "15155150", "15154957",
+    "15155065", "15155024", "15154963", "15155004"
   ];
-  assert.equal(LOCALDATA_SOURCES.length, 63);
+  assert.equal(LOCALDATA_SOURCES.length, 75);
   const sources = LOCALDATA_SOURCES.filter((source) => approvedIds.includes(source.datasetId));
   assert.equal(sources.length, approvedIds.length);
   assert.equal(new Set(sources.map((source) => source.datasetId)).size, approvedIds.length);

@@ -14,7 +14,7 @@
 
 - 광주 동구 상가업소 지도와 상호 배타적인 행정동·주요상권 조회
 - 매월 갱신하는 상가정보와 행정안전부 인허가(영업 중) 보완 스냅샷의 업소를 지도와 표에서 조회
-- 설정된 행정안전부 인허가 63개 원천(건강·반려동물·체육·게임·유흥·식품·숙박·직업·관광·대규모점포·인쇄·공연·영화·의료기기·축산판매 등)을 관리번호·주소·좌표로 중복 제거
+- 설정된 행정안전부 인허가 75개 원천(건강·반려동물·체육·게임·유흥·식품·숙박·직업·관광·대규모점포·인쇄·공연·영화·의료기기·축산판매 등)을 관리번호·주소·좌표로 중복 제거
 - 스냅샷 메타데이터에 원천별 건수·매칭 건수·추가 건수·좌표 누락 건수를 기록
 - 선택한 행정동 또는 주요상권의 상위 10개 업종 소분류 분석
 - 지도에서 주요상권을 선택하면 기존 점포·클러스터 마커로 업소 위치를 확인
@@ -167,7 +167,7 @@ npm run inspect-localdata-datasets -- --search=통신판매업,옥외광고업
 
 `--expand`는 상세기능 영역을 눌러 펼친 뒤 AJAX 응답까지 훑는 보조 수단입니다. 화면마다 여러 요소를 클릭하므로 느리고 멈춘 것처럼 보일 수 있어 기본값이 아니며, 한 화면당 12초로 제한합니다. 정적 화면에서 주소를 찾지 못할 때만 붙이세요.
 
-승인 결과와 아직 도입하지 않은 후보 원천의 실재 여부는 `npm run probe-localdata-sources`로 확인합니다. 설정된 63개 원천과 `data/localdata_source_candidates.json`의 후보를 각각 1건씩만 조회해 `ready`(승인 완료·건수 확인), `unapproved`(엔드포인트는 있으나 활용 승인 없음), `missing`(엔드포인트 없음)으로 구분합니다. 후보 파일의 `endpoint`는 기존 원천의 명명 규칙에서 유추한 값이므로 `ready`로 확인된 원천만 `datasetId`와 함께 `lib/store-license.js`의 `LOCALDATA_SOURCES`로 옮깁니다.
+승인 결과와 아직 도입하지 않은 후보 원천의 실재 여부는 `npm run probe-localdata-sources`로 확인합니다. 설정된 75개 원천과 `data/localdata_source_candidates.json`의 후보를 각각 1건씩만 조회해 `ready`(승인 완료·건수 확인), `unapproved`(엔드포인트는 있으나 활용 승인 없음), `missing`(엔드포인트 없음)으로 구분합니다. 후보 파일의 `endpoint`는 기존 원천의 명명 규칙에서 유추한 값이므로 `ready`로 확인된 원천만 `datasetId`와 함께 `lib/store-license.js`의 `LOCALDATA_SOURCES`로 옮깁니다.
 
 ```bash
 npm run probe-localdata-sources
@@ -188,7 +188,7 @@ VWorld 주요상권 중 금남로4가역 1~4와 문화전당역 경계는 수집
 
 ## 폐업·휴업 인허가 갱신
 
-`data/stores_donggu.json`은 영업 중 업소만 담으므로 폐업·휴업 이력은 같은 63개 인허가 원천을 영업상태코드 `03`(폐업)·`02`(휴업)로 다시 조회해 `data/closed_licenses_donggu.json`에 따로 보관합니다. 영업 중 스냅샷을 행정동 판정과 폐업률 계산의 기준으로 쓰므로 `npm run update-stores`를 먼저 실행해야 합니다.
+`data/stores_donggu.json`은 영업 중 업소만 담으므로 폐업·휴업 이력은 같은 75개 인허가 원천을 영업상태코드 `03`(폐업)·`02`(휴업)로 다시 조회해 `data/closed_licenses_donggu.json`에 따로 보관합니다. 영업 중 스냅샷을 행정동 판정과 폐업률 계산의 기준으로 쓰므로 `npm run update-stores`를 먼저 실행해야 합니다.
 
 ```bash
 npm run update-stores

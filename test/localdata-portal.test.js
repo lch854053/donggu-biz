@@ -137,3 +137,26 @@ test("produces exactly the endpoint already configured for that dataset", () => 
   assert.equal(extracted.slug, configured.slug);
   assert.equal(extracted.endpoint, configured.endpoint);
 });
+
+test("reads the request URL from the Swagger host, which carries no scheme", () => {
+  const spec = `"version":"1.0.0","title":"행정안전부_문화_박물관 및 미술관 조회서비스"},"host":"apis.data.go.kr/1741000/museums_and_art_galleries","basePath":"","schemes":["https","http"],"paths":{"/info":{`;
+  assert.deepEqual(extractApiEndpoints(spec), [{
+    slug: "museums_and_art_galleries",
+    endpoint: "https://apis.data.go.kr/1741000/museums_and_art_galleries/info"
+  }]);
+});
+
+test("reads the Base URL banner form as well", () => {
+  const [found] = extractApiEndpoints("1.0.0 [ Base URL: apis.data.go.kr/1741000/ecommerce_businesses ]");
+  assert.equal(found.slug, "ecommerce_businesses");
+});
+
+test("every configured source keeps the slug and endpoint in step", () => {
+  for (const source of LOCALDATA_SOURCES) {
+    assert.equal(source.endpoint, `https://apis.data.go.kr/1741000/${source.slug}/info`, source.title);
+    assert.match(source.datasetId, /^\d{8}$/, source.title);
+    assert.ok(source.largeName, source.title);
+  }
+  assert.equal(new Set(LOCALDATA_SOURCES.map((source) => source.datasetId)).size, LOCALDATA_SOURCES.length);
+  assert.equal(new Set(LOCALDATA_SOURCES.map((source) => source.slug)).size, LOCALDATA_SOURCES.length);
+});
