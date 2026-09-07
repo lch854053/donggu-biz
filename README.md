@@ -157,10 +157,13 @@ npm run apply-localdata -- --submit
 `apply-localdata`가 `already-applied`만 남기면 신청은 끝났으나 코드에 반영되지 않은 원천이 있다는 뜻입니다. 승인된 데이터셋을 실제로 쓰려면 `datasetId`에 대응하는 API 엔드포인트 주소가 필요한데, 이 주소는 포털 상세 페이지에만 있습니다. `npm run inspect-localdata-datasets`가 로그인된 브라우저로 상세 페이지를 열어 요청주소와 신청 상태를 모아 `data/localdata_dataset_endpoints.json`에 기록하고, 아직 datasetId를 모르는 후보는 키워드로 검색해 후보 목록을 출력합니다.
 
 ```bash
+npm run inspect-localdata-datasets -- --mypage
 npm run inspect-localdata-datasets
 npm run inspect-localdata-datasets -- --ids=15155146,15155018
-npm run inspect-localdata-datasets -- --search=통신판매업,학원
+npm run inspect-localdata-datasets -- --search=통신판매업,옥외광고업
 ```
+
+공개 상세 페이지에 요청주소가 없는 데이터셋이 있어 `--mypage`가 가장 확실합니다. 마이페이지 개발계정 목록을 돌며 승인된 API의 요청주소를 읽습니다. 상세 페이지 경로에서 주소를 찾지 못하면 페이지에 무엇이 있었는지 짧은 진단 문구를 함께 출력하므로, 그 문구를 보고 추출 규칙을 고칠 수 있습니다. 포털 검색은 `행정안전부_기타_통신판매업` 같은 분류 접두를 붙이면 결과가 비므로 업종명만 사용합니다.
 
 승인 결과와 아직 도입하지 않은 후보 원천의 실재 여부는 `npm run probe-localdata-sources`로 확인합니다. 설정된 63개 원천과 `data/localdata_source_candidates.json`의 후보를 각각 1건씩만 조회해 `ready`(승인 완료·건수 확인), `unapproved`(엔드포인트는 있으나 활용 승인 없음), `missing`(엔드포인트 없음)으로 구분합니다. 후보 파일의 `endpoint`는 기존 원천의 명명 규칙에서 유추한 값이므로 `ready`로 확인된 원천만 `datasetId`와 함께 `lib/store-license.js`의 `LOCALDATA_SOURCES`로 옮깁니다.
 

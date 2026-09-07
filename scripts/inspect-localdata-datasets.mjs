@@ -8,8 +8,11 @@ import { LOCALDATA_SOURCES } from "../lib/store-license.js";
 import {
   datasetDetailUrl,
   datasetSearchUrl,
+  extractAccountLinks,
   extractApiEndpoints,
   extractDatasetLinks,
+  findEndpointDiagnostics,
+  searchKeywordFromTitle,
   readApplicationState
 } from "../lib/localdata-portal.js";
 
@@ -23,7 +26,7 @@ const outputPath = resolve(root, "data/localdata_dataset_endpoints.json");
 const loginUrl = "https://www.data.go.kr/uim/login/loginView.do";
 
 function parseArgs(argv) {
-  const args = { ids: [], search: [], useCandidates: true };
+  const args = { ids: [], search: [], useCandidates: true, myPage: false };
   for (const argument of argv) {
     const [flag, value = ""] = argument.split("=");
     if (flag === "--ids") {
@@ -32,6 +35,8 @@ function parseArgs(argv) {
     } else if (flag === "--search") {
       args.search = value.split(",").map((entry) => entry.trim()).filter(Boolean);
       args.useCandidates = false;
+    } else if (flag === "--mypage") {
+      args.myPage = true;
     } else if (flag) {
       throw new Error(`알 수 없는 인자입니다: ${flag}`);
     }
@@ -64,20 +69,63 @@ async function ensureLoggedIn(page, ask) {
   await ask("로그인 완료 후 이 터미널에서 Enter를 누르세요: ");
 }
 
+// 상세기능은 접힌 영역이나 탭 안에 있을 수 있어, 눌러서 펼친 뒤 다시 훑는다.
+async function expandDetailSections(page) {
+  const triggers = page.locator('a, button, [role="tab"]');
+  const count = Math.min(await triggers.count(), 60);
+  for (let index = 0; index < count; index += 1) {
+    const trigger = triggers.nth(index);
+    const label = (await trigger.innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+    if (!/상세기능|요청변수|출력결과|미리보기|더보기/.test(label)) continue;
+    await trigger.click({ timeout: 2000 }).catch(() => {});
+    await page.waitForTimeout(300);
+  }
+}
+
 async function inspectDataset(page, { datasetId, title }) {
   const url = datasetDetailUrl(datasetId);
   await page.goto(url, { waitUntil: "domcontentloaded" });
   await page.waitForTimeout(500);
+  let html = await page.content();
+  let endpoints = extractApiEndpoints(html);
+  if (!endpoints.length) {
+    await expandDetailSections(page);
+    html = await page.content();
+    endpoints = extractApiEndpoints(html);
+  }
   const text = await pageText(page);
   const heading = await page.locator("h1, .page-tit, .tit").first().innerText().catch(() => "");
-  const endpoints = extractApiEndpoints(`${text}\n${await page.content()}`);
   return {
     datasetId,
     title: title || heading.replace(/\s+/g, " ").trim(),
     url,
     applicationState: readApplicationState(text),
-    endpoints
+    endpoints,
+    ...(endpoints.length ? {} : { diagnostics: findEndpointDiagnostics(html) })
   };
+}
+
+// 마이페이지 개발계정 상세에는 승인된 API의 요청주소가 오퍼레이션별로 그대로 적혀 있다.
+async function inspectMyAccounts(page) {
+  await page.goto("https://www.data.go.kr/iim/api/selectAcountList.do", { waitUntil: "domcontentloaded" });
+  await page.waitForTimeout(600);
+  const links = extractAccountLinks(await page.content());
+  const accounts = [];
+  for (const link of links) {
+    await page.goto(link.url, { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(400);
+    let html = await page.content();
+    let endpoints = extractApiEndpoints(html);
+    if (!endpoints.length) {
+      await expandDetailSections(page);
+      html = await page.content();
+      endpoints = extractApiEndpoints(html);
+    }
+    if (!endpoints.length) continue;
+    accounts.push({ title: link.title, url: link.url, endpoints });
+    console.log(`${endpoints.map(({ endpoint }) => endpoint).join(" ")}\t${link.title}`);
+  }
+  return { listedCount: links.length, accounts };
 }
 
 async function searchDatasets(page, keyword) {
@@ -96,10 +144,12 @@ const datasetTargets = args.useCandidates
   ? (candidates.pendingApplications || []).filter(({ datasetId }) => !configuredIds.has(datasetId))
   : args.ids.map((datasetId) => ({ datasetId, title: "" }));
 const searchTargets = args.useCandidates
-  ? (candidates.newCandidates || []).map(({ title }) => title.replace("행정안전부_", "").replace(" 조회서비스", ""))
+  ? [...new Set((candidates.newCandidates || [])
+      .filter(({ datasetId }) => !datasetId)
+      .map(({ title }) => searchKeywordFromTitle(title)))]
   : args.search;
 
-if (!datasetTargets.length && !searchTargets.length) {
+if (!args.myPage && !datasetTargets.length && !searchTargets.length) {
   console.log("확인할 대상이 없습니다. --ids=15155146,15155018 또는 --search=통신판매업 형태로 지정하세요.");
   process.exit(0);
 }
@@ -119,12 +169,19 @@ try {
   const page = context.pages()[0] || await context.newPage();
   await ensureLoggedIn(page, ask);
 
+  if (args.myPage) {
+    console.log("\n[마이페이지 개발계정] 승인된 API의 요청주소를 읽습니다.");
+    report.myAccounts = await inspectMyAccounts(page);
+    console.log(`개발계정 ${report.myAccounts.listedCount}건 중 ${report.myAccounts.accounts.length}건에서 요청주소를 찾았습니다.`);
+  }
+
   for (const target of datasetTargets) {
     try {
       const result = await inspectDataset(page, target);
       report.datasets.push(result);
       const endpoint = result.endpoints[0]?.endpoint || "(엔드포인트를 찾지 못함)";
       console.log(`${result.datasetId}\t${result.applicationState}\t${endpoint}\t${result.title}`);
+      for (const snippet of result.diagnostics || []) console.log(`    ↳ ${snippet}`);
     } catch (error) {
       report.datasets.push({ ...target, error: error.message });
       console.error(`[failed] ${target.datasetId}: ${error.message}`);

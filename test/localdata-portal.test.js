@@ -3,9 +3,12 @@ import assert from "node:assert/strict";
 import {
   datasetDetailUrl,
   datasetSearchUrl,
+  extractAccountLinks,
   extractApiEndpoints,
   extractDatasetLinks,
-  readApplicationState
+  findEndpointDiagnostics,
+  readApplicationState,
+  searchKeywordFromTitle
 } from "../lib/localdata-portal.js";
 
 test("folds a dataset page's operation URLs into one service endpoint", () => {
@@ -59,4 +62,30 @@ test("builds portal URLs the script navigates to", () => {
   const search = new URL(datasetSearchUrl("통신판매업"));
   assert.equal(search.searchParams.get("keyword"), "통신판매업");
   assert.equal(search.searchParams.get("dType"), "API");
+});
+
+test("searches with the plain business type, not the portal's category prefix", () => {
+  assert.equal(searchKeywordFromTitle("행정안전부_기타_통신판매업 조회서비스"), "통신판매업");
+  assert.equal(searchKeywordFromTitle("행정안전부_생활_다중이용업소 조회서비스"), "다중이용업소");
+  assert.equal(searchKeywordFromTitle(""), "");
+});
+
+test("collects the my-page developer account links that hold request URLs", () => {
+  const html = `
+    <a href="/iim/api/selectAPIAcountView.do?publicDataPk=15155146&amp;devAcntId=7">박물관 및 미술관</a>
+    <a href="https://www.data.go.kr/iim/api/selectDevAcountView.do?id=8">등록체육시설업</a>
+    <a href="/iim/api/selectAPIAcountView.do?publicDataPk=15155146&amp;devAcntId=7">중복</a>
+    <a href="/data/15155146/openapi.do">상세 페이지는 제외</a>
+  `;
+  const links = extractAccountLinks(html);
+  assert.equal(links.length, 2);
+  assert.equal(links[0].url, "https://www.data.go.kr/iim/api/selectAPIAcountView.do?publicDataPk=15155146&devAcntId=7");
+  assert.equal(links[0].title, "박물관 및 미술관");
+});
+
+test("reports what the page held when no endpoint was found", () => {
+  const snippets = findEndpointDiagnostics("<td>요청주소</td><td>제공되지 않음</td>", { radius: 20 });
+  assert.equal(snippets.length, 1);
+  assert.match(snippets[0], /요청주소/);
+  assert.deepEqual(findEndpointDiagnostics("관련 표기가 전혀 없는 페이지"), []);
 });
