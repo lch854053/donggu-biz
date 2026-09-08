@@ -90,6 +90,35 @@ test("parses the LocalData response envelope", () => {
   assert.throws(() => parseLocaldataResponse({ response: { header: { resultCode: "30", resultMsg: "실패" } } }), /실패/);
 });
 
+// 인허가 원천과 상가정보가 같은 대분류 코드를 다르게 부르면 업종별 통계에서 막대가 둘로
+// 갈리고, 각각의 폐업률은 반쪽짜리 분모 위에 선다. 코드마다 이름은 하나여야 한다.
+test("one industry name per code, across the sources and the committed snapshots", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const namesByCode = new Map();
+  const record = (code, name, where) => {
+    if (!code || !name) return;
+    if (!namesByCode.has(code)) namesByCode.set(code, new Map());
+    namesByCode.get(code).set(name, where);
+  };
+
+  for (const source of LOCALDATA_SOURCES) record(source.largeCode, source.largeName, "원천 설정");
+  for (const [path, key] of [["stores_donggu.json", "stores"], ["closed_licenses_donggu.json", "licenses"]]) {
+    const url = new URL(`../data/${path}`, import.meta.url);
+    let rows;
+    try {
+      rows = JSON.parse(await readFile(url, "utf8"))[key] || [];
+    } catch {
+      continue;
+    }
+    for (const row of rows) record(row.largeCode, row.largeName, path);
+  }
+
+  const split = [...namesByCode]
+    .filter(([, names]) => names.size > 1)
+    .map(([code, names]) => `${code}: ${[...names].map(([name, where]) => `${name}(${where})`).join(" / ")}`);
+  assert.deepEqual(split, [], `대분류 코드 하나가 여러 이름으로 불립니다\n${split.join("\n")}`);
+});
+
 test("declares every approved supplemental LocalData source once", () => {
   const approvedIds = [
     "15154822", "15154874", "15154458", "15154899", "15154952", "15155272", "15154944", "15155083", "15155055",
