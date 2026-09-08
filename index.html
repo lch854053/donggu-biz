@@ -428,16 +428,39 @@
            </div>
            <div class="chart-grid">
              <figure class="chart-card">
-               <figcaption><strong>연도별 폐업</strong></figcaption>
+               <figcaption>
+                 <strong>연도별 폐업 건수와 폐업률</strong>
+                 <span class="chart-legend">
+                   <span class="chart-legend-item"><i class="chart-legend-swatch is-bar"></i>폐업 건수(막대, 왼쪽 축)</span>
+                   <span class="chart-legend-item"><i class="chart-legend-swatch is-line"></i>폐업률(선, 오른쪽 축)</span>
+                 </span>
+               </figcaption>
                <div class="chart-plot" id="outlineClosureTrendChart"></div>
+               <details class="chart-table">
+                 <summary>표로 보기</summary>
+                 <div class="table-wrap">
+                   <table class="market-store-table">
+                     <thead><tr><th>연도</th><th>폐업</th><th>폐업률</th></tr></thead>
+                     <tbody id="outlineClosureTable"></tbody>
+                   </table>
+                 </div>
+               </details>
              </figure>
 
              <figure class="chart-card">
-               <figcaption>
-                 <strong>연도별 폐업률</strong>
-                 <span id="outlineClosureRateNote"></span>
-               </figcaption>
-               <div class="chart-plot" id="outlineClosureRateChart"></div>
+               <figcaption><strong>상권 요약</strong></figcaption>
+               <div class="stat-readout">
+                 <div class="stat-readout-item">
+                   <span class="stat-readout-label">영업기간 중앙값</span>
+                   <strong class="stat-readout-value" id="outlineClosureLifespanValue">-</strong>
+                   <p class="stat-readout-note" id="outlineClosureLifespanNote"></p>
+                 </div>
+                 <div class="stat-readout-item">
+                   <span class="stat-readout-label">최근 10년 평균 폐업률</span>
+                   <strong class="stat-readout-value" id="outlineClosureRateValue">-</strong>
+                   <p class="stat-readout-note" id="outlineClosureRateNote"></p>
+                 </div>
+               </div>
              </figure>
            </div>
          </section>

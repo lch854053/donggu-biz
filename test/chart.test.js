@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { axisTicks, barBands, barCornerRadius, barWidth, linePath, linePoints, niceStep } from "../lib/chart.js";
+import { axisTicks, barBands, barCornerRadius, barWidth, columnBands, linePath, linePoints, niceStep } from "../lib/chart.js";
 
 test("rounds an axis step up to a readable number", () => {
   assert.equal(niceStep(1), 1);
@@ -47,6 +47,19 @@ test("caps bar thickness and leaves the rest of the band as air", () => {
   assert.deepEqual(barBands(0, { height: 100 }), []);
 });
 
+test("centres each column in its band and caps its thickness", () => {
+  const wide = columnBands(2, { width: 200 });
+  assert.equal(wide[0].width, 24);
+  assert.equal(wide[0].x, 38);
+  assert.equal(wide[0].center, 50);
+  assert.equal(wide[1].center, 150);
+  const tight = columnBands(10, { width: 100 });
+  assert.equal(tight[0].width, 8);
+  // 밴드가 아주 좁아도 막대는 보이는 두께를 유지한다.
+  assert.equal(columnBands(60, { width: 100 })[0].width, 2);
+  assert.deepEqual(columnBands(0, { width: 100 }), []);
+});
+
 test("scales bar width against the axis maximum", () => {
   assert.equal(barWidth(50, { width: 200, max: 100 }), 100);
   assert.equal(barWidth(-5, { width: 200, max: 100 }), 0);
@@ -78,8 +91,23 @@ test("the statistics tab groups its charts under a theme heading", async () => {
     assert.match(html, new RegExp(`id="${id}"`), id);
   }
   // 막대는 값을 끝에 직접 적으므로 표를 따로 두지 않고, 추이만 표를 함께 둔다.
-  assert.equal([...html.matchAll(/class="chart-table"/g)].length, 1);
+  const statsPanel = html.slice(html.indexOf('id="panel-stats"'));
+  assert.equal([...statsPanel.matchAll(/class="chart-table"/g)].length, 1);
   assert.doesNotMatch(html, /statsRunBtn|statsKpi|closure-caveat|market-view-closure|폐업 분석/);
   assert.match(app, /if \(panelName === "stats"\) initializeStats\(\)/);
   assert.doesNotMatch(app, /initializeClosureView|runStatsQuery/);
+});
+
+test("the zone closure card pairs one combined chart with a text readout", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const card = html.slice(html.indexOf('id="outlineClosure"'), html.indexOf('id="market-view-table"'));
+  // 건수와 비율이 한 그래프에 서므로 축이 둘이다. 범례 없이는 어느 축이 누구 것인지 알 수 없다.
+  assert.equal([...card.matchAll(/class="chart-plot"/g)].length, 1);
+  assert.equal([...card.matchAll(/class="chart-legend-item"/g)].length, 2);
+  assert.match(card, /id="outlineClosureTable"/);
+  for (const id of ["outlineClosureLifespanValue", "outlineClosureRateValue"]) {
+    assert.match(card, new RegExp(`id="${id}"`), id);
+  }
+  assert.doesNotMatch(card, /outlineClosureRateChart/);
 });
