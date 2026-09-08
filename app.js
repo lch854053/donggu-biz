@@ -1473,20 +1473,30 @@ function renderStatsMeta() {
   const generated = closureMeta.generatedAt
     ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(closureMeta.generatedAt))
     : "미확인";
-  $("statsMeta").textContent = [
+  $("statsMeta").textContent = `${[
     closureMeta.source || "행정안전부 지방행정 인허가 데이터(폐업·휴업)",
     `${closureMeta.sinceYear}년 이후 폐업 ${Number(closureMeta.totalCount || 0).toLocaleString("ko-KR")}건`,
     `갱신일 ${generated}`
-  ].filter(Boolean).join(" · ");
+  ].filter(Boolean).join(" · ")} · 폐업률은 출처가 다른 영업 중 상가와 폐업 기록을 합쳐 분모로 삼고 행정동 미확정 건은 빼므로, 실제 비율은 이보다 낮으며 순위 비교용으로만 보세요.`;
 }
 
 function renderStats() {
   if (!statsReady) return;
   const rows = filterClosureRows(closureLicenses, { statusKind: "closed" });
+  // 막대 그래프는 기간이 축에 드러나지 않으니, 툴팁이 어느 기간의 폐업인지 함께 말한다.
+  const period = closurePeriodLabel(rows);
   renderStatsTrend(rows);
-  renderStatsRateCharts(rows);
-  renderStatsLifespanCharts(rows);
+  renderStatsRateCharts(rows, period);
+  renderStatsLifespanCharts(rows, period);
   renderClosureMarkers();
+}
+
+function closurePeriodLabel(rows) {
+  const years = closureYearCounts(rows);
+  if (!years.length) return "";
+  const first = years[0].year;
+  const last = years[years.length - 1].year;
+  return first === last ? `${first}년` : `${first}~${last}년`;
 }
 
 function renderStatsTrend(rows) {
@@ -1500,7 +1510,7 @@ function renderStatsTrend(rows) {
   fillTableRows($("statsTrendTable"), years.map(({ year, count }) => [`${year}년`, count.toLocaleString("ko-KR")]), 2);
 }
 
-function renderStatsRateCharts(rows) {
+function renderStatsRateCharts(rows, period = "") {
   for (const [keyFn, chartId] of [
     [(row) => row.adminDong, "statsDongRateChart"],
     [(row) => row.largeName, "statsIndustryRateChart"]
@@ -1513,14 +1523,14 @@ function renderStatsRateCharts(rows) {
     drawBarChart($(chartId), {
       rows: ranked.map((row) => ({ label: row.name, value: row.closureRate * 100 })),
       format: (value) => `${value.toFixed(1)}%`,
-      tooltip: (row, index) => `폐업 ${ranked[index].closedCount.toLocaleString("ko-KR")}건 / 영업 중 ${ranked[index].activeCount.toLocaleString("ko-KR")}건`,
+      tooltip: (row, index) => `${period ? `${period} ` : ""}폐업 ${ranked[index].closedCount.toLocaleString("ko-KR")}건`,
       valueLabel: "폐업률",
       emptyText: "비율을 낼 수 있는 폐업 기록이 없습니다."
     });
   }
 }
 
-function renderStatsLifespanCharts(rows) {
+function renderStatsLifespanCharts(rows, period = "") {
   for (const [keyFn, chartId] of [
     [(row) => row.adminDong, "statsDongLifespanChart"],
     [(row) => row.largeName, "statsIndustryLifespanChart"]
@@ -1533,7 +1543,7 @@ function renderStatsLifespanCharts(rows) {
     drawBarChart($(chartId), {
       rows: ranked.map((row) => ({ label: row.name, value: row.medianLifespanDays / 365 })),
       format: (value) => `${value.toFixed(1)}년`,
-      tooltip: (row, index) => `폐업 ${ranked[index].closedCount.toLocaleString("ko-KR")}건 기준`,
+      tooltip: (row, index) => `${period ? `${period} ` : ""}폐업 ${ranked[index].closedCount.toLocaleString("ko-KR")}건 기준`,
       valueLabel: "영업기간 중앙값",
       emptyText: "중앙값을 낼 수 있는 폐업 기록이 없습니다."
     });
