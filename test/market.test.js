@@ -102,11 +102,16 @@ test("declares every approved supplemental LocalData source once", () => {
     "15155146", "15155018", "15155155", "15155168", "15155159", "15154784", "15155150", "15154957",
     "15155065", "15155024", "15154963", "15155004"
   ];
-  assert.equal(LOCALDATA_SOURCES.length, 75);
+  // 원천은 승인이 날 때마다 늘어난다. 개수를 못 박는 대신 아래 성질만 지킨다.
+  assert.ok(LOCALDATA_SOURCES.length >= approvedIds.length);
   const sources = LOCALDATA_SOURCES.filter((source) => approvedIds.includes(source.datasetId));
   assert.equal(sources.length, approvedIds.length);
   assert.equal(new Set(sources.map((source) => source.datasetId)).size, approvedIds.length);
-  assert.ok(sources.every((source) => source.endpoint.startsWith("https://apis.data.go.kr/1741000/") && source.endpoint.endsWith("/info")));
+  // 같은 원천이 두 번 들어가면 수집이 그대로 두 배가 되므로 슬러그와 datasetId 모두 유일해야 한다.
+  assert.equal(new Set(LOCALDATA_SOURCES.map((source) => source.slug)).size, LOCALDATA_SOURCES.length);
+  assert.equal(new Set(LOCALDATA_SOURCES.map((source) => source.datasetId)).size, LOCALDATA_SOURCES.length);
+  assert.ok(LOCALDATA_SOURCES.every((source) =>
+    source.endpoint === `https://apis.data.go.kr/1741000/${source.slug}/info` && source.largeCode && source.largeName));
 });
 
 test("merges active license records without double-counting known stores", () => {

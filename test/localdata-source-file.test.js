@@ -10,10 +10,11 @@ import { pickDatasetMatch } from "../lib/localdata-portal.js";
 import { LOCALDATA_SOURCES } from "../lib/store-license.js";
 
 const entry = {
-  slug: "domestic_travel_agencies",
-  datasetId: "15155000",
-  title: "행정안전부_문화_국내여행업 조회서비스",
-  endpoint: "https://apis.data.go.kr/1741000/domestic_travel_agencies/info",
+  // 실제 원천으로 승격될 수 있는 슬러그를 쓰면, 그 원천이 도입되는 날 이 테스트가 깨진다.
+  slug: "zzz_test_only_source",
+  datasetId: "15150000",
+  title: "행정안전부_문화_시험용 조회서비스",
+  endpoint: "https://apis.data.go.kr/1741000/zzz_test_only_source/info",
   largeCode: "N1",
   largeName: "사업시설관리",
   middleCode: "N105",
@@ -22,10 +23,10 @@ const entry = {
 
 test("renders a source entry in the shape the file already uses", () => {
   assert.equal(renderLocaldataSource(entry), `  {
-    slug: "domestic_travel_agencies",
-    datasetId: "15155000",
-    title: "행정안전부_문화_국내여행업 조회서비스",
-    endpoint: "https://apis.data.go.kr/1741000/domestic_travel_agencies/info",
+    slug: "zzz_test_only_source",
+    datasetId: "15150000",
+    title: "행정안전부_문화_시험용 조회서비스",
+    endpoint: "https://apis.data.go.kr/1741000/zzz_test_only_source/info",
     largeCode: "N1",
     largeName: "사업시설관리",
     middleCode: "N105",
