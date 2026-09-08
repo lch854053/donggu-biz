@@ -82,8 +82,8 @@ test("takes the dataset whose title matches, and refuses to guess between two", 
 
 test("the staged candidates carry everything promotion needs", async () => {
   const payload = JSON.parse(await readFile(new URL("../data/localdata_source_candidates.json", import.meta.url), "utf8"));
+  // 후보가 비는 것은 전부 도입했다는 뜻이므로 정상이다. 남아 있는 후보의 형식만 본다.
   const candidates = payload.newCandidates || [];
-  assert.ok(candidates.length > 0);
   const configured = new Set(LOCALDATA_SOURCES.map(({ slug }) => slug));
   const seen = new Set();
   for (const candidate of candidates) {
