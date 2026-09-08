@@ -7,7 +7,7 @@ import {
   sortStores
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
-import { axisTicks, barBands, barCornerRadius, barWidth, linePath, linePoints } from "./lib/chart.js";
+import { axisTicks, barBands, barCornerRadius, barWidth, columnBands, linePath, linePoints } from "./lib/chart.js";
 import { closureLifespanMedianDays, closureRateTableWithLifespan, closureYearCounts, filterClosureRows } from "./lib/closure-view.js";
 import {
   averageClosureRate,
@@ -835,7 +835,8 @@ function renderOutlineZoneStatistics(stores, zoneName) {
 function clearZoneClosure() {
   $("outlineClosure").hidden = true;
   $("outlineClosureMeta").textContent = "";
-  $("outlineClosureRateNote").textContent = "";
+  ["outlineClosureLifespanValue", "outlineClosureRateValue"].forEach((id) => { $(id).textContent = "-"; });
+  ["outlineClosureLifespanNote", "outlineClosureRateNote"].forEach((id) => { $(id).textContent = ""; });
 }
 
 // 스냅샷을 뜬 해는 폐업이 아직 다 들어오지 않았다. 비율은 마지막으로 다 채워진 해까지만 센다.
@@ -868,30 +869,45 @@ async function renderZoneClosure(zone, activeStores) {
   const years = range ? zoneClosureYearRates(activeStores, rows, range) : [];
   const average = averageClosureRate(years);
 
-  $("outlineClosureMeta").textContent = [
-    zoneName,
-    `폐업 ${rows.length.toLocaleString("ko-KR")}건`,
-    Number.isFinite(medianDays) ? `영업기간 중앙값 ${(medianDays / 365).toFixed(1)}년` : "",
-    average === null ? "" : `최근 ${range.toYear - range.fromYear + 1}년 평균 폐업률 ${(average * 100).toFixed(1)}%`
-  ].filter(Boolean).join(" · ");
+  $("outlineClosureMeta").textContent = `${zoneName} · 폐업 ${rows.length.toLocaleString("ko-KR")}건`;
 
-  drawLineChart($("outlineClosureTrendChart"), {
-    points: closureYearCounts(rows).map(({ year, count }) => ({ label: `${year}년`, value: count })),
-    valueLabel: "폐업",
-    format: (value) => `${value.toLocaleString("ko-KR")}건`,
+  // 건수는 기록이 있는 해 전부를, 비율은 그중 다 채워진 최근 10년만 그린다. 가로축은 건수 쪽에 맞춘다.
+  const counts = closureYearCounts(rows);
+  const rateByYear = new Map(years.map(({ year, rate }) => [year, rate]));
+  const percentFormat = (value) => `${value.toFixed(1)}%`;
+  drawComboChart($("outlineClosureTrendChart"), {
+    categories: counts.map(({ year }) => `${year}년`),
+    bars: {
+      label: "폐업",
+      values: counts.map(({ count }) => count),
+      format: (value) => `${value.toLocaleString("ko-KR")}건`
+    },
+    line: {
+      label: "폐업률",
+      values: counts.map(({ year }) => {
+        const rate = rateByYear.get(year);
+        return Number.isFinite(rate) ? rate * 100 : null;
+      }),
+      format: percentFormat
+    },
     emptyText: "폐업 기록이 없습니다."
   });
+  fillTableRows($("outlineClosureTable"), counts.map(({ year, count }) => {
+    const rate = rateByYear.get(year);
+    return [`${year}년`, count.toLocaleString("ko-KR"), Number.isFinite(rate) ? percentFormat(rate * 100) : "-"];
+  }), 3);
 
+  $("outlineClosureLifespanValue").textContent = Number.isFinite(medianDays)
+    ? `${(medianDays / 365).toFixed(1)}년`
+    : "-";
+  $("outlineClosureLifespanNote").textContent = Number.isFinite(medianDays)
+    ? `폐업한 ${rows.length.toLocaleString("ko-KR")}곳이 문을 열고 닫기까지 걸린 기간의 중앙값입니다.`
+    : "영업기간을 낼 수 있는 폐업 기록이 없습니다.";
+  $("outlineClosureRateValue").textContent = average === null ? "-" : percentFormat(average * 100);
   // 그 해에 영업 중이던 곳을 인허가일로 되돌려 세므로, 인허가일이 없는 상가정보 출신 업소는 빠진다.
-  $("outlineClosureRateNote").textContent = "그 해 영업 중이던 인허가 업소 대비 폐업 비율입니다.";
-  drawLineChart($("outlineClosureRateChart"), {
-    points: years
-      .filter(({ rate }) => Number.isFinite(rate))
-      .map(({ year, rate }) => ({ label: `${year}년`, value: rate * 100 })),
-    valueLabel: "폐업률",
-    format: (value) => `${value.toFixed(1)}%`,
-    emptyText: "비율을 낼 수 있는 폐업 기록이 없습니다."
-  });
+  $("outlineClosureRateNote").textContent = average === null
+    ? "비율을 낼 수 있는 폐업 기록이 없습니다."
+    : `${range.fromYear}~${range.toYear}년 각 해의 폐업률을 평균했습니다. 분모는 그 해 영업 중이던 인허가 업소입니다.`;
   $("outlineClosure").hidden = false;
 }
 
@@ -1494,6 +1510,8 @@ const CLOSURE_SNAPSHOT_URL = "data/closed_licenses_donggu.json";
 const STATS_BAR_LIMIT = 14;
 const STATS_LIFESPAN_MIN_SAMPLE = 5;
 const CHART_MARK_COLOR = "var(--accent)";
+// 한 그래프에 두 계열이 설 때만 쓰는 둘째 색. 강조색과 색각 이상에서도 구분된다(ΔE 17 이상).
+const CHART_ALT_MARK_COLOR = "var(--yellow)";
 let closureSnapshotPromise = null;
 let statsReady = false;
 let closureMeta = null;
@@ -1636,6 +1654,117 @@ function fillTableRows(tbody, rows, columnCount) {
     });
     return tr;
   }));
+}
+
+const COMBO_CHART = { width: 760, height: 260, left: 46, right: 46, top: 18, bottom: 38 };
+
+// 건수(막대)와 비율(선)은 단위가 달라 축을 나눠 세운다. 눈금 색을 계열 색에 맞추고
+// 범례를 붙여, 어느 축이 어느 계열의 것인지 색으로만 헷갈리지 않게 한다.
+function drawComboChart(plot, { categories, bars, line, emptyText }) {
+  if (!categories.length) return renderEmptyChart(plot, emptyText);
+  const { width, height, left, right, top, bottom } = COMBO_CHART;
+  const plotWidth = width - left - right;
+  const plotHeight = height - top - bottom;
+  const barAxis = axisTicks(Math.max(...bars.values.filter(Number.isFinite), 0));
+  const lineAxis = axisTicks(Math.max(...line.values.filter(Number.isFinite), 0));
+  const bands = columnBands(categories.length, { width: plotWidth });
+  const svg = svgElement("svg", {
+    viewBox: `0 0 ${width} ${height}`,
+    class: "chart-svg",
+    role: "img",
+    "aria-label": `연도별 ${bars.label}과 ${line.label}. 값은 아래 표로 보기에서 확인할 수 있습니다.`
+  });
+
+  for (const tick of barAxis.ticks) {
+    const y = top + plotHeight - tick / barAxis.max * plotHeight;
+    svg.appendChild(svgElement("line", { x1: left, x2: width - right, y1: y, y2: y, class: "chart-grid-line" }));
+    const text = svgElement("text", { x: left - 10, y: y + 4, class: "chart-axis-text", "text-anchor": "end" });
+    text.textContent = tick.toLocaleString("ko-KR");
+    svg.appendChild(text);
+  }
+  for (const tick of lineAxis.ticks) {
+    const y = top + plotHeight - tick / lineAxis.max * plotHeight;
+    const text = svgElement("text", {
+      x: width - right + 10, y: y + 4, class: "chart-axis-text chart-axis-text-alt", "text-anchor": "start"
+    });
+    text.textContent = line.format(tick);
+    svg.appendChild(text);
+  }
+
+  bars.values.forEach((value, index) => {
+    if (!Number.isFinite(value)) return;
+    const barHeight = barWidth(value, { width: plotHeight, max: barAxis.max });
+    svg.appendChild(svgElement("rect", {
+      x: left + bands[index].x,
+      y: top + plotHeight - barHeight,
+      width: bands[index].width,
+      height: Math.max(barHeight, value > 0 ? 1 : 0),
+      rx: barCornerRadius(bands[index].width, barHeight),
+      class: "chart-bar",
+      fill: CHART_MARK_COLOR
+    }));
+  });
+
+  // 비율이 없는 해에서는 선을 끊는다. 이어 버리면 없는 값을 지어낸 셈이 된다.
+  const lineCoords = line.values.map((value, index) => Number.isFinite(value)
+    ? {
+      x: left + bands[index].center,
+      y: top + plotHeight - value / lineAxis.max * plotHeight
+    }
+    : null);
+  const drawn = lineCoords.filter(Boolean);
+  if (drawn.length) {
+    svg.appendChild(svgElement("path", { d: linePath(drawn), class: "chart-line", stroke: CHART_ALT_MARK_COLOR }));
+    drawn.forEach(({ x, y }) => {
+      svg.appendChild(svgElement("circle", { cx: x, cy: y, r: 4, class: "chart-dot", fill: CHART_ALT_MARK_COLOR }));
+    });
+  }
+
+  const labelEvery = Math.ceil(categories.length / 12);
+  categories.forEach((label, index) => {
+    if (index % labelEvery && index !== categories.length - 1) return;
+    const text = svgElement("text", {
+      x: left + bands[index].center, y: height - 14, class: "chart-axis-text", "text-anchor": "middle"
+    });
+    text.textContent = label;
+    svg.appendChild(text);
+  });
+
+  const crosshair = svgElement("line", { class: "chart-crosshair", y1: top, y2: top + plotHeight, x1: 0, x2: 0 });
+  crosshair.style.opacity = "0";
+  svg.appendChild(crosshair);
+
+  const band = plotWidth / categories.length;
+  categories.forEach((label, index) => {
+    const barText = Number.isFinite(bars.values[index]) ? bars.format(bars.values[index]) : "기록 없음";
+    const lineText = Number.isFinite(line.values[index]) ? line.format(line.values[index]) : "";
+    const hit = svgElement("rect", {
+      x: left + index * band, y: top, width: band, height: plotHeight,
+      class: "chart-hit", tabindex: "0", role: "button",
+      "aria-label": [label, `${bars.label} ${barText}`, lineText && `${line.label} ${lineText}`].filter(Boolean).join(" ")
+    });
+    const activate = () => {
+      crosshair.style.opacity = "1";
+      crosshair.setAttribute("x1", String(left + bands[index].center));
+      crosshair.setAttribute("x2", String(left + bands[index].center));
+      const box = plot.getBoundingClientRect();
+      const scale = box.width / width;
+      showChartTooltip(plot, {
+        title: label,
+        value: `${bars.label} ${barText}`,
+        detail: lineText ? `${line.label} ${lineText}` : "",
+        x: (left + bands[index].center) * scale,
+        y: top * scale
+      });
+    };
+    hit.addEventListener("pointerenter", activate);
+    hit.addEventListener("focus", activate);
+    hit.addEventListener("pointerleave", () => { crosshair.style.opacity = "0"; hideChartTooltip(plot); });
+    hit.addEventListener("blur", () => { crosshair.style.opacity = "0"; hideChartTooltip(plot); });
+    svg.appendChild(hit);
+  });
+
+  plot.replaceChildren(svg);
 }
 
 // 막대는 끝에 값을 직접 적고 연도 추이는 표를 함께 둔다. 말풍선은 세부 수치를 덧붙일 뿐 값을 가두지 않는다.
