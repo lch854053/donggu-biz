@@ -137,10 +137,10 @@ if (probed && counts.unapproved === probed) {
   console.log("[probe] 모든 원천이 미승인으로 나왔습니다. 개별 승인 문제가 아니라 서비스키가 승인 계정과 다를 가능성이 높습니다.");
   console.log("[probe] 저장소 Secret LOCALDATA_SERVICE_KEY(없으면 SDSC_SERVICE_KEY)에 등록해 둔 키와 같은 값인지 확인하세요.");
 } else if (counts.unapproved) {
-  console.log("[probe] unapproved 원천은 npm run apply-localdata로 활용신청을 제출하세요.");
+  console.log("[probe] unapproved는 주소는 실재하고 승인만 없다는 뜻입니다. npm run authorize-localdata -- --submit으로 신청하세요.");
 }
 if (counts.ready) {
-  console.log("[probe] 후보 중 ready인 원천만 datasetId를 확인해 lib/store-license.js의 LOCALDATA_SOURCES로 옮기세요.");
+  console.log("[probe] ready인 후보는 npm run promote-localdata -- --write로 LOCALDATA_SOURCES에 옮깁니다.");
 }
 if (counts.missing) {
   console.log("[probe] missing 후보는 유추한 엔드포인트가 틀린 것이므로 data.go.kr 상세 페이지에서 실제 주소를 확인해야 합니다.");
