@@ -8,7 +8,13 @@ import {
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
 import { axisTicks, barBands, barCornerRadius, barWidth, linePath, linePoints } from "./lib/chart.js";
-import { closureRateTableWithLifespan, closureYearCounts, filterClosureRows } from "./lib/closure-view.js";
+import { closureLifespanMedianDays, closureRateTableWithLifespan, closureYearCounts, filterClosureRows } from "./lib/closure-view.js";
+import {
+  averageClosureRate,
+  closuresInZone,
+  recentRateYearRange,
+  zoneClosureYearRates
+} from "./lib/zone-closure.js";
 import { DONGGU_ADMIN_DONGS } from "./lib/admin-dong.js";
 import {
   INDUSTRY_SECTIONS,
@@ -826,6 +832,69 @@ function renderOutlineZoneStatistics(stores, zoneName) {
   $("outlineStatistics").hidden = false;
 }
 
+function clearZoneClosure() {
+  $("outlineClosure").hidden = true;
+  $("outlineClosureMeta").textContent = "";
+  $("outlineClosureRateNote").textContent = "";
+}
+
+// 스냅샷을 뜬 해는 폐업이 아직 다 들어오지 않았다. 비율은 마지막으로 다 채워진 해까지만 센다.
+function lastCompleteClosureYear() {
+  const generated = closureMeta?.generatedAt ? new Date(closureMeta.generatedAt) : null;
+  const year = generated && !Number.isNaN(generated.getTime()) ? generated.getFullYear() : new Date().getFullYear();
+  return year - 1;
+}
+
+// 폐업 스냅샷은 통계 탭과 같은 파일을 쓴다. 상권 분석을 먼저 열어도 여기서 한 번 읽어 둔다.
+async function renderZoneClosure(zone, activeStores) {
+  const zoneName = zone.properties?.name || "선택 상권";
+  try {
+    await loadClosureSnapshot();
+  } catch (error) {
+    clearZoneClosure();
+    console.warn("[zone-closure] snapshot unavailable", error);
+    return;
+  }
+  if (selectedZone() !== zone) return;
+
+  const { rows } = closuresInZone(closureLicenses, zone.geometry);
+  if (!rows.length) {
+    clearZoneClosure();
+    return;
+  }
+
+  const medianDays = closureLifespanMedianDays(rows);
+  const range = recentRateYearRange(rows, { throughYear: lastCompleteClosureYear() });
+  const years = range ? zoneClosureYearRates(activeStores, rows, range) : [];
+  const average = averageClosureRate(years);
+
+  $("outlineClosureMeta").textContent = [
+    zoneName,
+    `폐업 ${rows.length.toLocaleString("ko-KR")}건`,
+    Number.isFinite(medianDays) ? `영업기간 중앙값 ${(medianDays / 365).toFixed(1)}년` : "",
+    average === null ? "" : `최근 ${range.toYear - range.fromYear + 1}년 평균 폐업률 ${(average * 100).toFixed(1)}%`
+  ].filter(Boolean).join(" · ");
+
+  drawLineChart($("outlineClosureTrendChart"), {
+    points: closureYearCounts(rows).map(({ year, count }) => ({ label: `${year}년`, value: count })),
+    valueLabel: "폐업",
+    format: (value) => `${value.toLocaleString("ko-KR")}건`,
+    emptyText: "폐업 기록이 없습니다."
+  });
+
+  // 그 해에 영업 중이던 곳을 인허가일로 되돌려 세므로, 인허가일이 없는 상가정보 출신 업소는 빠진다.
+  $("outlineClosureRateNote").textContent = "그 해 영업 중이던 인허가 업소 대비 폐업 비율입니다.";
+  drawLineChart($("outlineClosureRateChart"), {
+    points: years
+      .filter(({ rate }) => Number.isFinite(rate))
+      .map(({ year, rate }) => ({ label: `${year}년`, value: rate * 100 })),
+    valueLabel: "폐업률",
+    format: (value) => `${value.toFixed(1)}%`,
+    emptyText: "비율을 낼 수 있는 폐업 기록이 없습니다."
+  });
+  $("outlineClosure").hidden = false;
+}
+
 function renderStorePanel(stores, panelConfig) {
   const sortedStores = [...stores].sort((left, right) => left.name.localeCompare(right.name, "ko"));
   $(panelConfig.countId).textContent = `${sortedStores.length.toLocaleString("ko-KR")}개 업소`;
@@ -860,6 +929,7 @@ function setOutlineState(message, isError = false) {
 function clearOutlineLayers() {
   closeOutlinePanel();
   clearOutlineStatistics();
+  clearZoneClosure();
   outlineGroundLayer?.remove();
   outlineRoadLayer?.remove();
   outlineBuildingLayer?.remove();
@@ -1078,6 +1148,7 @@ async function loadBuildingOutline() {
     renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
     renderOutlineZoneStatistics(stores, zoneName);
+    renderZoneClosure(zone, stores);
     if (outlineFeatures.length) {
       $("outlineState").hidden = true;
     } else {
