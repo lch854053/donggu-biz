@@ -3,15 +3,14 @@ import { stdin as input, stdout as output } from "node:process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
+import { applyForDataset, ensureLoggedIn, PORTAL_ORIGIN } from "../lib/localdata-browser.js";
 
 const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const profilePath = process.env.PLAYWRIGHT_PROFILE_PATH
   ? resolve(process.env.PLAYWRIGHT_PROFILE_PATH)
   : resolve(root, ".playwright/data-go-personal");
 const executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH || undefined;
-const portalOrigin = "https://www.data.go.kr";
-const loginUrl = `${portalOrigin}/uim/login/loginView.do`;
-const applicationPurpose = "개발";
+const portalOrigin = PORTAL_ORIGIN;
 
 const priorityApplications = [
   ["15154963", "통신판매업"],
@@ -81,201 +80,6 @@ if (listOnly) {
 const readline = createInterface({ input, output });
 const ask = (message) => readline.question(message);
 
-async function isLoggedIn(page) {
-  const body = await page.locator("body").innerText().catch(() => "");
-  return /로그아웃/.test(body) || await page.locator('a[href*="logout"], button:has-text("로그아웃")').count() > 0;
-}
-
-async function ensureLoggedIn(page) {
-  await page.goto(loginUrl, { waitUntil: "domcontentloaded" });
-  if (await isLoggedIn(page)) return;
-  console.log("브라우저에서 공공데이터포털 개인회원 로그인을 완료하세요.");
-  if (process.env.PLAYWRIGHT_WAIT_FOR_LOGIN === "1") {
-    const deadline = Date.now() + 10 * 60 * 1000;
-    while (Date.now() < deadline) {
-      if (await isLoggedIn(page)) return;
-      await page.waitForTimeout(1000);
-    }
-    throw new Error("로그인 상태를 10분 안에 확인하지 못했습니다.");
-  }
-  await ask("로그인 완료 후 이 터미널에서 Enter를 누르세요: ");
-  if (!await isLoggedIn(page)) throw new Error("로그인 상태를 확인하지 못했습니다.");
-}
-
-async function waitForReady(page) {
-  await page.waitForLoadState("domcontentloaded", { timeout: 30000 }).catch(() => {});
-  await page.waitForTimeout(400);
-}
-
-async function clickAndCapturePopup(page, locator) {
-  const popupPromise = page.waitForEvent("popup", { timeout: 10000 }).catch(() => null);
-  await locator.click();
-  const popup = await popupPromise;
-  if (popup) await waitForReady(popup);
-  return popup || page;
-}
-
-async function visible(locator) {
-  return await locator.count() > 0 && await locator.first().isVisible().catch(() => false);
-}
-
-async function selectPersonalServiceKey(page) {
-  const personalButton = page.locator("#confirmN");
-  if (!await visible(personalButton)) return page;
-  return clickAndCapturePopup(page, personalButton);
-}
-
-async function findPurposeField(page) {
-  const fields = page.locator("textarea, input[type=text]");
-  for (let index = 0; index < await fields.count(); index += 1) {
-    const field = fields.nth(index);
-    if (!await field.isVisible().catch(() => false)) continue;
-    const context = await field.evaluate((element) => {
-      const label = element.id ? document.querySelector(`label[for="${element.id}"]`) : null;
-      return [element.name, element.id, element.placeholder, label?.textContent]
-        .filter(Boolean).join(" ");
-    });
-    if (/활용목적|사용목적|purpose|use/i.test(context)) return field;
-  }
-  return null;
-}
-
-async function elementIsRequired(locator) {
-  return await locator.getAttribute("required") !== null;
-}
-
-async function checkRequiredConsents(page) {
-  const checkboxes = page.locator('input[type="checkbox"]');
-  for (let index = 0; index < await checkboxes.count(); index += 1) {
-    const checkbox = checkboxes.nth(index);
-    if (!await checkbox.isVisible().catch(() => false) || await checkbox.isChecked()) continue;
-    const context = await checkbox.evaluate((element) => {
-      const label = element.id ? document.querySelector(`label[for="${element.id}"]`) : null;
-      return [element.name, element.id, element.getAttribute("aria-label"), label?.textContent, element.parentElement?.textContent]
-        .filter(Boolean).join(" ");
-    });
-    if (await elementIsRequired(checkbox) || /필수|이용약관|개인정보|동의/.test(context)) {
-      try {
-        await checkbox.check({ force: true });
-      } catch {
-        const id = await checkbox.getAttribute("id");
-        const label = id ? page.locator(`label[for="${id}"]`) : null;
-        if (!label || !await visible(label)) throw new Error(`동의 항목을 선택하지 못했습니다: ${id || "unknown"}`);
-        await label.click({ force: true });
-      }
-    }
-  }
-
-  const licenseConsent = page.locator("#useScopeAgreAt");
-  if (await visible(licenseConsent) && !await licenseConsent.isChecked()) {
-    throw new Error("이용허락범위 동의를 선택하지 못했습니다.");
-  }
-}
-
-async function findSubmitButton(page) {
-  const buttons = page.locator('button, input[type="submit"]');
-  const matches = [];
-  for (let index = 0; index < await buttons.count(); index += 1) {
-    const button = buttons.nth(index);
-    if (!await button.isVisible().catch(() => false)) continue;
-    const text = (await button.innerText().catch(() => "")) || await button.getAttribute("value") || "";
-    if (/활용신청|신청하기|신청/.test(text) && !/취소|목록|검색/.test(text)) matches.push(button);
-  }
-  return matches.at(-1) || null;
-}
-
-async function pageSummary(page) {
-  const controls = await page.locator("input, textarea, select, button").evaluateAll((elements) => elements
-    .filter((element) => {
-      const style = getComputedStyle(element);
-      return style.display !== "none" && style.visibility !== "hidden";
-    })
-    .map((element) => ({
-      tag: element.tagName,
-      type: element.getAttribute("type"),
-      text: (element.innerText || element.value || element.getAttribute("aria-label") || "").replace(/\s+/g, " ").trim(),
-      name: element.getAttribute("name"),
-      id: element.id
-    }))
-    .slice(-30));
-  return { url: page.url(), title: await page.title(), controls };
-}
-
-async function applyTarget(page, target) {
-  await page.goto(target.url, { waitUntil: "domcontentloaded" });
-  await waitForReady(page);
-
-  const applyButton = page.locator('button[title="활용신청 바로가기"]');
-  if (!await visible(applyButton)) {
-    return { status: "already-applied-or-unavailable", url: page.url() };
-  }
-
-  const formPage = await clickAndCapturePopup(page, applyButton);
-  const selectedPage = await selectPersonalServiceKey(formPage);
-  await waitForReady(selectedPage);
-  if (/login/i.test(selectedPage.url()) || !await isLoggedIn(selectedPage)) {
-    throw new Error(`${target.datasetId}: 신청 페이지에서 로그인 상태를 잃었습니다.`);
-  }
-
-  const purposeField = await findPurposeField(selectedPage);
-  if (purposeField) await purposeField.fill(applicationPurpose);
-  await checkRequiredConsents(selectedPage);
-  const submitButton = await findSubmitButton(selectedPage);
-  if (!submitButton) {
-    const summary = await pageSummary(selectedPage);
-    return {
-      status: /\/iim\/api\/selectAcountList\.do/.test(summary.url) ? "already-applied" : "form-needs-manual-review",
-      ...summary
-    };
-  }
-
-  const dialogMessages = [];
-  const dialogHandler = async (dialog) => {
-    dialogMessages.push(`${dialog.type()}: ${dialog.message()}`);
-    await dialog.accept();
-  };
-  selectedPage.on("dialog", dialogHandler);
-  try {
-    const saveResponsePromise = selectedPage.waitForResponse((response) =>
-      response.request().method() === "POST"
-      && response.url().includes("/iim/api/saveDevAcountRequest.do"), { timeout: 30000 }
-    ).catch(() => null);
-
-    await submitButton.click();
-    const saveResponse = await saveResponsePromise;
-    if (!saveResponse) {
-      return {
-        status: "submit-not-started",
-        url: selectedPage.url(),
-        reason: dialogMessages.at(-1) || "저장 요청이 발생하지 않았습니다.",
-        dialogs: dialogMessages
-      };
-    }
-
-    await selectedPage.waitForURL(/\/iim\/api\/selectAcountList\.do/, { timeout: 30000 }).catch(() => {});
-    await waitForReady(selectedPage);
-    const url = selectedPage.url();
-    const completed = /\/iim\/api\/selectAcountList\.do/.test(url);
-    if (!completed) {
-      return {
-        status: "submit-rejected",
-        url,
-        reason: dialogMessages.at(-1) || `저장 응답 HTTP ${saveResponse.status()} 후 목록으로 이동하지 않았습니다.`,
-        dialogs: dialogMessages
-      };
-    }
-
-    return {
-      status: "submitted",
-      url,
-      dialogs: dialogMessages
-    };
-  } finally {
-    selectedPage.off("dialog", dialogHandler);
-    if (selectedPage !== page) await selectedPage.close().catch(() => {});
-  }
-}
-
 let context;
 try {
   console.log(`개인 서비스키 신청 대상 ${selectedTargets.length}개`);
@@ -287,7 +91,7 @@ try {
     viewport: { width: 1440, height: 1000 }
   });
   const page = context.pages()[0] || await context.newPage();
-  await ensureLoggedIn(page);
+  await ensureLoggedIn(page, { ask, waitForLogin: process.env.PLAYWRIGHT_WAIT_FOR_LOGIN === "1" });
 
   if (!submit) {
     console.log("현재는 확인 모드입니다. 실제 신청은 --submit을 붙여 다시 실행하세요.");
@@ -298,7 +102,7 @@ try {
 
     for (const target of selectedTargets) {
       try {
-        const result = await applyTarget(page, target);
+        const result = await applyForDataset(page, target);
         console.log(`[${result.status}] ${target.datasetId} ${target.title}`);
         if (result.status !== "submitted" && !result.status.startsWith("already-applied")) {
           console.log(JSON.stringify(result));

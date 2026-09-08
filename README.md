@@ -172,7 +172,32 @@ npm run update-corporate-matches
 npm run update-corporate-financials
 ```
 
-공공데이터포털의 추가 인허가 API 활용신청은 Playwright 개인회원 자동화 도구로 순회할 수 있습니다. 브라우저가 열리면 로그인을 직접 완료하고, 실제 제출 시에만 `--submit`과 확인 문자열 `APPLY_PERSONAL`을 사용합니다. 로그인 정보·CAPTCHA·브라우저 프로필은 저장소에 포함하지 않습니다.
+### 원천 늘리기
+
+행정안전부가 개방한 인허가 조회서비스는 208종이고 그중 75종을 쓰고 있습니다. 아직 쓰지 않는 원천 가운데 상가·상권에 쓸모가 있는 것은 `data/localdata_source_candidates.json`에 순위와 업종 매핑까지 갖춰 대기시켜 둡니다. 후보의 `endpoint`는 `https://apis.data.go.kr/1741000/<slug>/info`라는 명명 규칙에서 유추한 값이라 포털에서 실재를 확인해야 합니다.
+
+`npm run authorize-localdata`가 후보 하나마다 데이터셋 검색 → 활용신청 → 요청주소 확인을 한 번에 처리합니다. 브라우저가 열리면 로그인을 직접 완료하고, 실제 제출 시에만 `--submit`과 확인 문자열 `APPLY_PERSONAL`을 사용합니다. 찾아낸 `datasetId`와 확인된 요청주소는 후보 파일에 되써 두므로, 다시 실행하면 검색을 건너뜁니다. 로그인 정보·CAPTCHA·브라우저 프로필은 저장소에 포함하지 않습니다.
+
+```bash
+npm run authorize-localdata                     # 검색·요청주소 확인만
+npm run authorize-localdata -- --submit         # 활용신청까지 제출
+npm run authorize-localdata -- --priority=1,2   # 일부 순위만
+npm run authorize-localdata -- --slugs=meat_packers
+```
+
+검색 결과에는 같은 업종의 파일데이터가 섞여 오므로 제목이 그대로 일치하는 데이터셋을 먼저 고르고, 업종명만 걸리는 후보가 하나뿐일 때만 인정합니다. 둘 이상이면 `search-ambiguous`로 남겨 사람이 고르게 합니다.
+
+승인은 몇 분 뒤에 반영됩니다. `npm run probe-localdata-sources -- --scope=candidates`로 `ready`가 된 것을 확인한 다음, `npm run promote-localdata`가 실제로 조회되는 원천만 `lib/store-license.js`의 `LOCALDATA_SOURCES` 끝에 붙이고 후보 목록에서 지웁니다. 손으로 옮기다 나던 오타가 사라집니다.
+
+```bash
+npm run promote-localdata                       # 옮길 대상만 보여 준다
+npm run promote-localdata -- --write            # 실제로 반영
+npm run promote-localdata -- --priority=1 --write
+```
+
+`--skip-probe`는 조회 확인을 건너뛰지만, 승인되지 않은 원천이 섞이면 다음 수집이 통째로 실패하므로 권하지 않습니다.
+
+datasetId를 이미 아는 데이터셋만 신청할 때는 예전 도구인 `npm run apply-localdata`를 그대로 쓸 수 있습니다.
 
 ```bash
 npm run apply-localdata -- --list

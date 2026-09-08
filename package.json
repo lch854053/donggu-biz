@@ -19,6 +19,8 @@
     "update-zones": "node scripts/update-mainbiz-zones.mjs",
     "update-nps": "node scripts/update-nps.mjs",
     "apply-localdata": "node scripts/apply-localdata.mjs",
+    "authorize-localdata": "node scripts/authorize-localdata.mjs",
+    "promote-localdata": "node scripts/promote-localdata.mjs",
     "import-road-polygons": "node scripts/import-road-polygons.mjs"
   },
   "engines": {
