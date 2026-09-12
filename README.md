@@ -14,7 +14,7 @@
 
 - 광주 동구 상가업소 지도와 상호 배타적인 행정동·주요상권 조회
 - 매월 갱신하는 상가정보와 행정안전부 인허가(영업 중) 보완 스냅샷의 업소를 지도와 표에서 조회
-- 설정된 행정안전부 인허가 75개 원천(건강·반려동물·체육·게임·유흥·식품·숙박·직업·관광·대규모점포·인쇄·공연·영화·의료기기·축산판매 등)을 관리번호·주소·좌표로 중복 제거
+- 설정된 행정안전부 인허가 130개 원천(건강·반려동물·체육·게임·유흥·식품·숙박·직업·관광·대규모점포·인쇄·공연·영화·의료기기·축산판매·모범음식점 등)을 관리번호·주소·좌표로 중복 제거
 - 스냅샷 메타데이터에 원천별 건수·매칭 건수·추가 건수·좌표 누락 건수를 기록
 - 선택한 행정동 또는 주요상권의 상위 10개 업종 소분류 분석
 - 지도에서 주요상권을 선택하면 기존 점포·클러스터 마커로 업소 위치를 확인
@@ -174,7 +174,9 @@ npm run update-corporate-financials
 
 ### 원천 늘리기
 
-행정안전부가 개방한 인허가 조회서비스는 208종이고 그중 75종을 쓰고 있습니다. 아직 쓰지 않는 원천 가운데 상가·상권에 쓸모가 있는 것은 `data/localdata_source_candidates.json`에 순위와 업종 매핑까지 갖춰 대기시켜 둡니다. 후보의 `endpoint`는 `https://apis.data.go.kr/1741000/<slug>/info`라는 명명 규칙에서 유추한 값이라 포털에서 실재를 확인해야 합니다.
+행정안전부가 개방한 인허가·시설정보 조회서비스는 216종이고 그중 130종을 쓰고 있습니다(2026-09 전수조사 기준). 아직 쓰지 않는 원천 가운데 상가·상권에 쓸모가 있는 것은 `data/localdata_source_candidates.json`에 순위와 업종 매핑까지 갖춰 대기시켜 둡니다. 후보의 `endpoint`는 `https://apis.data.go.kr/1741000/<slug>/info`라는 명명 규칙에서 유추한 값이라 포털에서 실재를 확인해야 합니다.
+
+원천마다 판매상태 코드 체계가 다르면 `lib/store-license.js`의 `LOCALDATA_STATUS_CODE_EXCEPTIONS`에 적는다. 모범음식점은 휴업 코드가 없고 `02`를 폐업으로 쓰므로 폐업·휴업 수집이 이 예외를 따른다. 업소명·지번주소·인허가일자처럼 필드 이름이 다른 원천은 `LICENSE_FIELD_ALIASES`에서 접는다.
 
 `npm run authorize-localdata`가 후보 하나마다 데이터셋 검색 → 활용신청 → 요청주소 확인을 한 번에 처리합니다. 브라우저가 열리면 로그인을 직접 완료하고, 실제 제출 시에만 `--submit`과 확인 문자열 `APPLY_PERSONAL`을 사용합니다. 찾아낸 `datasetId`와 확인된 요청주소는 후보 파일에 되써 두므로, 다시 실행하면 검색을 건너뜁니다. 로그인 정보·CAPTCHA·브라우저 프로필은 저장소에 포함하지 않습니다.
 
@@ -218,7 +220,7 @@ npm run inspect-localdata-datasets -- --search=통신판매업,옥외광고업
 
 `--expand`는 상세기능 영역을 눌러 펼친 뒤 AJAX 응답까지 훑는 보조 수단입니다. 화면마다 여러 요소를 클릭하므로 느리고 멈춘 것처럼 보일 수 있어 기본값이 아니며, 한 화면당 12초로 제한합니다. 정적 화면에서 주소를 찾지 못할 때만 붙이세요.
 
-승인 결과와 아직 도입하지 않은 후보 원천의 실재 여부는 `npm run probe-localdata-sources`로 확인합니다. 설정된 75개 원천과 `data/localdata_source_candidates.json`의 후보를 각각 1건씩만 조회해 `ready`(승인 완료·건수 확인), `unapproved`(엔드포인트는 있으나 활용 승인 없음), `missing`(엔드포인트 없음)으로 구분합니다. 후보 파일의 `endpoint`는 기존 원천의 명명 규칙에서 유추한 값이므로 `ready`로 확인된 원천만 `datasetId`와 함께 `lib/store-license.js`의 `LOCALDATA_SOURCES`로 옮깁니다.
+승인 결과와 아직 도입하지 않은 후보 원천의 실재 여부는 `npm run probe-localdata-sources`로 확인합니다. 설정된 130개 원천과 `data/localdata_source_candidates.json`의 후보를 각각 1건씩만 조회해 `ready`(승인 완료·건수 확인), `unapproved`(엔드포인트는 있으나 활용 승인 없음), `missing`(엔드포인트 없음)으로 구분합니다. 후보 파일의 `endpoint`는 기존 원천의 명명 규칙에서 유추한 값이므로 `ready`로 확인된 원천만 `datasetId`와 함께 `lib/store-license.js`의 `LOCALDATA_SOURCES`로 옮깁니다.
 
 ```bash
 npm run probe-localdata-sources
@@ -241,13 +243,26 @@ VWorld 주요상권 중 금남로4가역 1~4와 문화전당역 경계는 수집
 
 ## 폐업·휴업 인허가 갱신
 
-`data/stores_donggu.json`은 영업 중 업소만 담으므로 폐업·휴업 이력은 같은 75개 인허가 원천을 영업상태코드 `03`(폐업)·`02`(휴업)로 다시 조회해 `data/closed_licenses_donggu.json`에 따로 보관합니다. 영업 중 스냅샷을 행정동 판정과 폐업률 계산의 기준으로 쓰므로 `npm run update-stores`를 먼저 실행해야 합니다.
+`data/stores_donggu.json`은 영업 중 업소만 담으므로 폐업·휴업 이력은 같은 130개 인허가 원천을 영업상태코드 `03`(폐업)·`02`(휴업)로 다시 조회해 `data/closed_licenses_donggu.json`에 따로 보관합니다. 모범음식점처럼 `02`를 폐업으로 쓰는 원천은 `LOCALDATA_STATUS_CODE_EXCEPTIONS`를 따라 조회합니다. 영업 중 스냅샷을 행정동 판정과 폐업률 계산의 기준으로 쓰므로 `npm run update-stores`를 먼저 실행해야 합니다.
 
 ```bash
 npm run update-stores
 npm run update-closed-licenses
 npm run update-closed-licenses -- --since=2010 --statuses=closed
 ```
+
+## 학원·교습소 자료 갱신
+
+학원·교습소는 Open API가 없어 NEIS(나이스 교육정보 개방 포털)의 `학원교습소정보` 시트(CSV)를 받아 보관합니다. 현재 스냅샷은 원본 기준일 **2026-08-23** 기준 광주 동구 학원 305개·교습소 93개입니다. 매년 연초에 갱신 Issue가 열리도록 GitHub Actions `Remind Dong-gu academies data refresh`가 **1월 2일 09:00(KST)**에 동작합니다.
+
+새 파일을 받으면 `data/academies_donggu.csv`를 교체하고 원본 기준일을 넣어 변환합니다.
+
+```bash
+npm run update-academies -- --source-updated-at YYYY-MM-DD
+npm test
+```
+
+변환 스크립트는 25개 열 구성, 행별 열 개수, 학원지정번호 중복, 등록상태명 값, 날짜·정원·수강료 형식을 검사합니다. `data/academies_donggu.csv`와 `data/academies_donggu.json`을 함께 커밋해야 합니다.
 
 `--since`는 폐업일자 기준 연도로 기본값은 2016이며, 폐업 이력은 누적 자료라 이 값이 스냅샷 크기와 분석 구간을 함께 정합니다. `--statuses`로 `closed`·`suspended` 중 수집 대상을 고를 수 있습니다. 폐업일자가 비어 있거나 9999년·8202년 같은 입력 오류인 행은 기준 연도로 잘라내지 않고 남기되 연도별 집계에서는 제외하고 `missingClosedDateCount`로 셉니다. 스냅샷이 비거나 이전 건수보다 20% 넘게 줄면 기존 파일을 덮어쓰지 않고 중단합니다.
 
