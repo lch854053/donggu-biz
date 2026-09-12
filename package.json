@@ -12,6 +12,7 @@
     "diagnose-localdata-key": "node scripts/diagnose-localdata-key.mjs",
     "inspect-localdata-datasets": "node scripts/inspect-localdata-datasets.mjs",
     "update-employment-insurance": "node scripts/import-employment-insurance.mjs",
+    "update-academies": "node scripts/import-academies.mjs",
     "update-corporate-matches": "node scripts/update-corporate-matches.mjs",
     "update-corporate-financials": "node scripts/update-corporate-financials.mjs",
     "enrich-insurance-admin-dongs": "node scripts/enrich-insurance-admin-dongs.mjs",

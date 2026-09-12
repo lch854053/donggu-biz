@@ -11,7 +11,7 @@ import {
   isActiveLicense,
   latestSourceTimestamp,
   LOCALDATA_SOURCES,
-  LOCALDATA_STATUS_CODES,
+  statusCodeFor,
   mergeStoreSources
 } from "../lib/store-license.js";
 import { fetchLocaldataSource } from "../lib/localdata-client.js";
@@ -119,9 +119,9 @@ if (localdataKey) {
   for (const source of LOCALDATA_SOURCES) {
     const result = await fetchLocaldataSource(source, {
       serviceKey: localdataKey,
-      statusCode: LOCALDATA_STATUS_CODES.active
+      statusCode: statusCodeFor(source, "active")
     });
-    const activeItems = result.items.filter(isActiveLicense);
+    const activeItems = result.items.filter((item) => isActiveLicense(item, source));
     const licenses = activeItems.map((item) => {
       const compacted = compactLicense(item, source);
       return {

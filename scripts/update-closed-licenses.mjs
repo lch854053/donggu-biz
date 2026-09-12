@@ -8,7 +8,8 @@ import {
   latestSourceTimestamp,
   licenseStatusKind,
   LOCALDATA_SOURCES,
-  LOCALDATA_STATUS_CODES
+  LOCALDATA_STATUS_CODES,
+  statusCodeFor
 } from "../lib/store-license.js";
 import { fetchLocaldataSource } from "../lib/localdata-client.js";
 import { createLicenseAdminDongResolver } from "../lib/license-admin-dong.js";
@@ -126,7 +127,9 @@ for (const source of LOCALDATA_SOURCES) {
     sourceUpdatedAt: ""
   };
   for (const status of statuses) {
-    const result = await fetchLocaldataSource(source, { serviceKey: localdataKey, statusCode: status.code });
+    const statusCode = statusCodeFor(source, status.kind);
+    if (!statusCode) continue; // 이 원천에는 해당 상태 코드가 없다(모범음식점은 휴업 코드가 없다).
+    const result = await fetchLocaldataSource(source, { serviceKey: localdataKey, statusCode });
     if (result.error) {
       report.error = result.error.message;
       report.errorCode = result.error.code;
@@ -134,7 +137,7 @@ for (const source of LOCALDATA_SOURCES) {
     }
     report.counts[status.kind] = result.totalCount;
     const licenses = result.items
-      .filter((item) => licenseStatusKind(item) === status.kind)
+      .filter((item) => licenseStatusKind(item, source) === status.kind)
       .map((item) => {
         const compacted = compactLicense(item, source);
         return {
