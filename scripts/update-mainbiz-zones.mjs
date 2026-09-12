@@ -15,7 +15,9 @@ const MAX_RETRIES = 6;
 const MAX_RETRY_WAIT_MS = 30000;
 const REQUEST_TIMEOUT_MS = 20000;
 const key = process.env.VWORLD_KEY;
-const domain = process.env.VWORLD_DOMAIN || "https://biz-lookup.vercel.app";
+// VWorld 개발키는 발급 때 등록한 도메인으로만 통한다. 쿼리의 domain 파라미터와
+// 요청 Referer 헤더 양쪽에 같은 도메인을 넣어 둘 중 무엇을 검사하든 통과하게 한다.
+const domain = process.env.VWORLD_DOMAIN || "https://donggu-biz.vercel.app";
 
 if (!key) throw new Error("VWORLD_KEY 환경변수가 필요합니다.");
 
@@ -72,7 +74,10 @@ async function fetchTile(bounds, tileNo, tileCount) {
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
     try {
-      const response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+      const response = await fetch(url, {
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        headers: { Referer: `${domain}${domain.endsWith("/") ? "" : "/"}` }
+      });
       if (!response.ok) {
         const error = new Error(`HTTP ${response.status}`);
         error.retryable = response.status === 429 || response.status >= 500;
