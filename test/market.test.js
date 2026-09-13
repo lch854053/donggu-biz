@@ -461,7 +461,9 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(html, /aria-label="건물 연결 업소 목록 닫기"/);
   assert.match(html, /업종 데이터가 있는 건물을 클릭하면/);
   assert.doesNotMatch(html, /업종 데이터가 있는 건물에 마우스를 올리면/);
-  assert.match(html, /id="outlineIndustryToggle"[^>]*checked/);
+  // 업종 분류는 토글 없이 항상 켜져 있다.
+  assert.doesNotMatch(html, /id="outlineIndustryToggle"/);
+  assert.doesNotMatch(app, /outlineIndustryToggle/);
   assert.match(html, /class="outline-legend" id="outlineLegend" hidden/);
   assert.doesNotMatch(html, /id="panel-analysis"/);
   assert.doesNotMatch(html, /id="tab-analysis"/);
