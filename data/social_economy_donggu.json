@@ -1,0 +1,3531 @@
+{
+ "meta": {
+  "generatedAt": "2026-09-13T22:41:09.199Z",
+  "source": "광주사회적경제지원센터 사회적경제현황 (https://www.gjsec.kr/sub/sub01_03.php)",
+  "region": "광주광역시 동구",
+  "totalCount": 250,
+  "kindCounts": {
+   "협동조합": 184,
+   "사회적협동조합": 35,
+   "사회적기업": 17,
+   "마을기업": 12,
+   "예비사회적기업": 9,
+   "자활기업": 4,
+   "협동조합연합회": 1
+  }
+ },
+ "organizations": [
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "(사)아이티케어복지회",
+   "representative": "김중기",
+   "phone": "062-524-9631",
+   "address": "전남광주통합특별시 동구 의재로 151 201호 (운림동)",
+   "gu": "동구",
+   "website": "www.itcare.or.kr",
+   "industry": "건설업",
+   "business": "장애인 생산품 생산 시설  정보통신공사업",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "(사)한국예술진흥회",
+   "representative": "전삼임",
+   "phone": "062-521-3372",
+   "address": "전남광주통합특별시 동구 중흥로 239 2층 3층 (계림동)",
+   "gu": "동구",
+   "website": "www.e-kapa.org",
+   "industry": "교육 서비스업",
+   "business": "문화예술 서비스 창의 체험학습 / 문화예술 박람회 / 평생교육 프로그램",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "자활기업"
+   ],
+   "name": "(유)두껍베이커리",
+   "representative": "강현지",
+   "phone": "062-228-1410",
+   "address": "전남광주통합특별시 동구 제봉로 88  대성학원 기숙사 1층 (서석동)",
+   "gu": "동구",
+   "website": "instagram.com/dookkeobis_",
+   "industry": "숙박 및 음식점업",
+   "business": "식품생산(제과·제빵)",
+   "designatedYear": ""
+  },
+  {
+   "kinds": [
+    "사회적기업",
+    "자활기업"
+   ],
+   "name": "(유)디커피스토리",
+   "representative": "이은자",
+   "phone": "062-234-1410",
+   "address": "전남광주통합특별시 동구 서남로 1 1층 동구청내(서석동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "숙박 및 음식점업",
+   "business": "비알콜 음료점업",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "자활기업"
+   ],
+   "name": "(유)바로드림",
+   "representative": "전찬희",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 예술길 19-2  3층 (궁동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "운수업",
+   "business": "그외 기타 분류안된 운송관련 서비스업",
+   "designatedYear": ""
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "가나다협동조합",
+   "representative": "서기준",
+   "phone": "062-228-7813",
+   "address": "전남광주통합특별시 동구 백서로 125 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "인쇄 출판 광고물 안내판 제작사업 / 편집디자인 문구류 교육기자재 사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "가시버시협동조합",
+   "representative": "김동현",
+   "phone": "062-223-9005",
+   "address": "전남광주통합특별시 동구 천변우로 395-1 (불로동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "웨딩포토 및 기타 웨딩관련 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "가치예술협동조합",
+   "representative": "신호윤",
+   "phone": "070-8815-4702",
+   "address": "전남광주통합특별시 동구 동계천로 58-2 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화공연 및 축제 기획  종합문화콘텐츠 사업 / 마을 문화센터 교육강좌  갤러리 등 운영사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "개구리공방협동조합",
+   "representative": "강순심",
+   "phone": "062-223-9051",
+   "address": "전남광주통합특별시 동구 동명로14번길 5 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "도자기 제품개발 교육 및 전시회",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "건화기업㈜",
+   "representative": "권기현",
+   "phone": "062-523-0880",
+   "address": "전남광주통합특별시 동구 무등로304번길 24 (계림동)",
+   "gu": "동구",
+   "website": "http://www.ghunhwa.co.kr/",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "청소용역 등 사업시설관리",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "공동체모닥협동조합",
+   "representative": "김경일",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 천변좌로 606  청하빌딩 2층 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "도서 및 출판사업 / 공동체 관련 조사 및 연구사업 / 모닥 최봉익 선생 유지를 잇는 사업",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광민협동조합",
+   "representative": "윤목현",
+   "phone": "062-675-3555",
+   "address": "전남광주통합특별시 동구 필문대로 212 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "친환경농산물 가공 / 농수축산물 유통 판매",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주간병인협동조합",
+   "representative": "박미정",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로 329  5층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "간병업무 협약 및 파견",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주결준비협동조합",
+   "representative": "조행수",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 서석로 20-1 (불로동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "웨딩관련 컨설팅 매니저 도우미 업체소개 등 서비스 / 웨딩 상품 구입 판매 및 공동 웨딩이벤트 사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주남구지역경제활성화협동조합",
+   "representative": "임영철",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 충장로22번길 8-12 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "지역경제공동체 사회적 네트워킹 사업 / 지역경제공동체 사회적 교육사업 / 지역경제공동체 사회적 시장개발 및 조성사업 / 지역경제공동체 사회적 공동사업 / 지역경제공동체 사회적 주체발굴 및 육성 / 지역경제공동체 사회적 홍보사업  / 지역경제공동체 지역재생사업 / 국가 지방자치단체 공공기관 일반기업의 위탁사업 / 지역경제공동체 사회적으로 지원하기위한 지원센터 위탁운영 /",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주동구레크리에이션협동조합",
+   "representative": "서순주",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 학동길 5  4층 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "건전한 놀이문화 보급 및 레크리에이션 이벤트 사업 / 레크리에이션 지도자 양성 및 강사 파견",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주디자인협동조합",
+   "representative": "노유민",
+   "phone": "062-222-0375",
+   "address": "전남광주통합특별시 동구 문화전당로 19-1  2층 (남동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "디자인 상품제작 및 출판사업 / 웹사이트 및 영상광고 제작사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주미술인협동조합",
+   "representative": "박현일",
+   "phone": "062-652-2633",
+   "address": "전남광주통합특별시 동구 예술길 25  3층 (궁동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "미술  문화예술  축제  전시  공모 사업 레지던시 및 게스트하우스 사업 도시재생 벽화사업 및 예술의 거리 활성화 사업 미술전시 교육 및 미술교육 프로그램 사업 아트 매니지먼트 및 도슨트 사업",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주생활디자인협동조합",
+   "representative": "김세례",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동명로67번길 21 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "생활디자인상품 종합중개 사업 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주스마트콘텐츠개발자협동조합",
+   "representative": "김대성",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 금남로 238  13층 1310호 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "웹콘텐츠 개발업 / 시스템통합 구축설계업 / 근거리통신망 컴퓨터 시스템 통합설계업",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주시각문화콘텐츠협동조합",
+   "representative": "박유진",
+   "phone": "062-226-0401",
+   "address": "전남광주통합특별시 동구 장동로 1-7 (장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "문화재 및 자연환경 등 시각 문화자료 기록?보존 촬영 / 촬영장비 임대 및 공유  다큐멘터리 영상제작",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주시웨딩협동조합",
+   "representative": "서계영",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 천변우로 405-3  3층 (불로동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "웨딩물품 공동구매 및 전시 박람회개최 / 문화공연과 연계된 상설 전시장 및 문화강좌 운영",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "광주시한유연사회적협동조합",
+   "representative": "구맹임",
+   "phone": "062-222-1158",
+   "address": "전남광주통합특별시 동구 지호로 179-16 3층 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "암환우와 가족을 위한 신체 정신 사회복지 서비스 /  암치유 환우 건강관리 및 사회복귀 재활 서비스 /  암예방 교육 및 정보제공 사업",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주아트유통협동조합",
+   "representative": "박철모",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 예술길 23-2 (궁동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "예술공예품의 경매 판매 전시 유통사업 / 예술공예품 제조 및 개발 / 임대사업 등",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주예술협동조합",
+   "representative": "김경순",
+   "phone": "062-261-8288",
+   "address": "전남광주통합특별시 동구 밤실로 117 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "청소년 문화예술 교육프로그램 운영",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주전남상담협동조합",
+   "representative": "송경환",
+   "phone": "062-351-2361",
+   "address": "전남광주통합특별시 동구 남문로701번길 7  2층 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "상담복지 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주전남전시전람협동조합",
+   "representative": "강순례",
+   "phone": "062-233-8855",
+   "address": "전남광주통합특별시 동구 서석로 9  2층 (불로동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "웨딩서비스사업 / 여행알선 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주청년농산물유통협동조합",
+   "representative": "안창섭",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 문화전당로35번길 35-1 1층 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "공동브랜드 및 콘텐츠개발 사업 / 농산물 직거래 유통 및 판매 사업 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "광주청년지갑트레이닝센터사회적협동조합",
+   "representative": "박수민",
+   "phone": "062-434-0010",
+   "address": "전남광주통합특별시 동구 필문대로205번길 10-1 (지산동)",
+   "gu": "동구",
+   "website": "http://www.gjymh.com/",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역사회 개인신용회복 및 경제생활 상담·교육 등",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주포토클럽협동조합",
+   "representative": "임문수",
+   "phone": "062-234-6177",
+   "address": "전남광주통합특별시 동구 지호로 132 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "웨딩포토 및 웨딩컨설팅",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주프로사진가협동조합",
+   "representative": "오정욱",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 서석로 14-1 (불로동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "사진관 운영 서비스 사업 / 사진관련 교육사업 등",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주학부모브런치협동조합",
+   "representative": "조현미",
+   "phone": "062-222-8889",
+   "address": "전남광주통합특별시 동구 장동로 23-20  3층 (장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "입시 및 진학관련 상담 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주한겨레두레협동조합",
+   "representative": "장복동",
+   "phone": "062-525-7431",
+   "address": "전남광주통합특별시 동구 필문대로205번길 10-1 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "생필품 직거래 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주한복협동조합",
+   "representative": "박우근",
+   "phone": "062-222-4558",
+   "address": "전남광주통합특별시 동구 금남로 162-9 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "한복 홈패션 등 의복 악세서리 제조업 /  충장로 활성화사업",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "광주햇빛발전협동조합",
+   "representative": "최홍엽",
+   "phone": "062-514-0311",
+   "address": "전남광주통합특별시 동구 중앙로 254 (동명동)",
+   "gu": "동구",
+   "website": "http://www.gjymh.com/",
+   "industry": "전기/가스/증기 및 공기조절공급업",
+   "business": "시민햇빛발전소 건립 및 전력판매사업 / 에너지 교육과 홍보사업",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "교육거버넌스협동조합",
+   "representative": "이주영",
+   "phone": "062-671-3690",
+   "address": "전남광주통합특별시 동구 장동로 36  3층 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "온라인교육사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "구부야협동조합",
+   "representative": "안도남",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동계로13번길 8-2 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "소규모 주류제조 사업 / 탁주체험 및 교육사업 / 일반음식점 운영사업 등",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "국민행복협동조합",
+   "representative": "이여신",
+   "phone": "062-232-3455",
+   "address": "전남광주통합특별시 동구 양림로119번길 7 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "공산품 및 농수산물 생산가공유통판매 / 특산물 유통 판매사업",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "굿미래협동조합",
+   "representative": "조재용",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 천변우로 453  302호 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "광고대행 / 전자상거래 및 통신판매업 / 인터넷 정보 매개 서비스업 / 전시 및 행사대행업 / 부동산 임대 및 전대업 등",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "금남지하도상가소상인사회적협동조합",
+   "representative": "나화심",
+   "phone": "062-229-1315",
+   "address": "전남광주통합특별시 동구 서석로 지하 56  금남지하도상가 G동 9-1호 (충장동)",
+   "gu": "동구",
+   "website": "http://금남지하도상가",
+   "industry": "부동산/임대업",
+   "business": "금남지하도상가 아시아문화전당 518 역사유적지 안내서비스 사업 / 금남지하도상가 주차 공간 시설물 운영관리사업",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "금담사회적협동조합",
+   "representative": "김지혜",
+   "phone": "062-225-3444",
+   "address": "전남광주통합특별시 동구 중앙로 329 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 운영",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "금송특수농영경영인협동조합",
+   "representative": "김종순",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 학동길 18 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "농업/어업 및 임업",
+   "business": "씨감자  버섯류 재배 및 가공 판매사업 / 산양산삼 등 약초류 재배 및 가공?판매사업 등",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "기살림빛고을사회적협동조합",
+   "representative": "최요한",
+   "phone": "062-227-8863",
+   "address": "전남광주통합특별시 동구 계림로20번길 13 1층 (계림동)",
+   "gu": "동구",
+   "website": "www.gisallim.net",
+   "industry": "보건업/사회복지서비스업",
+   "business": "아동돌봄사업",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "기살림빛고을협동조합",
+   "representative": "최요한",
+   "phone": "062-227-8863",
+   "address": "전남광주통합특별시 동구 계림로20번길 13 (계림동)",
+   "gu": "동구",
+   "website": "www.gisallim.net",
+   "industry": "도매 및 소매업",
+   "business": "제조 및 판매",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "까맹협동조합",
+   "representative": "김별",
+   "phone": "070-8768-8993",
+   "address": "전남광주통합특별시 동구 필문대로273번길 22  2층 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "공예품 제작  판매사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "꿈그린사회적협동조합",
+   "representative": "고도연",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 화산로 350번길 18 202호 (용산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "아동공동생활가정 설치 및 운영 사업",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "끌림사회적협동조합",
+   "representative": "윤동주",
+   "phone": "062-527-0101",
+   "address": "전남광주통합특별시 동구 경양로379번길 10 2층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 운영",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "남광주문화기획협동조합",
+   "representative": "김용기",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 제봉로17번길 22 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "지역특화 / 문화상품 / 음식관련 판매업 등",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "넥스트메이커스 협동조합",
+   "representative": "서인선",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중앙로196번길 31-6 5층 (대의동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화예술 등 행사 관련사업 /게임컨텐츠 개발 및 운용사업/ 교육컨설팅 사업/ 홍보마케팅 등 사업/ 조합원과 직원에 대한 상담/ 교육·훈련 및 정보제공 사업/ 조합 간 협력을 위한 사업/ 조합의 홍보 및 지역사회를 위한 사업",
+   "designatedYear": "2026"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "누리네트워크협동조합",
+   "representative": "김동욱",
+   "phone": "062-225-0550",
+   "address": "전남광주통합특별시 동구 서남로 14  606호 (서석동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "디지털콘텐츠 / 문화콘텐츠아카이빙 / 브랜드 개발 / 부동산 개발 관리 등",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "예비사회적기업"
+   ],
+   "name": "누리아이㈜",
+   "representative": "이로사",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 금남로 245 전일빌딩 5층 (금남로1가)",
+   "gu": "동구",
+   "website": "www.nuri-i.kr",
+   "industry": "제조업",
+   "business": "고무 및 플라스틱제품 제조",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "늘봄협동조합",
+   "representative": "신하영",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 지호로 11 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "공예교육 프로그램 개발과 육성 / 프리마켓",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "늘푸른사회적협동조합",
+   "representative": "서영미",
+   "phone": "062-371-7808",
+   "address": "전남광주통합특별시 동구 금남로 246 YMCA3층 307호",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "노인 일자리  및 사회활동 지원사업/재가복지시설 설치 및 운영 사업/가사간병 방문서비스 사업/일상돌봄서비스 사업",
+   "designatedYear": "2026"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "다니엘사회적협동조합",
+   "representative": "박채연",
+   "phone": "062-263-6439",
+   "address": "전남광주통합특별시 동구 밤실로 150 (산수동)",
+   "gu": "동구",
+   "website": "https://cafe.naver.com/daniel153",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "장애인공동생활가정 운영",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "다다협동조합",
+   "representative": "박문종",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 제봉로184번길 9-7 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "아트페어 레지던시 야시장 등 창작 전시 / 시민참여 예술 프로그램 운영(교육  체험)",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "다문화간병인협동조합",
+   "representative": "손재홍",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 화산로 354 (용산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "간병인 요양보호사 육성교육 및 파견 사업 / 외국어 교육강사 육성 및 파견서비스",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "마을기업",
+    "협동조합"
+   ],
+   "name": "다복마을협동조합",
+   "representative": "안병락",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 밤실로 24 2층 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "모주 발효청",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "다향어울림협동조합",
+   "representative": "문선희",
+   "phone": "0622-252-252",
+   "address": "전남광주통합특별시 동구 동계천로 126  1층 (장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "꽃차 제조 및 판매",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "대중문화예술협동조합",
+   "representative": "박종배",
+   "phone": "062-269-1061",
+   "address": "전남광주통합특별시 동구 문화전당로 37-2 (광산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "복합문화공간 프랜차이즈 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "대중미술문화협동조합",
+   "representative": "김혁",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 예술길 23-6  2층 (궁동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "사진인화  펀킴아트  포토앨범 제작 / 사진관련 강의 및 전시회 개최",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "대청마루협동조합",
+   "representative": "이영란",
+   "phone": "062-224-1410",
+   "address": "전남광주통합특별시 동구 중앙로 149 (호남동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "숙박 및 음식점업",
+   "business": "일반음식점 운영",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "대통령상수상자의김치명인협동조합",
+   "representative": "김효숙",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 증심사길 28-16  2층 (운림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "김치관련 기획 / 연구 / 자문 사업 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "더랩협동조합",
+   "representative": "임재헌",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 백서로137번길 31 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "재가 장애인 재활 방문 서비스 사업 / 재가 노인 재활 방문 서비스 사업 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "더맛있는향기협동조합",
+   "representative": "박현찬",
+   "phone": "070-4729-0018",
+   "address": "전남광주통합특별시 동구 동계천로 163  2 3층 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "제과제빵사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "더멋찐모델라인 협동조합",
+   "representative": "한성택",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 구성로152번길 5  3층 (수기동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "패션 관련사업 / 사회 관련사업 / 시니어 생산적 복지 플랫폼 구축 사업 / 거버넌스 관련사업 / 커뮤니티 관련사업 / 전문 및 인허가 관련사업",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "예비사회적기업"
+   ],
+   "name": "더일러스트앤아트㈜",
+   "representative": "최지연",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 금남로 245 전일빌딩 5층",
+   "gu": "동구",
+   "website": "http://www.theillustandart.com",
+   "industry": "도매 및 소매업",
+   "business": "미술기법 교육",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "도시농업협동조합",
+   "representative": "김성호",
+   "phone": "062-232-5400",
+   "address": "전남광주통합특별시 동구 학동길 5  1층 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "농업/어업 및 임업",
+   "business": "자원순환형 유기농업 보급사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "도시문화창작인협동조합",
+   "representative": "조강현",
+   "phone": "062-456-1708",
+   "address": "전남광주통합특별시 동구 동명로14번길 19 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "공공미술  공공디자인 사업 / 마을가꾸기 및 경관개선사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "도호협동조합",
+   "representative": "최영우",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동명로98번길 7-44 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "푸드트럭 사업/ 푸드트럭 프렌차이즈 사업/ 커피류 가공업 사업/ 문화행사 기획 사업/ 행사 진행 사업/ 푸드마켓 기획 사업/ 전자 상거래 도소매 사업/ 카페 및 음식업 프렌차이즈 사업/ 창업 컨설팅 교육 사업/ 영상 제작 사업/ 전통시장 육성 사업/ 청년창업 지원 사업/ 관광상품 판매 및 유통사업/ 수공예품 연계 사업/ 광고홍보사업/ 어플리케이션제작사업/ 정보 포털사이트 제작 사업/ 홈페이지 제작 사업/ 홈페이지 렌탈 사업/ 청소년 교육지원 사업/ 매니",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "동명문화트래블협동조합",
+   "representative": "박필주",
+   "phone": "062-265-5005",
+   "address": "전남광주통합특별시 동구 중앙로252번길 11-1 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "관광 여행사업 및 숙박업 / 관광기념품 제작유통 및 인쇄출판업 / 문화체험장 조성 운영 및 체험학습업 등",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "사회적협동조합",
+    "예비사회적기업",
+    "마을기업"
+   ],
+   "name": "동명어울림마을관리사회적협동조합",
+   "representative": "심성식",
+   "phone": "062-223-2381",
+   "address": "전남광주통합특별시 동구 동계천로85번길 10-20 3층 (동명동)",
+   "gu": "동구",
+   "website": "https://cafe.naver.com/dmdsocialc",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "도시재생 공동이용시설 운영관리 / 마을 자원 활용 공정 마을여행 / 노인돌봄 커뮤니티케어 / 골목환경정비 및 관리사업 / 마을관리소 운영사업",
+   "designatedYear": "2022"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "동명푸른길협동조합",
+   "representative": "정해인",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동계로 15 101호 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "농업/어업 및 임업",
+   "business": "공예교육관련 서비스사업 / 지역 네트워크 활성화 사업",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "두드림협동조합",
+   "representative": "김춘섭",
+   "phone": "062-234-8158",
+   "address": "전남광주통합특별시 동구 독립로 284  신보빌딩 3층 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "생활환경개선사업 / 교육 및 문화서비스 사업",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "드론컴퍼니협동조합",
+   "representative": "김영곤",
+   "phone": "062-529-6993",
+   "address": "전남광주통합특별시 동구 소태길 8  b1층 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "전문과학/기술서비스업",
+   "business": "사업용 드론의 연구 및 개발 수리 판매사업 / 사업용 드론 활용을 위한 자격증의 여론 및 실기교육 / 광고대행 및 영상제작 판매사업 / 드론 관련 사업 등",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "디자인협동조합씀",
+   "representative": "이동현",
+   "phone": "062-941-2280",
+   "address": "전남광주통합특별시 동구 백서로125번길 8-1 3층 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "공동브랜드를 통한 디자인 상품개발 및 유통사업",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "라온사회적협동조합",
+   "representative": "김성훈",
+   "phone": "062-251-6437",
+   "address": "전남광주통합특별시 동구 밤실로 150 104-1401",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 운영",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "라윤 사회적협동조합",
+   "representative": "윤지현",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동계로 38",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 및 다함께돌봄센터 운영",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "로뎀사회적협동조합",
+   "representative": "전현숙",
+   "phone": "062-225-1845",
+   "address": "전남광주통합특별시 동구 무등로 451 1층 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "그룹홈 운영",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "리마인드협동조합",
+   "representative": "베스파",
+   "phone": "062-1800-9820",
+   "address": "전남광주통합특별시 동구 지호로 161-7  2층 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "플리마켓 사업 / 문화예술 복합사업",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "리스크컨설팅협동조합",
+   "representative": "유병모",
+   "phone": "062-224-3387",
+   "address": "전남광주통합특별시 동구 지산로 68 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "컨설팅 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "린도협동조합",
+   "representative": "신미생",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 필문대로 155  2층 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "미용 및 기타 미용 교육사업 / 미용자재 도소매업",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "맘협동조합",
+   "representative": "김용민",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 남문로 687 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "조합원 물품 공동구매 / 학교 및 관공서 식자재 공급사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "맛있는골목협동조합",
+   "representative": "오명구",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동계로 16-19 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "카페 및 바 / 식당운용",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "매곡중앙사회적협동조합",
+   "representative": "김주형",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 의재로 149-7 (운림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 운영",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "목어문화예술협동조합",
+   "representative": "박선우영",
+   "phone": "062-223-7666",
+   "address": "전남광주통합특별시 동구 충장로46번길 7 관음사 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "예술품 및 공예품 전시판매 사업 / 문화예술 체험 및 교육사업",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "목포수산협동조합",
+   "representative": "지형주",
+   "phone": "062-513-3306",
+   "address": "전남광주통합특별시 동구 양림로 117 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "농업/어업 및 임업",
+   "business": "공동창고 운영 및 운송 등 물류 공동사업 / 지역간  상인간의 협력을 위한 공동사업 및 공동브랜드 개발 / 상거래 기법의 개선 및 유통구조의 개선을 위한 공동사업 / 조합원과 직원에 대한 상담  교육·훈련 및 정보제공 사업 / 조합 간 협력을 위한 사업 / 조합의 홍보 및 지역사회를 위한 사업",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "무등공예디자인협동조합",
+   "representative": "김정태",
+   "phone": "062-375-1575",
+   "address": "전남광주통합특별시 동구 필문대로187번길 4 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "공예품 판매 및 체험교육",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "무등산닷컴협동조합",
+   "representative": "박향식",
+   "phone": "062-225-5544",
+   "address": "전남광주통합특별시 동구 금남로 167 3층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "국내외 관광상품개발 및 여행 알선업 / 항공?숙박?승차권 판매대리업 및 렌터카사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "무등산증심사상가지구협동조합",
+   "representative": "김동훈",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 증심사길30번길 5  3층 (운림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "상가 활성화 사업 / 관광자원 개발 / 국립공원 탐방객을 위한 편의시설 제공",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "마을기업",
+    "협동조합"
+   ],
+   "name": "무등에너지협동조합",
+   "representative": "김형수",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 학소로106번길 13-1 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "하수폐기물 처리/원료재생 및 환경복원업",
+   "business": "햇빛발전소 건립 / 그린리모델링 사업 등",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "문학인협동조합",
+   "representative": "김을현",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 구성로 159 401호 (충장로5가)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "문학관련 출판 및 전시사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "문혁인쇄기획협동조합",
+   "representative": "전국인",
+   "phone": "062-573-1185",
+   "address": "전남광주통합특별시 동구 문화전당로23번길 19 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "인쇄기획 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "뭉크협동조합",
+   "representative": "이연례",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 충장로 52-2  3층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "행사 유니폼 및 단체복 공동구매 판매사업 / 세대별 트랜드 맞춤 및 공동브랜드 개발사업 / 의류 맞춤형 콘텐츠 및 신소재 개발 사업",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "미래로뷰티디자인협동조합",
+   "representative": "이숙자",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중앙로 168 (황금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "조합원에게 필요한 자재의 공동구매  공동판매  공동브랜드 개발 판촉사업",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "미래지향독서교육협동조합",
+   "representative": "강태숙",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 남문로 377  102동 17층 1703호 (월남동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "독서교육 프로그램과 교재 연구개발 사업 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "미비다협동조합",
+   "representative": "오승재",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중앙로 162-1  5층 (황금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화교류 사업 / 교육 사업",
+   "designatedYear": "2022"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "바른생활협동조합",
+   "representative": "정일현",
+   "phone": "062-222-0882",
+   "address": "전남광주통합특별시 동구 구성로204번길 15-6  3층 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "상품(공산품 의류 화장품 건강식품 농수산물 지역특산물 등)의 유통  판매사업",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "밝은사회적협동조합",
+   "representative": "이영숙",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로 374 110동 101호 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "아동공동생활가정 설치 및 운영 사업",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "백년가게광주전남제주협동조합",
+   "representative": "길태영",
+   "phone": "062-224-1900",
+   "address": "전남광주통합특별시 동구 충장로 39 3층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "백년가게 협의회 워크숍 등을 통한 노하우 공유와 협력관계 구축/  상품개발 / 제품홍보 및 프로모션 / 판로교육 / 경영환경 개선",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "버팀목공동체사회적협동조합",
+   "representative": "임정수",
+   "phone": "062-234-2009",
+   "address": "전남광주통합특별시 동구 지산동 715-2 법조타운 113호(지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "저소득층 교육  성폭력 예방사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "벧엘사회적협동조합",
+   "representative": "남억",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 밤실로 150 105동 105호 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "아동공동생활가정 설치 및 운영 사업",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "별별동구네트워크 사회적협동조합",
+   "representative": "임홍석",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 지호로 181 .",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역사회 통합돌봄지원사업/ 일상돌봄서비스 사업/ 간병 및 가사지원사업/ 마을건강센터 설치 및 운영사업/ 사회서비스 연구 및 개발사업/ 사회서비스 법령에 따른 서비스 제공 사업/ 통합돌봄 등 복지관련 교육·컨설팅 및 인력양성사업",
+   "designatedYear": "2026"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "보네따스협동조합",
+   "representative": "남병효",
+   "phone": "062-413-3200",
+   "address": "전남광주통합특별시 동구 장동로 23-22  2층 (장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "커피로스팅 및 제품개발 / 공유로스팅 / 커피 용품 도·소매업 / 공공기관 카페 운영 및 케이터링 / 커피 연계 문화콘텐츠",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "보부상협동조합",
+   "representative": "정윤성",
+   "phone": "062-232-1661",
+   "address": "전남광주통합특별시 동구 동명로 110 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "생산제품 국내외 판매",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "뷰티산업협회협동조합",
+   "representative": "서동균",
+   "phone": "062-232-0410",
+   "address": "전남광주통합특별시 동구 서석로 89  6층 (대의동)",
+   "gu": "동구",
+   "website": "www.beautyi.net",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "뷰티관련 제반사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "뷰티플러스협동조합",
+   "representative": "송준",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 경양로235번길 14-4  1층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "생활용품 및 위생용품에 대한 서비스 유통 물류 등 도소매사업 / 사무기구 및 사무용품과 관련된 판매사업 등",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "비비(BB)협동조합",
+   "representative": "김기철",
+   "phone": "062-952-5085",
+   "address": "전남광주통합특별시 동구 지산로 21  108호 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "미용업 공동매장 운영사업 / 미용 공동브랜드 개발 및 판촉사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "비트윈협동조합",
+   "representative": "김사랑",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로 329  1층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "주거 및 업무 공간공유 사업",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "빅파이(BigFiv)협동조합",
+   "representative": "손희연",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로321번길 20-24 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "과학기술정보통신부 바우처 사업 / 빅데이터 수요 발굴을 적용하기 위한 컨설팅 사업 / 빅데이터 수집 가공 분석 마케팅 연구 교육사업",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "빅히트문화예술심리협동조합",
+   "representative": "문지영",
+   "phone": "062-228-5220",
+   "address": "전남광주통합특별시 동구 경양로277번길 3-1 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화예술사업 / 예술 및 문화예술 축제사업 / 전시회 및 공모전 사업 / 레지던시 및 게스트하우스 사업 등",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "빛고을시니어협동조합",
+   "representative": "장방진",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 지산로38번길 17-1 201호(지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "교육문화 강사 파견/시니어 전문 프로그램 기획 운영/방문 및 프로그램형 복지 돌봄 서비스",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "빛고을시민햇빛발전사회적협동조합",
+   "representative": "정은진",
+   "phone": "062-233-6501",
+   "address": "전남광주통합특별시 동구 충장로46번길 8 (충장동)",
+   "gu": "동구",
+   "website": "www.bcsolcoop.com",
+   "industry": "전기/가스/증기 및 공기조절공급업",
+   "business": "발전사업",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "사단법인 샘물복지회",
+   "representative": "박태균",
+   "phone": "062-385-0401",
+   "address": "전남광주통합특별시 동구 학소로 32 (소태동) 201호",
+   "gu": "동구",
+   "website": "",
+   "industry": "건설업",
+   "business": "배전반·제어장치 생산/ 중증장애인 직업훈련",
+   "designatedYear": "2026"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "사무엘사회적협동조합",
+   "representative": "정명자",
+   "phone": "062-251-6438",
+   "address": "전남광주통합특별시 동구 필문대로171번길 27-7  3층 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "아동공동생활가정 운영",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "사방팔방여행협동조합",
+   "representative": "이재홍",
+   "phone": "062-714-1500",
+   "address": "전남광주통합특별시 동구 금남로 181 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "여행사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "사회적협동조합동글",
+   "representative": "윤소정",
+   "phone": "062-265-5616",
+   "address": "전남광주통합특별시 동구 남문로 590 2층 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 운영",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "사회적협동조합살림",
+   "representative": "윤봉란",
+   "phone": "062-383-1136",
+   "address": "전남광주통합특별시 동구 금남로 246 3층 (충장동)",
+   "gu": "동구",
+   "website": "https://www.socialcenter.kr",
+   "industry": "전문과학/기술서비스업",
+   "business": "컨설팅 연구조사 교육",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "사회적협동조합아시아문화콘텐츠시민네트워크",
+   "representative": "나경수",
+   "phone": "062-229-0225",
+   "address": "전남광주통합특별시 동구 중앙로 196번길8 오송빌딩 3-1호 (궁동)",
+   "gu": "동구",
+   "website": "blog.naver.com/accn02251",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "광주문화스토리텔링캠프 운영을 통한 문화콘텐츠 생산과 협동사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "사회적협동조합여로",
+   "representative": "주정주",
+   "phone": "062-222-8812",
+   "address": "전남광주통합특별시 동구 양림로119번길 7 301호 (학동)",
+   "gu": "동구",
+   "website": "www.gjw.or.kr/scyeoro",
+   "industry": "보건업/사회복지서비스업",
+   "business": "노인일자리 및 사회활동지원사업",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "사회적협동조합청람",
+   "representative": "서해린",
+   "phone": "062-464-0631",
+   "address": "전남광주통합특별시 동구 남문로622번길 22-3 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 운영",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "산들특수농업경영인협동조합",
+   "representative": "김동현",
+   "phone": "062-224-4000",
+   "address": "전남광주통합특별시 동구 서석로85번길 8-14 (대의동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "농업/어업 및 임업",
+   "business": "씨감자  천마 등 약용작물 재배  가공  유통사업 / 기타 부대되는 수출?입 관계사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "산수2동호랑꼬두메협동조합",
+   "representative": "박태상",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로 504-1 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "마을학교 운영 및 교육·체험 사업 / 반찬 및 도시락 생산·판매 사업 / 마을카페사업 / 마을축제 기획 및 운영사업 / 태양광 발전 사업 및 재생에너지 관련 사업 / 행정  공공기관 및 유관기관의 위탁 사업 등",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "삼현협동조합",
+   "representative": "권인천",
+   "phone": "062-433-9292",
+   "address": "전남광주통합특별시 동구 무등로 412 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "공동 구매  마케팅  브랜드 개발 등 제조 및 유통 관련사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "상권달리기 사회적협동조합",
+   "representative": "정성욱",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 운림길 29-9 4층",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "스포츠 및 문화행사 기획/ 운영 및 대행업/ 유휴 공간 활용 팝업스튜디오 및 커뮤니티 공간 운영 등",
+   "designatedYear": "2026"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "생활문화지원센터협동조합",
+   "representative": "백수영",
+   "phone": "062-228-4447",
+   "address": "전남광주통합특별시 동구 동명로67번길 30 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "힐링투어사업 / 힐링투어 강사양성 및 교육사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "생활문화협동조합",
+   "representative": "송재형",
+   "phone": "062-227-8788",
+   "address": "전남광주통합특별시 동구 남문로 686  4층 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "지역문화 콘텐츠 개발 / 전시?공연 등 각종 문화행사 기획사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "서경예술협동조합",
+   "representative": "박석동",
+   "phone": "0507-1479-8933",
+   "address": "전남광주통합특별시 동구 독립로264번길 28 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화예술교육프로그램 운영 / 문화예술 체험을 위한 위탁사업 등",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "서남동인쇄문화마을관리사회적협동조합",
+   "representative": "최윤호",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 문화전당로23번길 8-1 2층 (남동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "도시재생 거점시설 운영관리 / 도시재생 공영주차장 운영관리 / 도시재생 스타트업 공간대여",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "세계고미술품감정평가협동조합",
+   "representative": "황영미",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중앙로196번길 15-7 (궁동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "고미술품 감정평가 고미술품 운동사업 및 렌탈사업",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "세계음식문화협동조합",
+   "representative": "박종승",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 문화전당로35번길 29 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "메뉴 개발과 새로운 아이템 창출사업 / 조합원과 직원에 대한상담  교육·훈련 및 정보제공 / 조합 간 협력을 위한 각종 사업 / 조합의 홍보 및 지역사회를 위한 사업",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "소담이네협동조합",
+   "representative": "음선희",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 지원로 12 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "체험키트 개발 및 판매사업 / 마을체험공방 및 카페운영사업 / 지역특성을 반영한 식품 제조?가공업",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "소상공인이벤트협동조합",
+   "representative": "김민성",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 밤실로116번길 4 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "공연사업",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "스마트경영랩스협동조합",
+   "representative": "박영호",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 서석로 89/ 4층 (대의동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "창업과 경영에 필요한 제반 서비스 지원 / 홍보 및 지역사회 사업 컨설팅",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "시니어디딤돌협동조합",
+   "representative": "정경민",
+   "phone": "062-224-1888",
+   "address": "전남광주통합특별시 동구 예술길 31-11  성산회관 4층 (대의동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "노후생애 설계 교육 및 상담",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "시즌글라스광주협동조합",
+   "representative": "신만봉",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 소태길 34 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "유기농 식재료 판매사업 / 건강기능식품 판매사업 / 유기농 차 음료 발효 빵의 판매사업 / 자연과 건강을 주제로 한 예술품의 전시 및 판매사업",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "신시와커뮤니티협동조합",
+   "representative": "박지유",
+   "phone": "062-233-2755",
+   "address": "전남광주통합특별시 동구 동명로67번길 22-26 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "도시재생을 통한 마을공동체 회복 및 공간재활용사업 / 지역문화 아트상품개발  축제기획 및 문화예술사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "예비사회적기업"
+   ],
+   "name": "쓰리피브릿지㈜",
+   "representative": "조현진",
+   "phone": "0507-1433-6015",
+   "address": "전남광주통합특별시 동구 필문대로 289 한성빌딩 3층 (서석동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "심리검사 심리상담 심리치유 인성교육 프로그램 미술상담 원예심리상담 등",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "아름다운학교만들기지원동구협동조합",
+   "representative": "김도형",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 학동길 5  4층 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "아름다운 학교만들기 육성 컨설팅 및 연수사업 / 청소년 교육사업 및 후원 장학사업 등",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "아름다운학교만들기지원협동조합",
+   "representative": "김계월",
+   "phone": "062-452-4265",
+   "address": "전남광주통합특별시 동구 중앙로 358  2층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "학교교육 관련제반 지원 사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "아리문화예술협동조합",
+   "representative": "채춘례",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 제봉로184번길 7-3 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "국악영재 발굴 및 육성사업 / 문화예술교류사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "아세교육협동조합",
+   "representative": "이금일",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 남문로622번길 11-20 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "평생교육 강좌 및 현장교육 프로그램 개발운영 / 생태건축  전통차  우리문화 등 체험학습 교실운영",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "아시아문화콘텐츠창작협동조합",
+   "representative": "지형원",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중앙로196번길 8  3층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화콘텐츠 창작 유통사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "아시아문화협동조합",
+   "representative": "정환담",
+   "phone": "062-228-9968",
+   "address": "전남광주통합특별시 동구 충장로 51  3층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "광주국제영화제 개최지원사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "아시아음식문화지구협동조합",
+   "representative": "박해영",
+   "phone": "062-224-2502",
+   "address": "전남광주통합특별시 동구 문화전당로35번길 29 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "숙박 및 음식점업",
+   "business": "음식업 관련 사업",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "아트로드경매협동조합",
+   "representative": "양승찬",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 예술길 20-6 (궁동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "예술 및 공예관련 사업(경매 교육 공연 기획)",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "마을기업"
+   ],
+   "name": "에꼴드팡세",
+   "representative": "장현숙",
+   "phone": "062-236-1280",
+   "address": "전남광주통합특별시 동구 제봉로 140번길 8 1층 (장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "숙박 및 음식점업",
+   "business": "음식점업 (커피  샌드위치)",
+   "designatedYear": "2012"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "에너로드 협동조합",
+   "representative": "김영복",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 천변우로 339 1605호 (수기동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "도매 및 소매 / 통신판매 / 여행사 / 상조서비스 / 부동산 개발",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "에이치투에이치협동조합",
+   "representative": "최한겸",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 양림로 120 1층 122호 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "국내외 일반여행 사업 등",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "엔케이(NK)뷰티테인먼트협동조합",
+   "representative": "김애란",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 충장로안길 38 (황금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "이미용업 / 뷰티용품 도소매 및 수출입사업(통신판매 포함) / 뷰티용품 및 화장품 제조 유통사업 / 뷰티산업 컨텐츠 개발 및 홍보 마케팅 사업 / 뷰티산업 관련 교육 및 컨설팅 사업",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "엠플러스협동조합",
+   "representative": "윤중혁",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 금남로 220 10층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "웨딩멀티샵 운영 여행 레저사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "여로협동조합",
+   "representative": "주정주",
+   "phone": "062-223-8811",
+   "address": "전남광주통합특별시 동구 양림로119번길 7 3층 301호 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "청소 등 시설관리사업 / 소독 및 방역사업",
+   "designatedYear": "2022"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "열린사회적협동조합",
+   "representative": "조철인",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 필문대로 12-7 106동 102호 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "아동공동생활가정 설치 및 운영 사업",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "예경미디어협동조합",
+   "representative": "한철",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 충장로 45-11 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "전문과학/기술서비스업",
+   "business": "폴라페이스를 통한 증명사진 / 온라인 사진관 운영 / 디지털 사진인화 및 팬시제품을 이용한 오프라인 등 다양한 사업",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "예다도예문화예술교육협동조합",
+   "representative": "박제희",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 충장로 45-2 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "도자기공예품 생산 및 유통사업 / 도자기공예품 조사연구 및 용역사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "예다솔협동조합",
+   "representative": "조영희",
+   "phone": "062-222-2009",
+   "address": "전남광주통합특별시 동구 독립로264번길 12 401호 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "소비자형 마트 사업 / 생활용품 전자상 거래 사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "예술공장협동조합",
+   "representative": "이효주",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 문화전당로23번길 7  202호 (남동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "예술품 관련사업(유통?렌탈?전시회?운영?교육)",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "예술마중협동조합",
+   "representative": "윤성민",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동명로67번길 32-10  3층 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "창작 및 예술관련서비스업",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "예술유통협동조합",
+   "representative": "장경문",
+   "phone": "0507-1338-3913",
+   "address": "전남광주통합특별시 동구 중흥로 239 1 3층 (계림동)",
+   "gu": "동구",
+   "website": "https://blog.naver.com/care23food",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화예술공예 관련 교육 및 콘텐츠 개발 / 아트상품 제조 및 판매 등",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "오감만족협동조합",
+   "representative": "김상윤",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중앙로 358  2층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "여행사업 및 출판미디어 사업 / 테마여행  로컬푸드와 기념품 판매 및 교육사업 / 문화콘텐츠 개발 및 교육사업",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "와요톡광주협동조합",
+   "representative": "히라마쓰 마사코",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로321번길 14-1 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화 및 언어체험사업 / 여행보조 서비스 및 예약서비스 / 컨설팅 사업 등",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "와이필라테스협동조합",
+   "representative": "유지호",
+   "phone": "062-515-5000",
+   "address": "전남광주통합특별시 동구 갈마로 48 4층 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "건강증진 및 전문강사 양성사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "요셉의창고사회적협동조합",
+   "representative": "이박행",
+   "phone": "062-232-1757",
+   "address": "전남광주통합특별시 동구 갈마로 48 4층(산수동)",
+   "gu": "동구",
+   "website": "요셉의창고.com",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "지역경제공동체 / 사회적경제 네트워킹 사업 / 조사 및 정책제안 / 교육 및 컨설팅 사업 등",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "우솔 사회적협동조합",
+   "representative": "박선정",
+   "phone": "062-465-5667",
+   "address": "전남광주통합특별시 동구 화산로350번길 18(용산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 운영",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "은빛나눔협동조합",
+   "representative": "손영선",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중앙로 348 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "상호부조 복지기금 운영사업 / 저출산 극복 사업 / 보험 사각지대 해소를 위한 건강지원 서비스 사업 등",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "이레네사회적협동조합",
+   "representative": "염성일",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로 532 101-108 (삼수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "장애인공동생활가정",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "이야기농부협동조합",
+   "representative": "나정이",
+   "phone": "062-672-5244",
+   "address": "전남광주통합특별시 동구 필문대로295번길 23-16 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "역사 문화 예술 인물 관광 콘텐츠 스토리텔링 및 출판사업 / 도시농업체험 / 친환경농산물 판매 및 꾸러미사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "이야기장터협동조합",
+   "representative": "김선문",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동명로67번길 19 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "마을공동체 및 관광사업 지원을 위한 스토리텔링 사업 / 글쓰기 교육 및 마을 스토리텔러 양성사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "일동 사회적협동조합",
+   "representative": "박연제",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 밤실로 147 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "지역아동센터 운영",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합연합회"
+   ],
+   "name": "전남광주통합특별시협동조합연합회",
+   "representative": "김용태",
+   "phone": "062-522-0685",
+   "address": "전남광주통합특별시 동구 독립로 324 새한빌딩 202호 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "협동조합생산품 공동판매장 운영",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "전통예술문화스꼴레협동조합",
+   "representative": "방정원",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 지호로 24-1  208호 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "전통 및 지역문화예술 콘텐츠 관련 연구조사 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "정선하리협동조합",
+   "representative": "정선",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 용산2길 20  용산타워 1층 113호 (용산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "반찬류 연구개발 사업 / 반찬류 용역  기술 전수 교육 사업 등",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "제3생애지원협동조합",
+   "representative": "조성철",
+   "phone": "062-232-1888",
+   "address": "전남광주통합특별시 동구 예술길 31-11 (대의동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "노후생애설계 상담 및 교육",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "제이케이제이엘(JKJL)태양광발전소협동조합",
+   "representative": "정용욱",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 필문대로 98  2층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "전기/가스/증기 및 공기조절공급업",
+   "business": "태양광발전소 건립 및 전력판매사업",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "조대장미의거리협동조합",
+   "representative": "구명학",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 필문대로287번길 3 (서석동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "숙박 및 음식점업",
+   "business": "지역축제 프라마켓 기획 운영 / 조대장미의 거리 내 체험장 및 게스트하우스 관리 운영사업",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "조선대에프씨축구단협동조합",
+   "representative": "지정근",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 필문대로 309  조선대학교그린빌리지 I동 (서석동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "유소년 축구 활성화를 위한 운영 및 지원사업 등",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "조우협동조합",
+   "representative": "강희정",
+   "phone": "062-228-9876",
+   "address": "전남광주통합특별시 동구 중앙로196번길 31-10 (대의동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "문화관광상품제작 판매 및 체험사업 / 게스트하우스(호스텔) 사업 등",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "조운발효협동조합",
+   "representative": "정현숙",
+   "phone": "062-236-5005",
+   "address": "전남광주통합특별시 동구 제봉로82번길 11 (서석동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "자연발효식초 제조판매 / 전통발효빵 생산 및 판매사업",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "주거문화를선도하는인솔협동조합",
+   "representative": "한소연",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 제봉로 221-11 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "주거문화 환경개선 관련사업",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "마을기업"
+   ],
+   "name": "㈜경양마을",
+   "representative": "박중경",
+   "phone": "062-223-1190",
+   "address": "전남광주통합특별시 동구 무등로 329 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "건설업",
+   "business": "집수리",
+   "designatedYear": "2011"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "㈜교육극단파랑새",
+   "representative": "임홍석",
+   "phone": "062-514-4328",
+   "address": "전남광주통합특별시 동구 필문대로 112 2층 (산수동)",
+   "gu": "동구",
+   "website": "www.etparangsae.com",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "공연",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "㈜나무와달",
+   "representative": "김지혜",
+   "phone": "062-529-9179",
+   "address": "전남광주통합특별시 동구 백서로125번길 15 비테라인테라스 301호(금동)",
+   "gu": "동구",
+   "website": "www.nadal.kr",
+   "industry": "제조업",
+   "business": "인쇄출판  산업디자인",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "㈜민들레씨앤비",
+   "representative": "유재성",
+   "phone": "062-233-4723",
+   "address": "전남광주통합특별시 동구 무등로384번길 25 1-2층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "숙박 및 음식점업",
+   "business": "제과 및 즉석식품제조 / 교육서비스",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "마을기업"
+   ],
+   "name": "㈜시엔터치",
+   "representative": "심훈",
+   "phone": "062-222-6150",
+   "address": "전남광주통합특별시 동구 필문대로273번길 18  3층 (지산동)",
+   "gu": "동구",
+   "website": "www.seentouch.co.kr",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "사진영상",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "예비사회적기업"
+   ],
+   "name": "주식회사 래용",
+   "representative": "강희정",
+   "phone": "062-228-9876",
+   "address": "전남광주통합특별시 동구 백서로125번길 8-1 201호 (금동)",
+   "gu": "동구",
+   "website": "www.reyong.shop",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "환경예술교육  친환경 교육용 키트 제작 및 판매",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "예비사회적기업"
+   ],
+   "name": "주식회사 선아리",
+   "representative": "남혜선",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 필문대로 209-1 1층 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "전시 및 행사대행  홍보 및 광고  굿즈  상품기획  제작  납품",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "예비사회적기업"
+   ],
+   "name": "주식회사 에드업",
+   "representative": "강한",
+   "phone": "1670-2055",
+   "address": "전남광주통합특별시 동구 금남로 245 710호 (충장동)",
+   "gu": "동구",
+   "website": "www.add-fit.com",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "온라인 스포츠 강좌",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "주식회사 엠알피",
+   "representative": "홍순길",
+   "phone": "062-1877-1942",
+   "address": "전남광주통합특별시 동구 금남로 220 8층 803호",
+   "gu": "동구",
+   "website": "moram.kr",
+   "industry": "교육 서비스업",
+   "business": "문화  여가 서비스 제공 플랫폼",
+   "designatedYear": "2022"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "주식회사 올리브온",
+   "representative": "양해원",
+   "phone": "0507-1446-6250",
+   "address": "전남광주통합특별시 동구 금남로 193-12 606호 (금남로4가 광주AI창업캠프2호)",
+   "gu": "동구",
+   "website": "olive-on.com",
+   "industry": "전문과학/기술서비스업",
+   "business": "브랜드개발 포장디자인 상세페이지 sns마케팅",
+   "designatedYear": "2022"
+  },
+  {
+   "kinds": [
+    "예비사회적기업"
+   ],
+   "name": "주식회사 헬프포유",
+   "representative": "김윤서",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 금남로 245 518호 (충장동)",
+   "gu": "동구",
+   "website": "www.helpsenior.co.kr",
+   "industry": "보건업/사회복지서비스업",
+   "business": "돌봄매칭서비스",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "㈜아이디어플랫폼",
+   "representative": "방주희",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중흥로 224 2층 (계림동)",
+   "gu": "동구",
+   "website": "www.ideaplatform.co.kr",
+   "industry": "도매 및 소매업",
+   "business": "상품종합중개업  물품납품",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "㈜인그래픽스",
+   "representative": "임동화",
+   "phone": "062-223-2278",
+   "address": "전남광주통합특별시 동구 필문대로 50-2 2층 (계림동)",
+   "gu": "동구",
+   "website": "https://blog.naver.com/ingrp2278",
+   "industry": "제조업",
+   "business": "종합 디자인  인쇄",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "㈜잇다",
+   "representative": "이순학",
+   "phone": "062-366-1895",
+   "address": "전남광주통합특별시 동구 산수길35번길 20-6 (산수동)",
+   "gu": "동구",
+   "website": "www.it-da.net",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "인권잇기 문화트기 자가호흡",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "예비사회적기업"
+   ],
+   "name": "㈜치른시빌",
+   "representative": "정혜진",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 서석로 85번길 10 1층 (대의동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "미술교육 / 미술 프로그램 운영",
+   "designatedYear": ""
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "㈜털보의커피놀이터",
+   "representative": "최영진",
+   "phone": "062-233-2228",
+   "address": "전남광주통합특별시 동구 필문대로 242-7 2층 (동명동)",
+   "gu": "동구",
+   "website": "www.coffeebm.co.kr",
+   "industry": "제조업",
+   "business": "커피 관련 개발  생산  판매 사업",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "마을기업"
+   ],
+   "name": "㈜통통마을신문",
+   "representative": "김태훈",
+   "phone": "062-523-0474",
+   "address": "전남광주통합특별시 동구 동명로67번길 19 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "마을신문",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적기업"
+   ],
+   "name": "㈜파인데이",
+   "representative": "박상현",
+   "phone": "062-954-8222",
+   "address": "전남광주통합특별시 동구 중앙로196번길 31-6 5층 (대의동)",
+   "gu": "동구",
+   "website": "www.fineday-ent.com",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "행사 및 이벤트 기획",
+   "designatedYear": "2021"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "지니지니협동조합",
+   "representative": "윤선영",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동계로9번길 12 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "청소년 교육·컨설팅 사업 / 음악 공연 사업 / 공예품 도소매업",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "지원화훼단지사회적협동조합",
+   "representative": "박종근",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 남문로 498-1 (소태동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "농업/어업 및 임업",
+   "business": "화훼 및 원예식물을 활용한 지역공익사업",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "자활기업"
+   ],
+   "name": "집수리공동체",
+   "representative": "엄용석",
+   "phone": "062-227-6552",
+   "address": "전남광주통합특별시 동구 경양로 300 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "건설업",
+   "business": "집수리 / 유리 및 창호 공사업",
+   "designatedYear": ""
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "참언론협동조합",
+   "representative": "전율호",
+   "phone": "062-512-2012",
+   "address": "전남광주통합특별시 동구 필문대로 136 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "출판 미디어 콘텐츠 개발 및 보급 작은 도서관 및 인문학 카페 운영",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "창의미래교육협동조합",
+   "representative": "박규형",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 예술길 31-9  3·5층 (대의동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "초?중?고등학생 리더십 진로지도 캠프 및 체험학습 / 해외유학 및 해외 연수 프로그램 운영 등",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "청년문화트럭협동조합",
+   "representative": "최영우",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동명로98번길 7-44 (지산동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "푸드트럭 사업 / 푸드트럭 프렌차이즈 사업 / 커피류 가공업 사업 / 문화행사 기획 사업 / 행사 진행 사업 / 푸드마켓 기획 사업 / 카페 및 음식업 프렌차이즈 사업 / 창업 컨설팅 교육 사업 / 영상 제작 사업 / 전통시장 육성 사업 / 청년창업 지원 사업 / 관광상품 판매 및 유통사업 / 수공예품 연계 사업 / 광고홍보사업 / 어플리케이션제작사업 / 정보 포털사이트 제작 사업 / 홈페이지 제작 사업  홈페이지 렌탈 사업",
+   "designatedYear": "2016"
+  },
+  {
+   "kinds": [
+    "마을기업",
+    "협동조합"
+   ],
+   "name": "충장45마을협동조합",
+   "representative": "전병원",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 충장로22번길 2  (가칭)충장센터 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "충장 특화제품 생산 및 유통 / 교육 및 체험 사업 / 마을 축제 기획 및 운영",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "충장로상점가협동조합",
+   "representative": "박영수",
+   "phone": "070-8191-1484",
+   "address": "전남광주통합특별시 동구 충장로 50-3 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "공동창고 운영 및 운송 등 물류공동사업 상거래기법 개선 및 유통구조의 개선을 위한 공동사업 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "친환경고효율발전협동조합",
+   "representative": "김승재",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 천변우로 339  제일오피스텔빌딩 303호 (수기동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "전기/가스/증기 및 공기조절공급업",
+   "business": "친환경 고효율 발전소 건립 및 전기판매",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "케이비에이치협동조합",
+   "representative": "양윤정",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 구성로 162-1  5층 (충장로5가)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "웰니스·뷰티용품 / 반려동물용품 / 보드자재 관련 제품의 온·오프라인 판매와 도소매업 / 웰니스뷰티산업 / 반려동물산업 관련 제품 연구사업 / 힐링센터 개설 및 운영 / 프랜차이즈 창업지원과 컨설팅 사업",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "코리아관광/레포츠/영농협동조합",
+   "representative": "윤충현",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 백서로189번길 6-14 (서석동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "농업/어업 및 임업",
+   "business": "농임축수산물 및 조경수  기타 식물의 생산 및 가공  유통 사업 / 관광  레저  여행  스포츠 및 부대사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "코리아덴탈디자인협동조합",
+   "representative": "이순현",
+   "phone": "062-364-2805",
+   "address": "전남광주통합특별시 동구 동계천로 150  I-PLEX광주 405호 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "치과재료 의료용구 및 기기 공동구매 공동판매사업 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "태권무협동조합",
+   "representative": "범기철",
+   "phone": "062-223-5677",
+   "address": "전남광주통합특별시 동구 제봉로 118 (장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "태권무 보급 태권무 지도자양성",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "토요문화협동조합",
+   "representative": "홍윤택",
+   "phone": "062-223-0523",
+   "address": "전남광주통합특별시 동구 천변우로 339  1408호 (수기동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "문화아카데미 운영",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "포이에테스협동조합",
+   "representative": "박단아",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 산수길 31 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "장애인 사회적응 교육 및 그래픽 디자인 개발 / 장애인 그래픽티셔츠 및 디자인제품 제작 판매",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "포인트골드협동조합",
+   "representative": "오은하",
+   "phone": "062-223-2280",
+   "address": "전남광주통합특별시 동구 충장로 53  2층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "귀금속 신재료 및 제품 공동구매 및 공동판매사업 / 생산  가공 수주 판매 구매 보관 운송  기타 서비스 등 공동사업과 딘지 및 공동시설의 조성과 관리운영 / 조합원이 생산하는 제품의 수출과 생산에 필요한 초저가 원자재 및 시설재의 수입",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "푸른길시작마을 사회적협동조합",
+   "representative": "이후상",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로307번길 25 2층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "거점시설 공간 활용 사업 등",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "품앗이힐링협동조합",
+   "representative": "윤순정",
+   "phone": "062-223-3020",
+   "address": "전남광주통합특별시 동구 필문대로 365  3116호 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "건강증진 및 전문강사 양성사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "프라임협동조합",
+   "representative": "정희순",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 경양로236번길 19-3 1층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "사진촬영 / 디자인제작 / 사진소품제작",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "프린팅협동조합",
+   "representative": "주식회사 무궁",
+   "phone": "062-232-5800",
+   "address": "전남광주통합특별시 동구 문화전당로23번길 9-1  3층 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "인쇄물의 제본 가공 등 인쇄물 관련 제조사업 / 인쇄물 관련 유통사업 등",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "하이고래협동조합",
+   "representative": "박수인",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 제봉로184번길 5-8 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "공예품 제조 및 유통 도소매 사업 등",
+   "designatedYear": "2020"
+  },
+  {
+   "kinds": [
+    "마을기업",
+    "협동조합"
+   ],
+   "name": "하이퍼협동조합",
+   "representative": "김도영",
+   "phone": "062-232-3777",
+   "address": "전남광주통합특별시 동구 금남로 220 8층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "마켓 사업 / 온라인 마켓 사업",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "한국경비청소시설관리협동조합",
+   "representative": "김육형",
+   "phone": "062-974-0000",
+   "address": "전남광주통합특별시 동구 중흥로 237  5층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "하수폐기물 처리/원료재생 및 환경복원업",
+   "business": "경비용역 및 청소업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적협동조합"
+   ],
+   "name": "한국종합안전교육사회적협동조합",
+   "representative": "이선미",
+   "phone": "070-8740-3579",
+   "address": "전남광주통합특별시 동구 천변우로 335",
+   "gu": "동구",
+   "website": "www.ksse.kr",
+   "industry": "사업시설관리/사업지원서비스업",
+   "business": "복지ㆍ고용통합서비스 제공 사업  진로상담 컨설팅 및 직업교육 사업",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "한국해상부유구조물협동조합",
+   "representative": "안원균",
+   "phone": "062-367-9912",
+   "address": "전남광주통합특별시 동구 학동길 5 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "부방파제  부잔교  부유 쓰레기 차단막 사업 / 해상 낚시공원  수상하우스 등 레저/관광해상구조물 사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "한무예협동조합",
+   "representative": "정민용",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로383번길 2 2층 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "전통무예 및 스포츠 보급사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "한울뷰티협동조합",
+   "representative": "박은숙",
+   "phone": "070-4155-5678",
+   "address": "전남광주통합특별시 동구 중앙로 182 4층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "이미용 서비스업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "한울소상공인협동조합",
+   "representative": "김영복",
+   "phone": "070-8798-2366",
+   "address": "전남광주통합특별시 동구 천변우로 475 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "소상공인 협업사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "함께크는나무협동조합",
+   "representative": "박준오",
+   "phone": "062-951-4254",
+   "address": "전남광주통합특별시 동구 동계천로85번길 10-1 2층 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "문화  예술  스포츠 기획 운영 사업 / 마을공동체 및 마을교육플렛폼 활성화 사업 등",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "해뜨랑협동조합",
+   "representative": "최재호",
+   "phone": "062-226-9051",
+   "address": "전남광주통합특별시 동구 제봉로17번길 13-6  남광주종합상가 5층 (학동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "농수산물 생산 및 판매업 / 도소매 및 제조업 / 밀키트 제조업",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "행복누리협동조합",
+   "representative": "김왕혁",
+   "phone": "062-233-5858",
+   "address": "전남광주통합특별시 동구 충장로 8-1 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "교육 보건 의료 사회복지 환경 및 문화 분야 관련 사업 / 보육 간병 및 가사 지원 서비스 사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "행복마을광주동구협동조합",
+   "representative": "이양재",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 제봉로 51 (남동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "반찬소포장 및 위생교육",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "사회적기업",
+    "마을기업",
+    "협동조합"
+   ],
+   "name": "행복한쓰임협동조합",
+   "representative": "박미진",
+   "phone": "062-233-8855",
+   "address": "전남광주통합특별시 동구 필문대로 209 (지산동)",
+   "gu": "동구",
+   "website": "blog.naver.com/hsseuim",
+   "industry": "도매 및 소매업",
+   "business": "패브릭 제품 제작",
+   "designatedYear": "2023"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "향기천연제품협동조합",
+   "representative": "장세레나",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 필문대로 136 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "천연제품 생산 및 판매  강좌 체험 사업 / 생활환경개선을 위한 프로그램 개발 및 운영사업 / 경력단절 여성을 비롯한 여성 일자리 창출 / 지역복지공동체 협동사업",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "헬스웰메이크협동조합",
+   "representative": "박규정",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 구성로 162-1 (충장로5가)",
+   "gu": "동구",
+   "website": "",
+   "industry": "보건업/사회복지서비스업",
+   "business": "운동재활복지개선사업 / 공공목적의 프로그램 교육사업",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합 따수와",
+   "representative": "이문호",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 무등로306번길 25-17 (계림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "평생교육사업 / 체험 및 교육서비스 / 교육컨설팅사업 / ESG교육 / 로컬여행 상품기획 및 프로그램수행 / 온라인 통신판매업 및 도소매업 등",
+   "designatedYear": "2025"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합개미필름",
+   "representative": "손승민",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 충장로안길 7  301호 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "출판/영상/방송통신 및 정보서비스업",
+   "business": "지역특성화 문화예술교육 지원사업 / 소외계층 미디어교육  문화예술 공감프로젝트",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합광주시민정책연구소",
+   "representative": "임명규",
+   "phone": "062-381-0518",
+   "address": "전남광주통합특별시 동구 갈마로 6 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "지역사회관련 연구용역 및 컨설팅사업",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합남도식객",
+   "representative": "신난미",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 구성로148번길 10 (수기동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "주먹밥 제조 및 판매",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합담쟁이",
+   "representative": "박영희",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 구성로 153  401호 (수기동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "문학저작권  중고도서 유통",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합땅콩마을공유공동체",
+   "representative": "현재남",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동명로67번길 29  푸른마을공동체센터 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "식음료 제조 및 판매사업 / 도시농업 및 친환경 생태활동 보급 확산을위한 사업 / 지역생산물 이용을 위한 도소매 사업 등",
+   "designatedYear": "2019"
+  },
+  {
+   "kinds": [
+    "마을기업",
+    "협동조합"
+   ],
+   "name": "협동조합산수다락",
+   "representative": "최성욱",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동명로67번길 22-47 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "예술 스포츠 및 여가 관련 서비스업",
+   "business": "디자인제품/공예품 제조 및 도소매업 / 생태문화예술 체험 및 교육사업  식자재 보급사업",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합성림에코광주전남총판",
+   "representative": "전유호",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 독립로264번길 25 255호 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "제조업(화학물질 및 화학제품) / 하수?폐기물 처리 원료 재생 및 환경복원업(폐기물 수집?운반?처리 및 원료재생업  환경 정화 및 복원업)",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합어감",
+   "representative": "임보현",
+   "phone": "062-264-2247",
+   "address": "전남광주통합특별시 동구 밤실로136번길 8-15 (산수동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "전문과학/기술서비스업",
+   "business": "홍보 마케팅 및 브랜딩 서비스 제공사업 / 아카이브 구축사업 / 문화예술 교육사업 / 투어사업(체험프로그램 행사기획 운영)",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합연필과책",
+   "representative": "선승남",
+   "phone": "070-4348-2296",
+   "address": "전남광주통합특별시 동구 충장로 93-5  3층 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "도서문구 공동판매 및 구매",
+   "designatedYear": "2013"
+  },
+  {
+   "kinds": [
+    "마을기업",
+    "협동조합"
+   ],
+   "name": "협동조합잇고",
+   "representative": "곽요신",
+   "phone": "062-227-8400",
+   "address": "전남광주통합특별시 동구 충장로22번길 8-8  1층 2호 (충장동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "제조업",
+   "business": "공예품",
+   "designatedYear": "2014"
+  },
+  {
+   "kinds": [
+    "사회적기업",
+    "협동조합"
+   ],
+   "name": "협동조합정향",
+   "representative": "임남수",
+   "phone": "062-521-5222",
+   "address": "전남광주통합특별시 동구 문화전당로35번길 5-9 3층(남동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "전문과학/기술서비스업",
+   "business": "학술연구 / 사회조사 / 출판강연 사업 등",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합청춘아고라",
+   "representative": "최병문",
+   "phone": "062-222-4457",
+   "address": "전남광주통합특별시 동구 필문대로295번길 1-24 (서석동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "문화관광 기획  시행 및 판매사업 / 출판기획  제작 및 판매사업 / 문화콘텐츠 기획  제작 및 판매사업 / 지역의 역사 문화유산 계승 및 선양사업 / 마을 공동체 활성화를 위한 사업",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합포토인",
+   "representative": "임신영",
+   "phone": "062-521-4747",
+   "address": "전남광주통합특별시 동구 문화전당로23번길 26 2층 (금동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "사진촬영 / 사진강좌 / 셀프스튜디오 등",
+   "designatedYear": "2015"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "협동조합한국50플러스희망발전소",
+   "representative": "윤치욱",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동계천로 151-20 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "마을분쟁 주민화해지원인 양상교육 / 인생이모작 아카데미 운영",
+   "designatedYear": "2018"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "호남일자리알선협동조합",
+   "representative": "이제선",
+   "phone": "062-222-3438",
+   "address": "전남광주통합특별시 동구 제봉로212번길 2-8  2층 (대인동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "협회 및 단체 수리 및 기타 개인 서비스업",
+   "business": "일자리창출 및 알선 사업 등",
+   "designatedYear": "2017"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "호남자동차연수원협동조합",
+   "representative": "변도진",
+   "phone": "062-1551-2038",
+   "address": "전남광주통합특별시 동구 운림길 23  103호 (운림동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "교육 서비스업",
+   "business": "자동차연수원교육",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "황금 협동조합",
+   "representative": "김병열",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 중앙로160번길 8  충장로이스토리 (호남동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "부동산/임대업",
+   "business": "생활숙박시설 건립 및 운영 사업 / 부동산 임대 및 분양사업",
+   "designatedYear": "2024"
+  },
+  {
+   "kinds": [
+    "협동조합"
+   ],
+   "name": "효천발효식품협동조합",
+   "representative": "김고운",
+   "phone": "",
+   "address": "전남광주통합특별시 동구 동계천로 85번길 13-8 (동명동)",
+   "gu": "동구",
+   "website": "",
+   "industry": "도매 및 소매업",
+   "business": "자연발효식품 전통발효식품 효소식품 도소매",
+   "designatedYear": "2025"
+  }
+ ]
+}
