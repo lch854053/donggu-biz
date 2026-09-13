@@ -22,7 +22,9 @@
     "apply-localdata": "node scripts/apply-localdata.mjs",
     "authorize-localdata": "node scripts/authorize-localdata.mjs",
     "promote-localdata": "node scripts/promote-localdata.mjs",
-    "import-road-polygons": "node scripts/import-road-polygons.mjs"
+    "import-road-polygons": "node scripts/import-road-polygons.mjs",
+    "update-bus-boarding": "node scripts/import-bus-boarding.mjs",
+    "update-commercial-vacancy": "node scripts/import-commercial-vacancy.mjs"
   },
   "engines": {
     "node": ">=20"
