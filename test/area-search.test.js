@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   aggregateIndustries,
+  areaPolygonGeometry,
   AREA_SHAPES,
   filterRowsInArea,
   haversineMeters,
@@ -98,4 +99,34 @@ test("업종 대분류별 영업·폐업·폐업률 표를 만든다", () => {
   assert.equal(rows[0].closureRate, 0.25);
   assert.equal(rows[1].closureRate, 0);
   assert.equal(rows[2].closureRate, 1);
+});
+
+test("원형 폴리곤은 64각형으로 닫히고 반경 범위 안에 머문다", () => {
+  const geometry = areaPolygonGeometry(CENTER, { shape: AREA_SHAPES.circle, radiusM: 300 });
+  assert.equal(geometry.type, "Polygon");
+  const ring = geometry.coordinates[0];
+  assert.equal(ring.length, 65);
+  assert.deepEqual(ring[0], ring.at(-1));
+  for (const [lng, lat] of ring) {
+    const distance = haversineMeters(CENTER.latitude, CENTER.longitude, lat, lng);
+    assert.ok(distance <= 301, `꼭짓점이 반경을 벗어났다: ${distance}m`);
+  }
+});
+
+test("정사각형 폴리곤은 반경의 두 배 변을 가진다", () => {
+  const geometry = areaPolygonGeometry(CENTER, { shape: AREA_SHAPES.square, radiusM: 300 });
+  const ring = geometry.coordinates[0];
+  assert.equal(ring.length, 5);
+  assert.deepEqual(ring[0], ring.at(-1));
+  const lats = ring.map(([, lat]) => lat);
+  const lngs = ring.map(([lng]) => lng);
+  const latSpread = (Math.max(...lats) - Math.min(...lats)) * 111320;
+  const lngSpread = (Math.max(...lngs) - Math.min(...lngs)) * 111320 * Math.cos(CENTER.latitude * Math.PI / 180);
+  assert.ok(Math.abs(latSpread - 600) < 2, `남북 변 ${latSpread}m`);
+  assert.ok(Math.abs(lngSpread - 600) < 2, `동서 변 ${lngSpread}m`);
+});
+
+test("중심이나 반경이 잘못되면 오류를 던진다", () => {
+  assert.throws(() => areaPolygonGeometry(null, { radiusM: 300 }));
+  assert.throws(() => areaPolygonGeometry(CENTER, { radiusM: 0 }));
 });

@@ -818,28 +818,30 @@ tbody tr:hover td { background: #f6f8fa; }
 .chart-tip b { margin-left: auto; padding-left: 8px; font-family: var(--mono); font-weight: 600; }
 
 /* Closed and suspended license analysis */
-/* 주소 반경 조회: 좌측 조건 레일의 검색폼과 지도 아래 결과 패널 */
-.area-search { display: grid; gap: 10px; }
-.area-search-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.area-search-run { width: 100%; }
-.area-search-status { min-height: 1em; font-size: 12px; color: var(--text-secondary); margin: 0; }
-.area-stats {
-  margin-top: 16px;
-  padding: 20px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
-  display: grid;
-  gap: 16px;
+/* 주소 반경 조회: 상권 분석 헤더에서 주요상권 왼쪽에 놓이는 검색폼 */
+.area-lookup {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
 }
-.area-stats-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-.area-stats-head h3 { margin: 0; font-size: 16px; }
-.area-stats-head p { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); }
-.area-stats-body { display: grid; gap: 24px; }
-.area-stats-block { display: grid; gap: 10px; }
-.area-stats-block h4 { margin: 0; font-size: 14px; }
-.area-chart { min-height: 160px; }
-.area-summary { display: grid; gap: 6px; }
+.area-lookup-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); padding-bottom: 9px; }
+.area-lookup input[aria-label="주소"] { width: 220px; }
+.area-lookup input[aria-label="반경(m)"] { width: 90px; }
+.area-lookup select, .area-lookup input {
+  height: 38px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font: inherit;
+}
+.area-lookup-status {
+  margin: 6px 0 0;
+  min-height: 1em;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
 
 /* Closure statistics charts */
 /* 주제 하나가 소제목·출처·그래프 묶음이다. 다음 주제는 같은 형태로 아래에 덧붙는다. */

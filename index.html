@@ -267,30 +267,6 @@
             <span>주요상권</span>
             <select id="zoneFilter"><option value="">전체 지역</option></select>
           </label>
-          <section class="selection-analysis area-search" aria-labelledby="area-search-title">
-            <div class="rail-heading">
-              <h3 id="area-search-title">주소 반경 조회</h3>
-            </div>
-            <label class="field">
-              <span>주소</span>
-              <input id="areaSearchInput" type="text" placeholder="예: 동구 동계천로 39" autocomplete="off">
-            </label>
-            <div class="area-search-fields">
-              <label class="field">
-                <span>모양</span>
-                <select id="areaShapeSelect">
-                  <option value="circle">원형</option>
-                  <option value="square">정사각형</option>
-                </select>
-              </label>
-              <label class="field">
-                <span>반경(m)</span>
-                <input id="areaRadiusInput" type="number" min="50" max="5000" step="50" value="300">
-              </label>
-            </div>
-            <button class="button area-search-run" id="areaSearchBtn" type="button">반경 조회</button>
-            <p class="area-search-status" id="areaSearchStatus" role="status"></p>
-          </section>
           <section class="selection-analysis" aria-labelledby="selection-analysis-title">
             <div class="rail-heading">
               <h3 id="selection-analysis-title">선택 지역</h3>
@@ -333,50 +309,25 @@
         </section>
 
       </div>
-
-      <section class="area-stats" id="areaStatsPanel" aria-labelledby="areaStatsTitle" hidden>
-        <header class="area-stats-head">
-          <div>
-            <h3 id="areaStatsTitle">주소 반경 조회 결과</h3>
-            <p id="areaStatsMeta" aria-live="polite"></p>
-          </div>
-          <button class="button button-quiet area-stats-close" id="areaStatsClose" type="button">닫기</button>
-        </header>
-        <div class="area-stats-body" id="areaStatsBody" hidden>
-          <section class="area-stats-block">
-            <h4>업종 대분류</h4>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>업종 대분류</th><th>영업 중</th><th>폐업</th><th>폐업률</th></tr></thead>
-                <tbody id="areaLargeTable"></tbody>
-              </table>
-            </div>
-          </section>
-          <section class="area-stats-block">
-            <h4>상위 업종 소분류 10개</h4>
-            <div class="area-summary" id="areaSmallSummary"></div>
-          </section>
-          <section class="area-stats-block">
-            <h4>연도별 폐업</h4>
-            <div class="area-chart" id="areaClosureTrendChart"></div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>연도</th><th>폐업</th></tr></thead>
-                <tbody id="areaClosureTable"></tbody>
-              </table>
-            </div>
-          </section>
-        </div>
-      </section>
       </div>
 
       <div class="market-view-panel" id="market-view-analysis" role="tabpanel" aria-labelledby="market-view-tab-analysis" hidden>
         <div class="market-heading analysis-heading">
           <div>
             <h2>상권 분석</h2>
-            <p>주요상권을 선택하면 해당 경계 안의 건물 윤곽과 업종 분포를 확인합니다.</p>
+            <p>주요상권 또는 주소 반경을 선택하면 해당 범위 안의 건물 윤곽과 업종 분포를 확인합니다.</p>
           </div>
           <div class="analysis-actions">
+            <div class="area-lookup" role="group" aria-labelledby="areaLookupTitle">
+              <span class="area-lookup-title" id="areaLookupTitle">주소 반경</span>
+              <input id="areaLookupInput" type="text" placeholder="예: 동구 동계천로 39" autocomplete="off" aria-label="주소">
+              <select id="areaShapeSelect" aria-label="반경 모양">
+                <option value="circle">원형</option>
+                <option value="square">정사각형</option>
+              </select>
+              <input id="areaRadiusInput" type="number" min="50" max="5000" step="50" value="300" aria-label="반경(m)">
+              <button class="button" id="areaLookupBtn" type="button">조회</button>
+            </div>
             <label class="field analysis-zone-field">
               <span>주요상권</span>
               <select id="outlineZoneFilter" disabled>
@@ -386,6 +337,8 @@
             <button class="button button-quiet" id="analysisLookupBtn" type="button">상권 지도로 돌아가기</button>
           </div>
         </div>
+
+        <p class="area-lookup-status" id="areaLookupStatus" role="status"></p>
 
         <div class="market-state" id="outlineState" role="status">주요상권을 선택해 주세요.</div>
 
