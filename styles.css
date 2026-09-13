@@ -818,26 +818,28 @@ tbody tr:hover td { background: #f6f8fa; }
 .chart-tip b { margin-left: auto; padding-left: 8px; font-family: var(--mono); font-weight: 600; }
 
 /* Closed and suspended license analysis */
-.closure-marker-toggle { margin-top: 16px; }
-.closure-dot {
-  width: 10px !important;
-  height: 10px !important;
-  margin: -5px 0 0 -5px !important;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: var(--red);
-  opacity: .85;
+/* 주소 반경 조회: 좌측 조건 레일의 검색폼과 지도 아래 결과 패널 */
+.area-search { display: grid; gap: 10px; }
+.area-search-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.area-search-run { width: 100%; }
+.area-search-status { min-height: 1em; font-size: 12px; color: var(--text-secondary); margin: 0; }
+.area-stats {
+  margin-top: 16px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  display: grid;
+  gap: 16px;
 }
-.closure-cluster {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--surface);
-  border-radius: 50%;
-  background: var(--red);
-  color: #fff;
-  font: 600 11px/1 var(--mono);
-}
+.area-stats-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.area-stats-head h3 { margin: 0; font-size: 16px; }
+.area-stats-head p { margin: 4px 0 0; font-size: 13px; color: var(--text-secondary); }
+.area-stats-body { display: grid; gap: 24px; }
+.area-stats-block { display: grid; gap: 10px; }
+.area-stats-block h4 { margin: 0; font-size: 14px; }
+.area-chart { min-height: 160px; }
+.area-summary { display: grid; gap: 6px; }
 
 /* Closure statistics charts */
 /* 주제 하나가 소제목·출처·그래프 묶음이다. 다음 주제는 같은 형태로 아래에 덧붙는다. */

@@ -267,13 +267,30 @@
             <span>주요상권</span>
             <select id="zoneFilter"><option value="">전체 지역</option></select>
           </label>
-          <label class="outline-toggle closure-marker-toggle" for="closureMarkerToggle">
-            <input id="closureMarkerToggle" type="checkbox">
-            <span>
-              <strong>폐업 업소 표시</strong>
-              <small>선택한 행정동·주요상권의 2016년 이후 폐업 이력</small>
-            </span>
-          </label>
+          <section class="selection-analysis area-search" aria-labelledby="area-search-title">
+            <div class="rail-heading">
+              <h3 id="area-search-title">주소 반경 조회</h3>
+            </div>
+            <label class="field">
+              <span>주소</span>
+              <input id="areaSearchInput" type="text" placeholder="예: 동구 동계천로 39" autocomplete="off">
+            </label>
+            <div class="area-search-fields">
+              <label class="field">
+                <span>모양</span>
+                <select id="areaShapeSelect">
+                  <option value="circle">원형</option>
+                  <option value="square">정사각형</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>반경(m)</span>
+                <input id="areaRadiusInput" type="number" min="50" max="5000" step="50" value="300">
+              </label>
+            </div>
+            <button class="button area-search-run" id="areaSearchBtn" type="button">반경 조회</button>
+            <p class="area-search-status" id="areaSearchStatus" role="status"></p>
+          </section>
           <section class="selection-analysis" aria-labelledby="selection-analysis-title">
             <div class="rail-heading">
               <h3 id="selection-analysis-title">선택 지역</h3>
@@ -316,6 +333,41 @@
         </section>
 
       </div>
+
+      <section class="area-stats" id="areaStatsPanel" aria-labelledby="areaStatsTitle" hidden>
+        <header class="area-stats-head">
+          <div>
+            <h3 id="areaStatsTitle">주소 반경 조회 결과</h3>
+            <p id="areaStatsMeta" aria-live="polite"></p>
+          </div>
+          <button class="button button-quiet area-stats-close" id="areaStatsClose" type="button">닫기</button>
+        </header>
+        <div class="area-stats-body" id="areaStatsBody" hidden>
+          <section class="area-stats-block">
+            <h4>업종 대분류</h4>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>업종 대분류</th><th>영업 중</th><th>폐업</th><th>폐업률</th></tr></thead>
+                <tbody id="areaLargeTable"></tbody>
+              </table>
+            </div>
+          </section>
+          <section class="area-stats-block">
+            <h4>상위 업종 소분류 10개</h4>
+            <div class="area-summary" id="areaSmallSummary"></div>
+          </section>
+          <section class="area-stats-block">
+            <h4>연도별 폐업</h4>
+            <div class="area-chart" id="areaClosureTrendChart"></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>연도</th><th>폐업</th></tr></thead>
+                <tbody id="areaClosureTable"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </section>
       </div>
 
       <div class="market-view-panel" id="market-view-analysis" role="tabpanel" aria-labelledby="market-view-tab-analysis" hidden>
