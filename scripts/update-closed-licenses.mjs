@@ -80,6 +80,10 @@ function compactClosedLicense(license) {
     id: license.id,
     sourceSlug: license.sourceSlug,
     sourceDatasetId: license.sourceDatasetId,
+    // 같은 업소의 여러 원천이 한 행으로 합쳐질 때 모범음식점 같은 뒤따르는 원천의
+    // 출처가 여기에 남는다. 출처를 버리면 모범음식점 폐업 기록이 다른 원천에 묻힌다.
+    sourceSlugs: license.sourceSlugs,
+    sourceDatasetIds: license.sourceDatasetIds,
     licenseId: license.licenseId,
     name: license.name,
     largeCode: license.largeCode,
