@@ -418,6 +418,29 @@ test("recovers a nearby store when its PNU differs within the same lot", () => {
   assert.deepEqual([...result.matchedStoreIds], [store.id]);
 });
 
+test("drops a same-PNU building that sits far from the store coordinates", () => {
+  const pnu = "1221010900102390001";
+  const realBuilding = {
+    id: "school-building",
+    properties: { pnu },
+    geometry: { type: "Polygon", coordinates: [[[126.921, 35.1594], [126.9216, 35.1594], [126.9216, 35.1598], [126.921, 35.1598], [126.921, 35.1594]]] }
+  };
+  const phantomBuilding = {
+    id: "phantom-building",
+    properties: { pnu },
+    geometry: { type: "Polygon", coordinates: [[[126.9156, 35.1611], [126.9158, 35.1611], [126.9158, 35.1613], [126.9156, 35.1613], [126.9156, 35.1611]]] }
+  };
+  const store = { id: "school-store", pnu, largeName: "음식", longitude: 126.921, latitude: 35.1595 };
+  const result = matchBuildingIndustries([realBuilding, phantomBuilding], [store]);
+  assert.equal(result.byId.get("school-building"), "음식");
+  assert.equal(result.byId.has("phantom-building"), false);
+  assert.deepEqual(result.storesById.get("school-building").map((item) => item.id), [store.id]);
+
+  // 좌표가 없으면 거리로 가릴 수 없으므로 종전처럼 PNU가 같은 건물을 모두 연결한다.
+  const noCoordinates = matchBuildingIndustries([realBuilding, phantomBuilding], [{ id: "blind-store", pnu, largeName: "음식" }]);
+  assert.deepEqual([...noCoordinates.byId.keys()].sort(), ["phantom-building", "school-building"]);
+});
+
 test("does not guess between equally close buildings without a lot match", () => {
   const buildings = [
     { id: "left", properties: { pnu: "1221010800100010001" }, geometry: { type: "Polygon", coordinates: [[[126.92, 35.14], [126.9201, 35.14], [126.9201, 35.141], [126.92, 35.141], [126.92, 35.14]]] } },
