@@ -472,7 +472,7 @@ test("keeps building-outline analysis under the market service", async () => {
     [["table", "상가 조회"], ["map", "상권 지도"], ["analysis", "상권 분석"]]
   );
   assert.match(html, /id="marketTableNameInput"/);
-  assert.doesNotMatch(html, /id="marketTableNameInput"[^>]*placeholder=/);
+  assert.match(html, /id="marketTableNameInput"[^>]*placeholder="예시 : 광주극장"/);
   assert.match(html, /id="outlineZoneFilter"/);
   assert.match(html, /id="buildingOutlineMap"/);
   assert.match(html, /id="outlineStatistics"[^>]*hidden/);

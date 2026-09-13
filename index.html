@@ -481,7 +481,7 @@
           <div class="query-grid market-table-query">
             <label class="field">
               <span>업소명</span>
-              <input id="marketTableNameInput" type="search" autocomplete="off">
+              <input id="marketTableNameInput" type="search" autocomplete="off" placeholder="예시 : 광주극장">
             </label>
             <label class="field">
               <span>행정동</span>
@@ -554,6 +554,9 @@
           <figure class="chart-card chart-card-wide" id="statsTrendCard">
             <figcaption>
               <strong id="statsTrendTitle">연도별 폐업</strong>
+              <select id="statsTrendScope" aria-label="연도별 폐업 조회 범위" class="stats-trend-scope">
+                <option value="">동구 전체</option>
+              </select>
             </figcaption>
             <div class="chart-plot" id="statsTrendChart"></div>
             <details class="chart-table">
@@ -566,6 +569,8 @@
               </div>
             </details>
           </figure>
+
+          <hr class="stats-divider">
 
           <div class="chart-grid">
             <figure class="chart-card">

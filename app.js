@@ -1635,6 +1635,8 @@ async function initializeStats() {
   }
 }
 
+$("statsTrendScope").addEventListener("change", () => renderStats());
+
 function renderStatsMeta() {
   const generated = closureMeta.generatedAt
     ? new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeZone: "Asia/Seoul" }).format(new Date(closureMeta.generatedAt))
@@ -1648,12 +1650,38 @@ function renderStatsMeta() {
 
 function renderStats() {
   if (!statsReady) return;
+  populateStatsTrendScope();
   const rows = filterClosureRows(closureLicenses, { statusKind: "closed" });
   // 막대 그래프는 기간이 축에 드러나지 않으니, 툴팁이 어느 기간의 폐업인지 함께 말한다.
   const period = closurePeriodLabel(rows);
-  renderStatsTrend(rows);
+  renderStatsTrend(statsTrendRows(rows));
   renderStatsRateCharts(rows, period);
   renderStatsLifespanCharts(rows, period);
+}
+
+// 연도별 폐업은 선택 범위(행정동·주요상권)에 맞춰 가린다. 아래 네 개 차트는 동구 전체 기준을 유지한다.
+function statsTrendRows(rows) {
+  const scope = $("statsTrendScope")?.value || "";
+  if (!scope) return rows;
+  if (scope.startsWith("zone:")) {
+    const zone = mainBizZones.find((feature) => `zone:${feature.properties.no}` === scope);
+    return zone ? closuresInZone(rows, zone.geometry).rows : [];
+  }
+  return rows.filter((row) => row.adminDong === scope);
+}
+
+function populateStatsTrendScope() {
+  const select = $("statsTrendScope");
+  if (!select) return;
+  const current = select.value;
+  const dongGroup = document.createElement("optgroup");
+  dongGroup.label = "행정동";
+  for (const name of DONGGU_ADMIN_DONGS) dongGroup.append(new Option(name, name));
+  const zoneGroup = document.createElement("optgroup");
+  zoneGroup.label = "주요상권";
+  for (const zone of mainBizZones) zoneGroup.append(new Option(zone.properties.name, `zone:${zone.properties.no}`));
+  select.replaceChildren(new Option("동구 전체", ""), dongGroup, zoneGroup);
+  select.value = current;
 }
 
 function closurePeriodLabel(rows) {
@@ -1665,6 +1693,8 @@ function closurePeriodLabel(rows) {
 }
 
 function renderStatsTrend(rows) {
+  const scopeLabel = $("statsTrendScope")?.selectedOptions?.[0]?.textContent || "";
+  $("statsTrendTitle").textContent = scopeLabel && scopeLabel !== "동구 전체" ? `연도별 폐업 · ${scopeLabel}` : "연도별 폐업";
   const years = closureYearCounts(rows);
   drawLineChart($("statsTrendChart"), {
     points: years.map(({ year, count }) => ({ label: `${year}년`, value: count })),

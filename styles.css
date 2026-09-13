@@ -862,6 +862,30 @@ tbody tr:hover td { background: #f6f8fa; }
 .chart-card figcaption { margin-bottom: 12px; }
 .chart-card figcaption strong { display: block; color: var(--text); font-size: 15px; font-weight: 700; }
 .chart-card figcaption span { display: block; margin-top: 4px; color: var(--text-secondary); font-size: 12px; line-height: 1.6; }
+/* 연도별 폐업 카드 안에서 제목과 조회 범위 선택을 한 줄에 나란히 놓는다. */
+#statsTrendCard figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+#statsTrendCard figcaption strong { margin: 0; }
+.stats-trend-scope {
+  min-height: 34px;
+  padding: 5px 26px 5px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-size: 12px;
+}
+/* 연도별 폐업(범위 선택)과 동구 전체 기준 차트 네 장을 가른다. */
+.stats-divider {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
 .chart-plot { position: relative; }
 .chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
 .chart-grid-line, .chart-axis-line { stroke: var(--line); stroke-width: 1; }
