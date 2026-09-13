@@ -18,6 +18,13 @@ import { fetchLocaldataSource } from "../lib/localdata-client.js";
 import { createLicenseAdminDongResolver } from "../lib/license-admin-dong.js";
 import { createAdminDongLookup } from "../lib/admin-dong.js";
 import { enrichStoreAddresses } from "../lib/kakao-local.js";
+import {
+  BROKER_STATUS_ACTIVE,
+  fetchAddressCoordinate,
+  fetchBrokerOffices,
+  GWANGJU_DONGGU_LD_CODE,
+  normalizeBrokerOffice
+} from "../lib/broker-offices.js";
 
 const API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong";
 const SIGNGU_CODE = "12210";
@@ -28,6 +35,9 @@ const REQUEST_TIMEOUT_MS = 20000;
 const key = process.env.SDSC_SERVICE_KEY;
 const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
 const kakaoKey = process.env.KAKAO_REST_API_KEY;
+const vworldKey = process.env.VWORLD_KEY;
+const vworldDomain = process.env.VWORLD_DOMAIN || "https://donggu-biz.vercel.app";
+const GEOCODE_PAUSE_MS = 120;
 
 if (!key) throw new Error("SDSC_SERVICE_KEY 환경변수가 필요합니다.");
 
@@ -113,8 +123,10 @@ let stores = uniqueBaseStores;
 let supplementalMeta = null;
 let postMergeDeduplication = null;
 let kakaoAddressMeta = null;
+const adminDongForLicense = createLicenseAdminDongResolver(uniqueBaseStores, await loadAdminDongLookup());
+const supplementalLicenses = [];
+const extraSources = [];
 if (localdataKey) {
-  const adminDongForLicense = createLicenseAdminDongResolver(uniqueBaseStores, await loadAdminDongLookup());
   const localdataResults = [];
   for (const source of LOCALDATA_SOURCES) {
     const result = await fetchLocaldataSource(source, {
@@ -131,7 +143,79 @@ if (localdataKey) {
     });
     localdataResults.push({ ...result, activeItems, licenses });
   }
-  const merged = mergeStoreSources(uniqueBaseStores, localdataResults.flatMap(({ licenses }) => licenses));
+  supplementalLicenses.push(...localdataResults.flatMap(({ licenses }) => licenses));
+  extraSources.push(...localdataResults.map(({ source, totalCount, activeItems, licenses, error }) => ({
+    datasetId: source.datasetId,
+    slug: source.slug,
+    title: source.title,
+    endpoint: source.endpoint,
+    sourceCount: totalCount,
+    activeCount: activeItems.length,
+    sourceUpdatedAt: latestSourceTimestamp(licenses),
+    ...(error ? { error: error.message, errorCode: error.code } : {})
+  })));
+  const unavailableCount = localdataResults.filter((result) => result.error).length;
+  console.log(`[localdata] ${unavailableCount ? `${unavailableCount} sources unavailable, ` : ""}${extraSources.length} sources collected`);
+}
+
+// VWorld 국가중점데이터API의 부동산중개업정보(국토교통부). 인허가 API와 달리 좌표가
+// 없어 카카오 주소 검색으로 좌표를 채운 뒤 같은 병합 파이프라인에 태운다.
+if (vworldKey) {
+  try {
+    const brokerResult = await fetchBrokerOffices({
+      key: vworldKey,
+      domain: vworldDomain,
+      ldCode: GWANGJU_DONGGU_LD_CODE,
+      statusCode: BROKER_STATUS_ACTIVE
+    });
+    const brokerLicenses = brokerResult.offices.map((office) => {
+      const license = normalizeBrokerOffice(office);
+      license.adminDong = adminDongForLicense(license.address || license.lotAddress, license);
+      return license;
+    });
+    let geocodedCount = 0;
+    if (kakaoKey) {
+      for (const license of brokerLicenses) {
+        const coordinate = await fetchAddressCoordinate(license.address || license.lotAddress, kakaoKey);
+        if (coordinate) {
+          license.longitude = coordinate.longitude;
+          license.latitude = coordinate.latitude;
+          geocodedCount += 1;
+        }
+        await sleep(GEOCODE_PAUSE_MS);
+      }
+    } else {
+      console.warn(`[broker] 좌표 보강을 건너뛴다: KAKAO_REST_API_KEY 환경변수가 없다.`);
+    }
+    supplementalLicenses.push(...brokerLicenses);
+    extraSources.push({
+      datasetId: "ned.getEBOfficeInfo",
+      slug: "vworld_broker_offices",
+      title: "국토교통부_부동산중개업정보(VWorld 국가중점데이터API)",
+      endpoint: BROKER_OFFICES_URL,
+      sourceCount: brokerResult.totalCount,
+      activeCount: brokerLicenses.length,
+      sourceUpdatedAt: brokerResult.lastUpdatedAt,
+      geocodedCount
+    });
+    console.log(`[broker] ${brokerLicenses.length} offices (geocoded ${geocodedCount})`);
+  } catch (error) {
+    console.warn(`[broker] skipped: ${error.message}`);
+    extraSources.push({
+      datasetId: "ned.getEBOfficeInfo",
+      slug: "vworld_broker_offices",
+      title: "국토교통부_부동산중개업정보(VWorld 국가중점데이터API)",
+      endpoint: BROKER_OFFICES_URL,
+      sourceCount: null,
+      activeCount: 0,
+      sourceUpdatedAt: "",
+      error: error.message
+    });
+  }
+}
+
+if (supplementalLicenses.length) {
+  const merged = mergeStoreSources(uniqueBaseStores, supplementalLicenses);
   stores = merged.stores.sort((a, b) => a.id.localeCompare(b.id));
   const comparison = merged.comparison;
   supplementalMeta = {
@@ -143,19 +227,9 @@ if (localdataKey) {
     addedWithoutCoordinatesCount: comparison.addedWithoutCoordinatesCount,
     matchTypeCounts: comparison.matchTypeCounts,
     bySource: comparison.bySource,
-    sources: localdataResults.map(({ source, totalCount, activeItems, licenses, error }) => ({
-      datasetId: source.datasetId,
-      slug: source.slug,
-      title: source.title,
-      endpoint: source.endpoint,
-      sourceCount: totalCount,
-      activeCount: activeItems.length,
-      sourceUpdatedAt: latestSourceTimestamp(licenses),
-      ...(error ? { error: error.message, errorCode: error.code } : {})
-    }))
+    sources: extraSources
   };
-  const unavailableCount = localdataResults.filter((result) => result.error).length;
-  console.log(`[localdata] ${comparison.uniqueLicenseCount} unique active licenses, ${comparison.addedWithCoordinatesCount} stores added${unavailableCount ? `, ${unavailableCount} sources unavailable` : ""}`);
+  console.log(`[supplemental] ${comparison.uniqueLicenseCount} unique licenses, ${comparison.addedWithCoordinatesCount} stores added`);
 }
 
 const addressCandidates = stores.filter((store) => /[*＊]/.test(`${store.address || ""} ${store.lotAddress || ""}`)
