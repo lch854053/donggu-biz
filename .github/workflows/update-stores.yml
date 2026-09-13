@@ -4,11 +4,13 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "0 18 4 * *"
-  # 워크플로우를 고치면 파이프라인 전체를 다시 검증한다. dispatch 권한 없이도
-  # 갱신을 돌릴 수 있는 통로로도 쓴다.
+  # 워크플로우나 파이프라인 스크립트를 고치면 갱신 전체를 다시 검증한다. dispatch
+  # 권한 없이도 갱신을 돌릴 수 있는 통로로도 쓴다.
   push:
     paths:
       - ".github/workflows/update-stores.yml"
+      - "scripts/update-stores.mjs"
+      - "scripts/update-closed-licenses.mjs"
 
 permissions:
   contents: write
