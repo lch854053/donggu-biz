@@ -937,7 +937,7 @@ function renderStorePanel(stores, panelConfig) {
   $(panelConfig.storeBodyId).innerHTML = sortedStores.map((store, index) => `<tr>
     <td class="seq">${index + 1}</td>
     <td>${escapeHtml([store.name, store.branch].filter(Boolean).join(" "))}</td>
-    <td>${escapeHtml(store.smallName || store.middleName || store.largeName || "미분류")}</td>
+    <td>${escapeHtml(store.smallName || store.middleName || store.largeName || "미분류")}${storeSourceBadges(store) ? ` ${storeSourceBadges(store)}` : ""}</td>
     <td>${escapeHtml(store.address || store.lotAddress || "-")}</td>
   </tr>`).join("");
   $(panelConfig.statsId).hidden = true;
@@ -1394,7 +1394,7 @@ function renderMarketTable() {
     <td>${escapeHtml([store.name, store.branch].filter(Boolean).join(" "))}</td>
     <td>${escapeHtml(store.largeName || "-")}</td>
     <td>${escapeHtml(store.middleName || "-")}</td>
-    <td>${escapeHtml(store.smallName || "-")}</td>
+    <td>${escapeHtml(store.smallName || "-")}${storeSourceBadges(store) ? ` ${storeSourceBadges(store)}` : ""}</td>
     <td>${escapeHtml(store.adminDong || "-")}</td>
     <td>${escapeHtml(marketTableZoneNames(store) || "-")}</td>
     <td>${escapeHtml(store.address || "-")}</td>
@@ -1439,12 +1439,23 @@ function currentMarketFilters() {
   return buildLocationFilter($("dongFilter").value, zone?.geometry || null);
 }
 
+// 매장 행의 sourceSlugs에 남은 인허가 출처 중 화면에 배지로 보여줄 것들.
+const STORE_SOURCE_BADGES = { excellent_restaurant_info: "모범음식점" };
+
+function storeSourceBadges(store) {
+  return Object.entries(STORE_SOURCE_BADGES)
+    .filter(([slug]) => (store.sourceSlugs || []).includes(slug))
+    .map(([, label]) => `<span class="badge badge-gray">${escapeHtml(label)}</span>`)
+    .join(" ");
+}
+
 function buildStoreMarkers() {
   const icon = L.divIcon({ className: "store-dot", iconSize: [12, 12] });
   storeMarkers = activeMarketStores().map((store) => {
     const marker = L.marker([store.latitude, store.longitude], { icon, title: store.name });
     marker.store = store;
-    marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(store.name)}${store.branch ? ` ${escapeHtml(store.branch)}` : ""}</strong><span>${escapeHtml(store.smallName || store.largeName)}</span><span>${escapeHtml(store.address)}</span></div>`);
+    const badges = storeSourceBadges(store);
+    marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(store.name)}${store.branch ? ` ${escapeHtml(store.branch)}` : ""}</strong><span>${escapeHtml(store.smallName || store.largeName)}${badges ? ` ${badges}` : ""}</span><span>${escapeHtml(store.address)}</span></div>`);
     marker.on({
       click: closeClusterPanel,
       mouseover() { if (selectedZoneNo || $("dongFilter").value) marker.openPopup(); },

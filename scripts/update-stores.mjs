@@ -255,7 +255,12 @@ if (kakaoKey) {
 
 if (supplementalMeta) {
   const licenseRows = stores.filter((store) => String(store.id || "").startsWith("license:"));
-  const deduplicated = deduplicateStoreSources(uniqueBaseStores, licenseRows);
+  // mergeStoreSources가 매칭 인허가의 출처를 매장 행에 새겼으므로, 처음의 base가 아니라
+  // 현재 stores에 담긴 base 행을 그대로 다시 걸러 넘겨야 출처가 살아남는다.
+  const deduplicated = deduplicateStoreSources(
+    stores.filter((store) => !String(store.id || "").startsWith("license:")),
+    licenseRows
+  );
   stores = deduplicated.stores.sort((a, b) => a.id.localeCompare(b.id));
   postMergeDeduplication = {
     baseInputCount: baseStores.length,

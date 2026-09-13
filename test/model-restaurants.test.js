@@ -7,6 +7,7 @@ import {
   isSuspendedLicense,
   licenseStatusKind,
   LOCALDATA_SOURCES,
+  mergeStoreSources,
   statusCodeFor,
   statusCodesFor
 } from "../lib/store-license.js";
@@ -88,4 +89,35 @@ test("표준 원천은 지정 연혁 필드를 만들지 않는다", () => {
   assert.equal(license.name, "뜰안채");
   assert.equal(license.licenseDate, "2007-06-24");
   assert.equal("designatedAt" in license, false);
+});
+
+test("매칭된 모범음식점 인허가가 좌표 없어도 기존 매장 행에 출처를 새긴다", () => {
+  const base = {
+    id: "sdsc-han",
+    name: "한성회관",
+    address: "전남광주통합특별시 동구 충장로 45-22 (금남로4가)",
+    lotAddress: "전남광주통합특별시 동구 금남로4가 85-1",
+    largeCode: "I2",
+    smallName: "일식",
+    longitude: 126.91391227832163,
+    latitude: 35.15092149270464
+  };
+  const license = compactLicense({
+    MNG_NO: "5805000-101-1973-00003",
+    BSNSSP_NM: "한성회관",
+    ROAD_NM_ADDR: "전남광주통합특별시 동구 충장로 45-22 (금남로4가)",
+    LCTN_ADDR: "전남광주통합특별시 동구 금남로4가 85-1",
+    APLY_YMD: "1973-12-15",
+    SALS_STTS_CD: "01",
+    SALS_STTS_NM: "영업"
+  }, modelRestaurant);
+
+  const result = mergeStoreSources([base], [license]);
+  assert.equal(result.comparison.matchedCount, 1);
+  assert.equal(result.stores.length, 1);
+  assert.deepEqual(result.stores[0].sourceSlugs, ["excellent_restaurant_info"]);
+  assert.deepEqual(result.stores[0].licenseIds, ["5805000-101-1973-00003"]);
+  assert.deepEqual(result.stores[0].sourceDatasetIds, ["15155052"]);
+  // 기존 매장의 업종 표시는 그대로 둔다.
+  assert.equal(result.stores[0].smallName, "일식");
 });
