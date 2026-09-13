@@ -38,12 +38,14 @@ import {
 } from "./lib/insurance-workplaces.js";
 import {
   boundsIntersect,
+  boundsPolygon,
   clipGeometryToBounds,
   filterBuildingsInZone,
   geometryBounds,
   geometryIntersects,
   expandBoundsMeters,
-  matchBuildingIndustries
+  matchBuildingIndustries,
+  rowsBounds
 } from "./lib/building-outline.js";
 
 const $ = (id) => document.getElementById(id);
@@ -515,6 +517,9 @@ $("validationClearBtn").addEventListener("click", () => {
 const DONGGU_CENTER = [35.1467, 126.9231];
 let marketInitialized = false;
 let allStores = [];
+// 행정동 → 그 행정동에 속한 법정동코드(건물 PNU 앞 10자리) 집합.
+// 행정동 경계 자료가 없어도 건물을 행정동별로 가릴 수 있게 해 준다.
+const dongLegalCodes = new Map();
 let visibleStores = [];
 let marketMeta = null;
 let marketMap;
@@ -664,6 +669,14 @@ async function initializeMarket() {
     const baseStores = Array.isArray(payload.stores) ? payload.stores : [];
     marketMeta = payload.meta || {};
     allStores = baseStores;
+    dongLegalCodes.clear();
+    for (const store of allStores) {
+      const pnu = String(store.pnu || "");
+      if (!store.adminDong || !/^\d{10}/.test(pnu)) continue;
+      const codes = dongLegalCodes.get(store.adminDong) || new Set();
+      codes.add(pnu.slice(0, 10));
+      dongLegalCodes.set(store.adminDong, codes);
+    }
     const visibleVworldPayload = { features: filterVworldZones(zonePayload.features) };
     mainBizZones = mergeZoneFeatures(visibleVworldPayload, manualZonePayload);
     if (!allStores.length) throw new Error("상가정보 파일에 표시할 업소가 없습니다.");
@@ -848,6 +861,7 @@ function lastCompleteClosureYear() {
 }
 
 // 폐업 스냅샷은 통계 탭과 같은 파일을 쓴다. 상권 분석을 먼저 열어도 여기서 한 번 읽어 둔다.
+// zone.adminDong이 있으면 상권 경계 대신 행정동 이름으로 폐업 기록을 가린다(좌표 없는 기록도 셈).
 async function renderZoneClosure(zone, activeStores) {
   const zoneName = zone.properties?.name || "선택 상권";
   try {
@@ -857,10 +871,15 @@ async function renderZoneClosure(zone, activeStores) {
     console.warn("[zone-closure] snapshot unavailable", error);
     return;
   }
-  // 주소 반경 조회 중일 때는 같은 영역을 다시 그리는지 확인한다.
-  if (customAreaFeature ? zone !== customAreaFeature : selectedZone() !== zone) return;
+  // 그리는 동안 다른 상권·영역·행정동으로 바뀌었으면 포기한다.
+  const stale = zone.adminDong
+    ? $("outlineDongFilter").value !== zone.adminDong
+    : customAreaFeature ? zone !== customAreaFeature : selectedZone() !== zone;
+  if (stale) return;
 
-  const { rows } = closuresInZone(closureLicenses, zone.geometry);
+  const { rows } = zone.adminDong
+    ? { rows: (closureLicenses || []).filter((row) => row.statusKind === "closed" && row.adminDong === zone.adminDong) }
+    : closuresInZone(closureLicenses, zone.geometry);
   if (!rows.length) {
     clearZoneClosure();
     return;
@@ -1083,23 +1102,36 @@ function renderOutlineZoneMeta(zone, stores, matchedStoreIds) {
   ].filter(Boolean).join(" · ");
 }
 
-// 주요상권 대신 주소 반경으로 볼 때는 customAreaFeature를 넘긴다. 나머지 파이프라인
-// (셀 로딩 → 건물 필터 → 업종 연결 → 통계)은 상권 조회와 동일하다.
-async function loadBuildingOutline(zoneOverride = null) {
-  const zone = zoneOverride || selectedZone();
+// 주요상권(기본)·주소 반경(customAreaFeature)·행정동(dongName) 세 가지 뷰가 같은
+// 파이프라인(셀 로딩 → 건물 필터 → 업종 연결 → 통계)을 탄다.
+async function loadBuildingOutline(view = null) {
+  const isArea = view?.mode === "area";
+  const isDong = view?.mode === "dong";
+  const dongName = isDong ? view.adminDong : "";
+  const zone = isArea ? view.feature : selectedZone();
   const requestId = ++outlineLoadId;
   clearOutlineLayers();
-  if (!zone || !outlineMap) {
+  if ((!zone && !isDong) || !outlineMap) {
     if (!zone && outlineMap) setOutlineState("주요상권을 선택해 주세요.");
     return;
   }
+  if (isDong && !dongLegalCodes.get(dongName)?.size) {
+    setOutlineState(`${dongName}의 법정동 코드를 스냅샷에서 찾을 수 없습니다.`, true);
+    return;
+  }
 
-  const zoneName = zone.properties?.name || "선택 상권";
+  const zoneName = isDong ? dongName : zone.properties?.name || "선택 상권";
   $("outlineZoneName").textContent = zoneName;
   $("outlineZoneMeta").textContent = "건물 윤곽을 불러오는 중입니다.";
   setOutlineState(`${zoneName}의 건물 윤곽을 불러오는 중입니다.`);
   try {
-    const zoneBounds = geometryBounds(zone.geometry);
+    // 행정동은 경계 자료가 없으므로, 행정동 안 업소들의 좌표 범위를 조금 넓혀
+    // 셀·도로를 고르고 건물은 PNU 법정동코드로 가린다.
+    const dongStores = isDong ? filterStores(allStores, { adminDong: dongName }) : [];
+    const dongStoreBounds = isDong
+      ? expandBoundsMeters(rowsBounds(dongStores), 150)
+      : null;
+    const zoneBounds = isDong ? dongStoreBounds : geometryBounds(zone.geometry);
     if (!zoneBounds) throw new Error("선택 상권의 경계를 읽을 수 없습니다.");
     const manifest = await loadOutlineManifest();
     const cells = manifest.cells.filter((cell) => boundsIntersect(cell.bounds, zoneBounds));
@@ -1117,14 +1149,26 @@ async function loadBuildingOutline(zoneOverride = null) {
       const id = String(feature?.id || feature?.properties?.id || "");
       if (id && !featureById.has(id)) featureById.set(id, feature);
     });
-    outlineFeatures = filterBuildingsInZone([...featureById.values()], zone.geometry);
-    const stores = filterStores(allStores, { zoneGeometry: zone.geometry });
+    const allBuildings = [...featureById.values()];
+    const legalCodes = isDong ? dongLegalCodes.get(dongName) : null;
+    outlineFeatures = isDong
+      ? allBuildings.filter((feature) => legalCodes.has(String(feature.properties?.pnu ?? "").slice(0, 10)))
+      : filterBuildingsInZone(allBuildings, zone.geometry);
+    const stores = isDong
+      ? dongStores
+      : filterStores(allStores, { zoneGeometry: zone.geometry });
     const industryMatches = matchBuildingIndustries(outlineFeatures, stores);
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
-    const roadClipBounds = expandBoundsMeters(zoneBounds, OUTLINE_ROAD_CLIP_BUFFER_METERS);
+    const buildingBounds = outlineFeatures.map((feature) => geometryBounds(feature.geometry))
+      .reduce((bounds, box) => box ? [
+        Math.min(bounds[0], box[0]), Math.min(bounds[1], box[1]),
+        Math.max(bounds[2], box[2]), Math.max(bounds[3], box[3])
+      ] : bounds, isDong ? dongStoreBounds : zoneBounds);
+    const roadClipBounds = expandBoundsMeters(buildingBounds, OUTLINE_ROAD_CLIP_BUFFER_METERS);
+    const clipArea = isDong ? boundsPolygon(buildingBounds) : zone.geometry;
     outlineRoadFeatures = roadFeatures
-      .filter((feature) => geometryIntersects(feature.geometry, zone.geometry))
+      .filter((feature) => geometryIntersects(feature.geometry, clipArea))
       .map((feature) => {
         const geometry = clipGeometryToBounds(feature.geometry, roadClipBounds);
         return geometry ? { ...feature, geometry, bbox: geometryBounds(geometry) } : null;
@@ -1133,14 +1177,16 @@ async function loadBuildingOutline(zoneOverride = null) {
 
     $("outlineWorkspace").hidden = false;
     outlineMap.invalidateSize();
-    outlineGroundLayer = L.geoJSON(zone, {
-      interactive: false,
-      style: {
-        stroke: false,
-        fillColor: "#c8ced4",
-        fillOpacity: .22
-      }
-    }).addTo(outlineMap);
+    if (!isDong) {
+      outlineGroundLayer = L.geoJSON(zone, {
+        interactive: false,
+        style: {
+          stroke: false,
+          fillColor: "#c8ced4",
+          fillOpacity: .22
+        }
+      }).addTo(outlineMap);
+    }
     outlineRoadLayer = L.geoJSON({ type: "FeatureCollection", features: outlineRoadFeatures }, {
       interactive: false,
       style: {
@@ -1153,11 +1199,11 @@ async function loadBuildingOutline(zoneOverride = null) {
       style: outlineFeatureStyle,
       onEachFeature: bindOutlineFeature
     }).addTo(outlineMap);
-    outlineGroundLayer.bringToBack();
+    outlineGroundLayer?.bringToBack();
 
     // 주소 반경 조회면 영역 경계와 중심을 점선으로 덧그린다.
-    if (zoneOverride && areaCenter) {
-      outlineAreaOverlay = L.geoJSON(zoneOverride, {
+    if (isArea && areaCenter) {
+      outlineAreaOverlay = L.geoJSON(zone, {
         interactive: false,
         style: { color: "#1f6feb", weight: 2, dashArray: "6 4", fill: false }
       }).addTo(outlineMap);
@@ -1166,7 +1212,9 @@ async function loadBuildingOutline(zoneOverride = null) {
       }).addTo(outlineMap);
     }
 
-    const leafletBounds = outlineGroundLayer.getBounds();
+    const leafletBounds = isDong
+      ? outlineBuildingLayer.getBounds()
+      : outlineGroundLayer.getBounds();
     if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
     const movementBounds = L.latLngBounds(
       [roadClipBounds[1], roadClipBounds[0]],
@@ -1180,10 +1228,10 @@ async function loadBuildingOutline(zoneOverride = null) {
     outlineMap.setMaxZoom(Math.max(minZoom, maxZoom));
     outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom });
 
-    renderOutlineZoneMeta(zone, stores, industryMatches.matchedStoreIds);
+    renderOutlineZoneMeta(isDong ? { properties: { name: zoneName } } : zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
     renderOutlineZoneStatistics(stores, zoneName);
-    renderZoneClosure(zone, stores);
+    renderZoneClosure(isDong ? { adminDong: dongName, properties: { name: zoneName } } : zone, stores);
     if (outlineFeatures.length) {
       $("outlineState").hidden = true;
     } else {
@@ -1294,10 +1342,12 @@ function populateMarketFilters() {
   replaceOptions($("marketTableIndustryFilter"), industries, "전체 업종");
   replaceOptions($("marketTableZoneFilter"), zones, "전체 주요상권");
   replaceOptions($("outlineZoneFilter"), zones, "주요상권 선택");
+  replaceOptions($("outlineDongFilter"), dongs, "행정동 선택");
   $("outlineZoneFilter").value = selectedZoneNo;
   $("zoneFilter").disabled = !mainBizZones.length;
   $("marketTableZoneFilter").disabled = !mainBizZones.length;
   $("outlineZoneFilter").disabled = !mainBizZones.length;
+  $("outlineDongFilter").disabled = !dongs.length;
 }
 
 function marketTableCriteria() {
@@ -1452,6 +1502,7 @@ function selectZone(number, fitBounds) {
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selectedZoneNo;
   $("outlineZoneFilter").value = selectedZoneNo;
+  $("outlineDongFilter").value = "";
   $("dongFilter").value = selection.adminDong;
   syncZoneTooltips();
   zoneLayer?.setStyle(zoneStyle);
@@ -1462,6 +1513,7 @@ function selectZone(number, fitBounds) {
 }
 
 $("dongFilter").addEventListener("change", (event) => {
+  $("outlineDongFilter").value = "";
   const selection = buildLocationSelection("dong", event.target.value);
   selectedZoneNo = selection.zoneNo;
   $("zoneFilter").value = selection.zoneNo;
@@ -1480,7 +1532,18 @@ $("dongFilter").addEventListener("change", (event) => {
 $("zoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
 $("outlineZoneFilter").addEventListener("change", (event) => {
   customAreaFeature = null;
+  $("outlineDongFilter").value = "";
   selectZone(event.target.value, Boolean(event.target.value));
+});
+$("outlineDongFilter").addEventListener("change", (event) => {
+  customAreaFeature = null;
+  $("outlineZoneFilter").value = "";
+  const dong = event.target.value;
+  if (!dong) {
+    loadBuildingOutline();
+    return;
+  }
+  loadBuildingOutline({ mode: "dong", adminDong: dong });
 });
 $("resetMarketBtn").addEventListener("click", () => {
   $("dongFilter").value = "";
@@ -1523,8 +1586,6 @@ $("marketTableDownloadBtn").addEventListener("click", () => {
     "업소"
   );
 });
-$("analysisLookupBtn").addEventListener("click", () => activateMarketView("map"));
-
 // Closure statistics
 // 통계 탭은 조건 없이 스냅샷 전체를 그린다. 아래에 다른 주제 통계가 같은 형태로 덧붙는다.
 const CLOSURE_SNAPSHOT_URL = "data/closed_licenses_donggu.json";
@@ -2083,7 +2144,8 @@ async function runAreaLookup() {
     status.textContent = center.source === "스냅샷 주소 매칭"
       ? "지오코딩 프록시를 못 써 스냅샷 주소에서 찾았습니다."
       : "";
-    await loadBuildingOutline(customAreaFeature);
+    $("outlineDongFilter").value = "";
+    await loadBuildingOutline({ mode: "area", feature: customAreaFeature, center });
   } finally {
     $("areaLookupBtn").disabled = false;
   }

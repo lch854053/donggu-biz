@@ -606,7 +606,7 @@ test("limits the commercial analysis map to the selected zone", async () => {
   assert.match(appSource, /const OUTLINE_MAP_ZOOM_MARGIN = 2/);
   assert.match(appSource, /const OUTLINE_MAP_BOUNDS_PADDING = \.12/);
   assert.match(appSource, /const OUTLINE_ROAD_CLIP_BUFFER_METERS = 80/);
-  assert.match(appSource, /expandBoundsMeters\(zoneBounds, OUTLINE_ROAD_CLIP_BUFFER_METERS\)/);
+  assert.match(appSource, /expandBoundsMeters\(buildingBounds, OUTLINE_ROAD_CLIP_BUFFER_METERS\)/);
   assert.match(appSource, /outlineMap\.setMaxBounds\(movementBounds\)/);
   assert.match(appSource, /const fitZoom = Math\.round\(outlineMap\.getBoundsZoom\(leafletBounds, false\)\)/);
   assert.match(appSource, /const minZoom = Math\.max\(OUTLINE_MAP_MIN_ZOOM, fitZoom - OUTLINE_MAP_ZOOM_MARGIN\)/);
@@ -625,7 +625,7 @@ test("draws the selected commercial zone as a gray ground behind buildings", asy
   assert.match(appSource, /fillColor:\s*"#c8ced4"/);
   assert.match(appSource, /fillOpacity:\s*\.22/);
   assert.doesNotMatch(appSource, /color:\s*"#7f8993"/);
-  assert.match(appSource, /outlineGroundLayer\.bringToBack\(\)/);
+  assert.match(appSource, /outlineGroundLayer\?\.bringToBack\(\)/);
   assert.match(appSource, /outlineGroundLayer\?\.remove\(\)/);
 });
 
@@ -644,7 +644,9 @@ test("loads roads only in the commercial analysis map", async () => {
   const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(appSource, /const OUTLINE_ROADS_URL = "data\/road-polygons-donggu\.geojson"/);
   assert.match(appSource, /outlineRoadLayer = L\.geoJSON/);
-  assert.match(appSource, /outlineRoadFeatures = roadFeatures\s*\.filter\(\(feature\) => geometryIntersects\(feature\.geometry, zone\.geometry\)\)/);
+  // 행정동 뷰는 경계 대신 건물 범위 폴리곤으로 도로를 가른다.
+  assert.match(appSource, /const clipArea = isDong \? boundsPolygon\(buildingBounds\) : zone\.geometry;/);
+  assert.match(appSource, /outlineRoadFeatures = roadFeatures\s*\.filter\(\(feature\) => geometryIntersects\(feature\.geometry, clipArea\)\)/);
   assert.match(appSource, /clipGeometryToBounds\(feature\.geometry, roadClipBounds\)/);
   assert.match(appSource, /fillColor: "#87919a"/);
   assert.match(appSource, /fillOpacity: \.42/);
