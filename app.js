@@ -8,6 +8,7 @@ import {
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
 import { axisTicks, barBands, barCornerRadius, barWidth, columnBands, linePath, linePoints } from "./lib/chart.js";
+import { AREA_SHAPES, aggregateIndustries, filterRowsInArea, industryClosureTable } from "./lib/area-search.js";
 import { closureLifespanMedianDays, closureRateTableWithLifespan, closureYearCounts, filterClosureRows } from "./lib/closure-view.js";
 import {
   averageClosureRate,
@@ -1396,7 +1397,6 @@ function applyMarketFilters() {
     const visibleIds = new Set(visibleStores.map((store) => store.id));
     markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
   }
-  renderClosureMarkers();
   renderSelectionOverview();
 }
 
@@ -1464,6 +1464,7 @@ $("outlineZoneFilter").addEventListener("change", (event) => selectZone(event.ta
 $("resetMarketBtn").addEventListener("click", () => {
   $("dongFilter").value = "";
   selectZone("", false);
+  clearAreaSearch();
   marketMap?.setView(DONGGU_CENTER, 14);
 });
 $("clusterPanelClose").addEventListener("click", closeClusterPanel);
@@ -1516,8 +1517,6 @@ let closureSnapshotPromise = null;
 let statsReady = false;
 let closureMeta = null;
 let closureLicenses = [];
-let closureMarkerCluster = null;
-let closureMarkers = [];
 
 async function loadClosureSnapshot() {
   if (!closureSnapshotPromise) {
@@ -1577,7 +1576,6 @@ function renderStats() {
   renderStatsTrend(rows);
   renderStatsRateCharts(rows, period);
   renderStatsLifespanCharts(rows, period);
-  renderClosureMarkers();
 }
 
 function closurePeriodLabel(rows) {
@@ -1979,68 +1977,190 @@ function drawBarChart(plot, { rows, format, tooltip, valueLabel, emptyText }) {
   plot.replaceChildren(svg);
 }
 
-// 지도에는 조회 조건과 무관하게 선택한 행정동·주요상권의 폐업 이력만 겹쳐 본다.
-function renderClosureMarkers() {
-  if (!marketMap || !closureLicenses.length) return;
-  if (!$("closureMarkerToggle").checked) {
-    if (closureMarkerCluster) closureMarkerCluster.clearLayers();
+// 주소 반경 조회: 주소를 찾아 지도에 원형·정사각형 영역을 그리고, 그 안의 업종·폐업
+// 통계를 상권 지도 하단 패널에 담는다.
+const AREA_MIN_RADIUS = 50;
+const AREA_MAX_RADIUS = 5000;
+let areaCenter = null;
+let areaSearchLayer = null;
+
+function areaSearchOptions() {
+  const shape = $("areaShapeSelect").value === AREA_SHAPES.square ? AREA_SHAPES.square : AREA_SHAPES.circle;
+  const radiusM = Math.min(AREA_MAX_RADIUS, Math.max(AREA_MIN_RADIUS, Number($("areaRadiusInput").value) || 0));
+  return { shape, radiusM };
+}
+
+function clampAreaRadius() {
+  const input = $("areaRadiusInput");
+  const value = Math.min(AREA_MAX_RADIUS, Math.max(AREA_MIN_RADIUS, Number(input.value) || 0));
+  input.value = String(value);
+  return value;
+}
+
+// 카카오 지오코딩 프록시를 쓸 수 없으면 스냅샷 주소 가운데서 찾는다.
+function localAddressMatch(query) {
+  const key = query.replace(/\s+/g, "").toLowerCase();
+  if (!key) return null;
+  const hits = allStores
+    .filter((store) => Number.isFinite(store.longitude) && Number.isFinite(store.latitude))
+    .map((store) => {
+      const address = `${store.address || ""} ${store.lotAddress || ""}`.replace(/\s+/g, "").toLowerCase();
+      return { store, address };
+    })
+    .filter(({ address }) => address.includes(key))
+    .sort((left, right) => left.address.length - right.address.length);
+  const hit = hits[0]?.store;
+  return hit ? { latitude: hit.latitude, longitude: hit.longitude, label: hit.address || hit.name, source: "스냅샷 주소 매칭" } : null;
+}
+
+async function geocodeAddress(query) {
+  try {
+    const response = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (Number.isFinite(data.latitude) && Number.isFinite(data.longitude)) {
+        return { latitude: data.latitude, longitude: data.longitude, label: data.addressName || query, source: "카카오 주소 검색" };
+      }
+    }
+  } catch {
+    // 프록시를 못 쓰는 환경(로컬 정적 서버 등)이면 아래 폴백으로 찾는다.
+  }
+  return localAddressMatch(query);
+}
+
+function metersToDegrees(radiusM, latitude) {
+  return {
+    dLat: radiusM / 111320,
+    dLng: radiusM / (111320 * Math.cos(latitude * Math.PI / 180))
+  };
+}
+
+function drawAreaSearchOverlay(center, options) {
+  if (areaSearchLayer) areaSearchLayer.remove();
+  const centerMarker = L.circleMarker([center.latitude, center.longitude], {
+    radius: 5, color: "#1f6feb", weight: 2, fillColor: "#7db4ff", fillOpacity: 0.9
+  });
+  let shapeLayer;
+  if (options.shape === AREA_SHAPES.square) {
+    const { dLat, dLng } = metersToDegrees(options.radiusM, center.latitude);
+    shapeLayer = L.rectangle(
+      L.latLngBounds(
+        [center.latitude - dLat, center.longitude - dLng],
+        [center.latitude + dLat, center.longitude + dLng]
+      ),
+      { color: "#1f6feb", weight: 2, dashArray: "6 4", fillOpacity: 0.08 }
+    );
+  } else {
+    shapeLayer = L.circle([center.latitude, center.longitude], {
+      radius: options.radiusM, color: "#1f6feb", weight: 2, dashArray: "6 4", fillOpacity: 0.08
+    });
+  }
+  areaSearchLayer = L.featureGroup([centerMarker, shapeLayer]).addTo(marketMap);
+}
+
+async function runAreaSearch() {
+  if (!marketMap) return;
+  const query = $("areaSearchInput").value.trim();
+  const status = $("areaSearchStatus");
+  if (!query) {
+    status.textContent = "주소를 입력하세요. 예: 동구 동계천로 39";
     return;
   }
-  if (!closureMarkerCluster) {
-    closureMarkerCluster = L.markerClusterGroup({
-      chunkedLoading: true,
-      maxClusterRadius: 46,
-      showCoverageOnHover: false,
-      zoomToBoundsOnClick: false,
-      spiderfyOnMaxZoom: false,
-      iconCreateFunction: (cluster) => L.divIcon({
-        className: "closure-cluster",
-        html: `<span>${cluster.getChildCount()}</span>`,
-        iconSize: [34, 34]
-      })
-    }).addTo(marketMap);
-  }
-  if (!closureMarkers.length) {
-    const icon = L.divIcon({ className: "closure-dot", iconSize: [10, 10] });
-    closureMarkers = closureLicenses
-      .filter((row) => row.statusKind === "closed" && Number.isFinite(row.longitude) && Number.isFinite(row.latitude))
-      .map((row) => {
-        const marker = L.marker([row.latitude, row.longitude], { icon, title: row.name });
-        marker.license = row;
-        marker.bindPopup(`<div class="store-popup"><strong>${escapeHtml(row.name)}</strong><span>${escapeHtml(row.smallName || row.largeName || "")}</span><span>${escapeHtml(row.address || "")}</span><span>폐업 ${escapeHtml(closureDateLabel(row.closedDate))}</span></div>`);
-        return marker;
-      });
-  }
-  const zone = selectedZone();
-  const adminDong = $("dongFilter").value;
-  closureMarkerCluster.clearLayers();
-  if (!zone && !adminDong) return;
-  closureMarkerCluster.addLayers(closureMarkers.filter((marker) => {
-    const row = marker.license;
-    if (adminDong && row.adminDong !== adminDong) return false;
-    if (zone && !pointInGeometry(row.longitude, row.latitude, zone.geometry)) return false;
-    return true;
-  }));
-}
-
-function closureDateLabel(value) {
-  const digits = String(value ?? "").replace(/[^0-9]/g, "");
-  return digits.length === 8 ? `${digits.slice(0, 4)}.${digits.slice(4, 6)}.${digits.slice(6, 8)}` : "일자 미상";
-}
-
-$("closureMarkerToggle").addEventListener("change", async () => {
-  // 지도에서 먼저 켜는 경우가 있어, 폐업 자료를 아직 안 읽었으면 읽고 나서 그린다.
-  if ($("closureMarkerToggle").checked) {
+  clampAreaRadius();
+  $("areaSearchBtn").disabled = true;
+  status.textContent = "주소를 찾는 중입니다.";
+  try {
+    const center = await geocodeAddress(query);
+    if (!center) {
+      status.textContent = "주소를 찾지 못했습니다. 동구 주소로 다시 시도해 주세요.";
+      return;
+    }
+    const options = areaSearchOptions();
+    areaCenter = center;
+    drawAreaSearchOverlay(center, options);
+    marketMap.fitBounds(areaSearchLayer.getBounds().pad(0.25), { maxZoom: 17 });
+    // 폐업통계에 폐업 자료가 필요하다. 통계 탭을 안 열었어도 여기서 읽는다.
     try {
       await loadClosureSnapshot();
     } catch (error) {
-      showToast(error.message);
-      $("closureMarkerToggle").checked = false;
-      return;
+      console.warn(error.message);
     }
+    renderAreaStatsPanel(center, options);
+    status.textContent = center.source === "스냅샷 주소 매칭"
+      ? "지오코딩 프록시를 못 써 스냅샷 주소에서 찾았습니다."
+      : "";
+    $("areaStatsPanel").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  } finally {
+    $("areaSearchBtn").disabled = false;
   }
-  renderClosureMarkers();
+}
+
+function renderAreaStatsPanel(center, options) {
+  const activeRows = filterRowsInArea(allStores, center, options);
+  const closedRows = filterRowsInArea(
+    closureLicenses.filter((row) => row.statusKind === "closed"),
+    center, options
+  );
+  const shapeLabel = options.shape === AREA_SHAPES.square
+    ? `한 변 ${Math.round(options.radiusM * 2).toLocaleString("ko-KR")}m 정사각형`
+    : `반경 ${options.radiusM.toLocaleString("ko-KR")}m 원형`;
+  $("areaStatsPanel").hidden = false;
+  $("areaStatsBody").hidden = false;
+  $("areaStatsMeta").textContent = [
+    center.label,
+    shapeLabel,
+    `영업 중 ${activeRows.length.toLocaleString("ko-KR")}개 업소`,
+    `폐업 ${closedRows.length.toLocaleString("ko-KR")}건`
+  ].join(" · ");
+
+  const table = industryClosureTable(activeRows, closedRows);
+  fillTableRows($("areaLargeTable"), table.map((row) => [
+    row.name,
+    row.activeCount.toLocaleString("ko-KR"),
+    row.closedCount.toLocaleString("ko-KR"),
+    row.closureRate === null ? "-" : `${(row.closureRate * 100).toFixed(1)}%`
+  ]), 4);
+
+  const { small } = aggregateIndustries(activeRows);
+  $("areaSmallSummary").innerHTML = summaryRows(small, activeRows.length, 10, "업소");
+
+  const years = closureYearCounts(closedRows);
+  drawLineChart($("areaClosureTrendChart"), {
+    points: years.map(({ year, count }) => ({ label: `${year}년`, value: count })),
+    valueLabel: "폐업",
+    format: (value) => `${value.toLocaleString("ko-KR")}건`,
+    emptyText: "반경 안의 폐업 기록이 없습니다."
+  });
+  fillTableRows($("areaClosureTable"), years.map(({ year, count }) => [`${year}년`, count.toLocaleString("ko-KR")]), 2);
+}
+
+function clearAreaSearch() {
+  areaCenter = null;
+  areaSearchLayer?.remove();
+  areaSearchLayer = null;
+  $("areaSearchStatus").textContent = "";
+  $("areaStatsPanel").hidden = true;
+}
+
+function refreshAreaSearch() {
+  if (!areaCenter) return;
+  const options = areaSearchOptions();
+  drawAreaSearchOverlay(areaCenter, options);
+  renderAreaStatsPanel(areaCenter, options);
+}
+
+$("areaSearchBtn").addEventListener("click", runAreaSearch);
+$("areaSearchInput").addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  runAreaSearch();
 });
+$("areaShapeSelect").addEventListener("change", refreshAreaSearch);
+$("areaRadiusInput").addEventListener("change", () => {
+  clampAreaRadius();
+  refreshAreaSearch();
+});
+$("areaStatsClose").addEventListener("click", clearAreaSearch);
 
 // National Pension workplace lookup
 // 이 서비스는 광주 동구만 다룬다. 조회도 스냅샷도 같은 지역 하나를 본다.
