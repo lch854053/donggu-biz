@@ -850,6 +850,7 @@ tbody tr:hover td { background: #f6f8fa; }
 .stats-theme-head { padding-bottom: 2px; border-bottom: 1px solid var(--line); }
 .stats-theme-head h3 { margin: 0; color: var(--text); font-size: 17px; font-weight: 700; }
 .stats-theme-head p { margin: 5px 0 10px; color: var(--text-secondary); font-size: 12px; }
+.stats-theme-head p.is-error { color: #c23b3b; }
 /* 폐업률 두 장, 영업기간 두 장이 각각 한 줄에 나란히 서도록 두 열로 고정한다. */
 .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
 .chart-card {
