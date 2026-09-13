@@ -1586,8 +1586,6 @@ $("marketTableDownloadBtn").addEventListener("click", () => {
 // Closure statistics
 // 통계 탭은 조건 없이 스냅샷 전체를 그린다. 아래에 다른 주제 통계가 같은 형태로 덧붙는다.
 const CLOSURE_SNAPSHOT_URL = "data/closed_licenses_donggu.json";
-const BUS_BOARDING_SNAPSHOT_URL = "data/bus_boarding_gwangju.json";
-const VACANCY_SNAPSHOT_URL = "data/commercial_vacancy_donggu.json";
 const STATS_BAR_LIMIT = 14;
 const STATS_LIFESPAN_MIN_SAMPLE = 5;
 const CHART_MARK_COLOR = "var(--accent)";
@@ -1597,8 +1595,6 @@ let closureSnapshotPromise = null;
 let statsReady = false;
 let closureMeta = null;
 let closureLicenses = [];
-let busSnapshot = null;
-let vacancySnapshot = null;
 
 async function loadClosureSnapshot() {
   if (!closureSnapshotPromise) {
@@ -1638,32 +1634,6 @@ async function initializeStats() {
     $("statsState").textContent = `${error.message} npm run update-closed-licenses를 먼저 실행해 주세요.`;
     return;
   }
-  // 폐업 통계와 원천이 다른 주제는 실패해도 폐업 통계를 가리지 않게 따로 담는다.
-  loadBusBoardingSnapshot().then(renderTransportStats).catch((error) => setTopicMeta("transportMeta", error.message, true));
-  loadVacancySnapshot().then(renderVacancyStats).catch((error) => setTopicMeta("vacancyMeta", error.message, true));
-}
-
-async function loadBusBoardingSnapshot() {
-  const response = await fetch(BUS_BOARDING_SNAPSHOT_URL, { cache: "no-cache" });
-  if (!response.ok) throw new Error(`버스 승하차 자료를 불러오지 못했습니다. HTTP ${response.status}`);
-  busSnapshot = await response.json();
-  if (!busSnapshot?.stops?.length) throw new Error("버스 승하차 자료에 표시할 정류장이 없습니다.");
-  return busSnapshot;
-}
-
-async function loadVacancySnapshot() {
-  const response = await fetch(VACANCY_SNAPSHOT_URL, { cache: "no-cache" });
-  if (!response.ok) throw new Error(`공실률 자료를 불러오지 못했습니다. HTTP ${response.status}`);
-  vacancySnapshot = await response.json();
-  if (!vacancySnapshot?.areas?.length) throw new Error("공실률 자료에 표시할 지역이 없습니다.");
-  return vacancySnapshot;
-}
-
-function setTopicMeta(id, text, isError = false) {
-  const element = $(id);
-  if (!element) return;
-  element.textContent = text;
-  element.classList.toggle("is-error", isError);
 }
 
 $("statsTrendScope").addEventListener("change", () => renderStats());
@@ -1774,104 +1744,6 @@ function renderStatsLifespanCharts(rows, period = "") {
       emptyText: "중앙값을 낼 수 있는 폐업 기록이 없습니다."
     });
   }
-}
-
-// 대중교통·공실률 주제는 원천이 다르므로 폐업 통계와 독립으로 읽고 그린다.
-function renderTransportStats() {
-  const { meta, stops, hours, months } = busSnapshot;
-  setTopicMeta("transportMeta", [
-    `${meta.periodStart.replace("-", ".")}~${meta.periodEnd.replace("-", ".")} 정류장 ${meta.stopCount.toLocaleString("ko-KR")}곳`,
-    `승차 ${meta.totalRides.toLocaleString("ko-KR")}·하차 ${meta.totalAlights.toLocaleString("ko-KR")}건`,
-    "지역화폐(교통카드) 태그 기준이므로 실제 이용과 차이가 있을 수 있습니다"
-  ].join(" · "));
-
-  const seen = new Set();
-  const stopRows = stops.slice(0, 14).map((stop) => {
-    // 방향별로 나뉜 같은 이름 정류장을 구분하기 위해 중복 이름에만 코드를 붙인다.
-    const label = seen.has(stop.name) ? `${stop.name} (${stop.code})` : stop.name;
-    seen.add(stop.name);
-    return { label, value: stop.rides + stop.alights, rides: stop.rides, alights: stop.alights };
-  });
-  drawBarChart($("busStopChart"), {
-    rows: stopRows.map(({ label, value }) => ({ label, value })),
-    format: (value) => `${value.toLocaleString("ko-KR")}건`,
-    tooltip: (row, index) => `승차 ${stopRows[index].rides.toLocaleString("ko-KR")}·하차 ${stopRows[index].alights.toLocaleString("ko-KR")}건`,
-    valueLabel: "정류장별 승하차",
-    emptyText: "승하차 기록이 없습니다."
-  });
-
-  drawBarChart($("busHourChart"), {
-    rows: hours.filter((entry) => entry.hour >= 5).map((entry) => ({
-      label: `${entry.hour}시`, value: entry.rides + entry.alights
-    })),
-    format: (value) => `${value.toLocaleString("ko-KR")}건`,
-    valueLabel: "시간대별 승하차",
-    emptyText: "승하차 기록이 없습니다."
-  });
-
-  drawBarChart($("busMonthChart"), {
-    rows: months.map((entry) => ({
-      label: `${Number(entry.month.slice(5))}월`, value: entry.rides + entry.alights
-    })),
-    format: (value) => `${value.toLocaleString("ko-KR")}건`,
-    valueLabel: "월별 승하차",
-    emptyText: "승하차 기록이 없습니다."
-  });
-}
-
-const VACANCY_MAIN_AREA = "금남로/충장로";
-const VACANCY_MAIN_TYPE = "4"; // 소규모상가
-
-function quarterShort(label) {
-  const match = String(label).match(/^(\d{2})(\d{2})Q(\d)$/);
-  return match ? `${match[2]}.${match[3]}Q` : label;
-}
-
-function renderVacancyStats() {
-  const { meta, areas } = vacancySnapshot;
-  const typeNames = meta.buildingTypes ?? {};
-  const quarters = meta.quarters ?? [];
-  setTopicMeta("vacancyMeta", [
-    `${quarters[0]}~${quarters.at(-1)}`,
-    "출처 한국부동산원 상업용부동산 임대동향조사(충남 데이터포털 재배포)",
-    "동구 상권은 금남로/충장로가 조사 대상이다"
-  ].join(" · "));
-
-  const main = areas.find((area) => area.name === VACANCY_MAIN_AREA);
-  const mainSeries = Object.entries(main?.series?.[VACANCY_MAIN_TYPE] ?? {})
-    .map(([quarter, value]) => ({ label: quarterShort(quarter), value }));
-  drawLineChart($("vacancyTrendChart"), {
-    points: mainSeries,
-    valueLabel: "소규모상가 공실률",
-    format: (value) => `${Number(value).toFixed(1)}%`,
-    emptyText: "공실률 기록이 없습니다."
-  });
-
-  const gwangju = areas.find((area) => area.name === "광주");
-  const latestQuarter = quarters.at(-1);
-  const typeRows = Object.entries(gwangju?.series ?? {})
-    .map(([type, points]) => ({ label: typeNames[type] ?? `유형 ${type}`, value: points[latestQuarter] }))
-    .filter((row) => Number.isFinite(row.value))
-    .sort((left, right) => right.value - left.value);
-  drawBarChart($("vacancyTypeChart"), {
-    rows: typeRows,
-    format: (value) => `${value.toFixed(1)}%`,
-    tooltip: (row, index) => `${latestQuarter} 공실률 ${typeRows[index].value.toFixed(1)}%`,
-    valueLabel: "유형별 공실률",
-    emptyText: "공실률 기록이 없습니다."
-  });
-
-  const areaRows = areas.filter((area) => area.name !== "광주")
-    .map((area) => ({ label: area.name.replace(/^광주 /, ""), value: area.series?.[VACANCY_MAIN_TYPE]?.[latestQuarter] }))
-    .filter((row) => Number.isFinite(row.value))
-    .sort((left, right) => right.value - left.value);
-  drawBarChart($("vacancyAreaChart"), {
-    rows: areaRows,
-    format: (value) => `${value.toFixed(1)}%`,
-    tooltip: (row, index) => `${latestQuarter} 소규모상가 공실률 ${areaRows[index].value.toFixed(1)}%`,
-    valueLabel: "상권별 소규모상가 공실률",
-    emptyText: "공실률 기록이 없습니다."
-  });
 }
 
 function fillTableRows(tbody, rows, columnCount) {
