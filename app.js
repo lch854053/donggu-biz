@@ -616,7 +616,6 @@ let outlineFeatures = [];
 let outlineRoadFeatures = [];
 let outlineIndustryById = new Map();
 let outlineStoresById = new Map();
-let outlineIndustryMode = true;
 let outlineLoadId = 0;
 const outlineCellCache = new Map();
 let outlineRoadFeaturesCache = null;
@@ -1035,13 +1034,13 @@ async function loadOutlineRoads() {
 
 function outlineFeatureStyle(feature) {
   const industry = outlineIndustryById.get(String(feature.id));
-  const color = !outlineIndustryMode ? OUTLINE_PLAIN_COLOR : industry ? outlineIndustryColor(industry) : OUTLINE_UNMATCHED_COLOR;
+  const color = industry ? outlineIndustryColor(industry) : OUTLINE_UNMATCHED_COLOR;
   return {
-    color: outlineIndustryMode && industry ? color : "#8490aa",
-    weight: outlineIndustryMode && industry ? 1.15 : .7,
+    color: industry ? color : "#8490aa",
+    weight: industry ? 1.15 : .7,
     opacity: .92,
     fillColor: color,
-    fillOpacity: !outlineIndustryMode ? .38 : industry ? .78 : .12
+    fillOpacity: industry ? .78 : .12
   };
 }
 
@@ -1055,8 +1054,8 @@ function bindOutlineFeature(feature, layer) {
     },
     mouseover() {
       layer.setStyle({
-        weight: outlineIndustryMode ? 2.2 : 1.5,
-        fillOpacity: outlineIndustryMode ? .92 : .5
+        weight: 2.2,
+        fillOpacity: .92
       });
     },
     mouseout() { outlineBuildingLayer?.resetStyle(layer); }
@@ -1065,11 +1064,7 @@ function bindOutlineFeature(feature, layer) {
 
 function renderOutlineLegend() {
   const legend = $("outlineLegend");
-  legend.hidden = !outlineIndustryMode;
-  if (!outlineIndustryMode) {
-    legend.replaceChildren();
-    return;
-  }
+  legend.hidden = false;
   const counts = new Map();
   for (const feature of outlineFeatures) {
     const industry = outlineIndustryById.get(String(feature.id)) || "점포 미연결";
@@ -1160,6 +1155,14 @@ async function loadBuildingOutline(view = null) {
     const industryMatches = matchBuildingIndustries(outlineFeatures, stores);
     outlineIndustryById = industryMatches.byId;
     outlineStoresById = industryMatches.storesById;
+    if (isDong) {
+      // 행정동 뷰는 선택 행정동 업소가 연결된 건물만 남긴다. 건물엔 행정동 속성이 없고
+      // 같은 법정동을 여러 행정동이 나눠 쓰므로(계림1동/2동), PNU 필터만으로는 섞인다.
+      outlineFeatures = outlineFeatures.filter((feature) => {
+        const featureStores = industryMatches.storesById.get(String(feature.id)) || [];
+        return featureStores.some((store) => store.adminDong === dongName);
+      });
+    }
     const buildingBounds = outlineFeatures.map((feature) => geometryBounds(feature.geometry))
       .reduce((bounds, box) => box ? [
         Math.min(bounds[0], box[0]), Math.min(bounds[1], box[1]),
@@ -1259,12 +1262,6 @@ function initializeBuildingOutline() {
   setTimeout(() => outlineMap.invalidateSize(), 0);
   loadBuildingOutline();
 }
-
-$("outlineIndustryToggle").addEventListener("change", (event) => {
-  outlineIndustryMode = event.target.checked;
-  outlineBuildingLayer?.setStyle(outlineFeatureStyle);
-  renderOutlineLegend();
-});
 
 function selectedZone() {
   return mainBizZones.find((feature) => feature.properties.no === selectedZoneNo) || null;
