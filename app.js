@@ -2228,14 +2228,8 @@ let corporateNumbersMeta = null;
 // 업종 대분류 선택기에서 "업종 미상"을 가리키는 값. 분류표의 대분류 코드와 겹치지 않게 둔다.
 const NPS_UNKNOWN_SECTION_VALUE = "unknown";
 
-// 지정기업 체크박스(사회적기업·협동조합·장애인기업·여성기업). 값은 designation_matches
-// 스냅샷에 기록된 지정유형 라벨과 맞춘다.
-const NPS_DESIGNATION_CHECKBOXES = [
-  ["npsDesignationSocial", "사회적기업"],
-  ["npsDesignationCoop", "협동조합"],
-  ["npsDesignationDisabled", "장애인기업"],
-  ["npsDesignationWomen", "여성기업"]
-];
+// 지정기업 드롭박스. 값은 designation_matches 스냅샷의 지정유형 라벨과 맞춘다.
+const NPS_DESIGNATION_SELECT_ID = "npsDesignationSelect";
 let designationIndex = { byName: {}, byBusinessNumber: {} };
 
 async function loadDesignationMatches() {
@@ -2274,7 +2268,7 @@ function npsCriteria() {
     includeWithdrawn: $("npsIncludeWithdrawn").checked,
     sectionCode: section === NPS_UNKNOWN_SECTION_VALUE ? "" : section,
     unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE,
-    designations: NPS_DESIGNATION_CHECKBOXES.filter(([id]) => $(id).checked).map(([, label]) => label)
+    designations: $(NPS_DESIGNATION_SELECT_ID).value ? [$(NPS_DESIGNATION_SELECT_ID).value] : []
   };
 }
 
@@ -3074,7 +3068,7 @@ $("npsClearBtn").addEventListener("click", () => {
   $("npsAdminDongSelect").value = "";
   $("npsSectionSelect").value = "";
   $("npsIncludeWithdrawn").checked = false;
-  for (const [id] of NPS_DESIGNATION_CHECKBOXES) $(id).checked = false;
+  $(NPS_DESIGNATION_SELECT_ID).value = "";
   npsPageNo = 1;
   npsDetail = { key: "", seq: "", html: "" };
   npsBusinessStatus = { key: "", state: "idle", data: null, error: "" };
@@ -3089,7 +3083,7 @@ $("npsBusinessNumberInput").addEventListener("keydown", (event) => { if (event.k
 $("npsAdminDongSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsSectionSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsIncludeWithdrawn").addEventListener("change", markNpsCriteriaDirty);
-for (const [id] of NPS_DESIGNATION_CHECKBOXES) $(id).addEventListener("change", markNpsCriteriaDirty);
+$(NPS_DESIGNATION_SELECT_ID).addEventListener("change", markNpsCriteriaDirty);
 
 $("npsSortSelect").addEventListener("change", (event) => {
   npsSort = event.target.value;
