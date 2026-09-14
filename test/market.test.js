@@ -9,6 +9,7 @@ import {
   geometryAreaSqm,
   pointInGeometry,
   sortStores,
+  storeNameKey,
   summarizeStores,
   toLegacyPnu
 } from "../lib/market.js";
@@ -289,6 +290,13 @@ test("source slug filter keeps stores carrying any of the license sources", () =
   // 조건이 비면 출처를 보지 않는다.
   assert.equal(filterStores([designated, plain], { sourceSlugs: [] }).length, 2);
   assert.equal(filterStores([designated, plain], {}).length, 2);
+});
+
+test("store name key strips branch parentheses so goodprice entries match stores", () => {
+  assert.equal(storeNameKey("대왕김밥(대인동)"), storeNameKey("대왕김밥"));
+  assert.equal(storeNameKey("태능갈비(태능회관)"), storeNameKey("태능갈비"));
+  assert.equal(storeNameKey("헤어필(학동)"), storeNameKey("헤어필"));
+  assert.notEqual(storeNameKey("서석식당"), storeNameKey("반디식당"));
 });
 
 test("uses either a zone or an administrative dong, never both", () => {

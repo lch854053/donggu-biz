@@ -4,7 +4,8 @@ import {
   countBy,
   filterStores,
   pointInGeometry,
-  sortStores
+  sortStores,
+  storeNameKey
 } from "./lib/market.js";
 import { filterVworldZones, mergeZoneFeatures } from "./lib/zone-update.js";
 import { axisTicks, barBands, barCornerRadius, barWidth, columnBands, linePath, linePoints } from "./lib/chart.js";
@@ -643,10 +644,11 @@ async function initializeMarket() {
   }
   marketInitialized = true;
   try {
-    const [response, zoneResponse, manualZoneResponse] = await Promise.all([
+    const [response, zoneResponse, manualZoneResponse, goodpriceResponse] = await Promise.all([
       fetch("data/stores_donggu.json"),
       fetch("data/mainbiz_zones_donggu.geojson").catch(() => null),
-      fetch("data/manual_mainbiz_zones_donggu.geojson").catch(() => null)
+      fetch("data/manual_mainbiz_zones_donggu.geojson").catch(() => null),
+      fetch("data/goodprice_donggu.json").catch(() => null)
     ]);
     if (!response.ok) throw new Error(`상가정보 파일을 불러오지 못했습니다. HTTP ${response.status}`);
     const payload = await response.json();
@@ -669,6 +671,24 @@ async function initializeMarket() {
     const baseStores = Array.isArray(payload.stores) ? payload.stores : [];
     marketMeta = payload.meta || {};
     allStores = baseStores;
+    // 착한가격업소 명부와 이름이 맞는 업소에 지정 출처를 새겨 '지정 상가' 조건검색에 쓴다.
+    // 명부는 동구청 게시 자료라 스냅샷이 아니라 조회 화면에서 매칭한다.
+    if (goodpriceResponse?.ok) {
+      try {
+        const goodprice = await goodpriceResponse.json();
+        const keys = new Set((goodprice.enterprises || []).map((row) => storeNameKey(row.name)));
+        let matched = 0;
+        for (const store of allStores) {
+          if (keys.has(storeNameKey(store.name))) {
+            store.sourceSlugs = [...new Set([...(store.sourceSlugs || []), "goodprice"])];
+            matched += 1;
+          }
+        }
+        console.info(`[goodprice] 착한가격업소 명부와 이름이 맞는 업소 ${matched}곳`);
+      } catch (error) {
+        console.warn("[goodprice] 착한가격업소 명부를 불러오지 못했습니다:", error.message);
+      }
+    }
     dongLegalCodes.clear();
     for (const store of allStores) {
       const pnu = String(store.pnu || "");
@@ -1355,7 +1375,10 @@ function marketTableCriteria() {
     storeName: $("marketTableNameInput").value.trim(),
     adminDong: $("marketTableDongFilter").value,
     largeCode: $("marketTableIndustryFilter").value,
-    sourceSlugs: $("marketTableModelRestaurant").checked ? ["excellent_restaurant_info"] : [],
+    sourceSlugs: [
+      ...($("marketTableModelRestaurant").checked ? ["excellent_restaurant_info"] : []),
+      ...($("marketTableGoodprice").checked ? ["goodprice"] : [])
+    ],
     zoneGeometry: zone?.geometry || null
   };
 }
@@ -1382,6 +1405,7 @@ function marketTableCriteriaLabel() {
   ].filter((value) => value && !value.startsWith("전체"));
   if (storeName) values.unshift(`업소명 ${storeName}`);
   if ($("marketTableModelRestaurant").checked) values.unshift("모범음식점");
+  if ($("marketTableGoodprice").checked) values.unshift("착한가격업소");
   return values.length ? values.join(" · ") : "전체 업소";
 }
 
@@ -1430,6 +1454,7 @@ function clearMarketTableSearch() {
   $("marketTableZoneFilter").value = "";
   $("marketTableSortSelect").value = "name-asc";
   $("marketTableModelRestaurant").checked = false;
+  $("marketTableGoodprice").checked = false;
   marketTableRows = [];
   marketTablePageNo = 1;
   marketTableAppliedLabel = "";
@@ -1443,8 +1468,12 @@ function currentMarketFilters() {
   return buildLocationFilter($("dongFilter").value, zone?.geometry || null);
 }
 
-// 매장 행의 sourceSlugs에 남은 인허가 출처 중 화면에 배지로 보여줄 것들.
-const STORE_SOURCE_BADGES = { excellent_restaurant_info: "모범음식점" };
+// 매장 행의 sourceSlugs에 남은 출처 중 화면에 배지로 보여줄 것들. goodprice는
+// 인허가가 아니라 착한가격업소 명부와 이름이 맞은 업소에 조회 화면에서 새긴 표식이다.
+const STORE_SOURCE_BADGES = {
+  excellent_restaurant_info: "모범음식점",
+  goodprice: "착한가격업소"
+};
 
 function storeSourceBadges(store) {
   return Object.entries(STORE_SOURCE_BADGES)

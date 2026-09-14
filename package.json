@@ -28,7 +28,8 @@
     "update-bus-boarding": "node scripts/import-bus-boarding.mjs",
     "update-commercial-vacancy": "node scripts/import-commercial-vacancy.mjs",
     "update-women-enterprises": "node scripts/import-women-enterprises.mjs",
-    "update-designation-matches": "node scripts/update-designation-matches.mjs"
+    "update-designation-matches": "node scripts/update-designation-matches.mjs",
+    "update-goodprice": "node scripts/import-goodprice.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -1,0 +1,542 @@
+{
+ "meta": {
+  "generatedAt": "2026-09-14T04:58:50.768Z",
+  "source": "광주 동구 착한가격업소 현황 (동구청 홈페이지 게시 자료)",
+  "basisDate": "2026-05-26",
+  "pdfPath": "data/goodprice_donggu.pdf",
+  "unparsedRows": 2,
+  "totalCount": 53
+ },
+ "enterprises": [
+  {
+   "name": "서석식당",
+   "industry": "외식업",
+   "address": "광주광역시 동구 백서로 171-3, 1층(서석동)",
+   "phone": "062-223-9009",
+   "item": "낙지비빔밥",
+   "price": 10000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "산수골",
+   "industry": "외식업",
+   "address": "광주광역시 동구 경양로 340(산수동)",
+   "phone": "062-233-3318",
+   "item": "병어조림(2인)",
+   "price": 30000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "명지원",
+   "industry": "외식업",
+   "address": "광주광역시 동구 구성로 252(계림동)",
+   "phone": "062-227-3565",
+   "item": "생삼겹(200g)",
+   "price": 15000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "반디식당",
+   "industry": "외식업",
+   "address": "광주광역시 동구 구성로 258(계림동)",
+   "phone": "062-222-0809",
+   "item": "백반",
+   "price": 6000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "박순자녹두집",
+   "industry": "외식업",
+   "address": "광주광역시 동구 구성로204번길 26(대인동)",
+   "phone": "062-223-8694",
+   "item": "수제비",
+   "price": 6000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "우리뷔페",
+   "industry": "외식업",
+   "address": "광주광역시 동구 금남로 181, 1층 102호(금남로5가)",
+   "phone": "062-364-3816",
+   "item": "백반",
+   "price": 6000,
+   "parking": "O",
+   "noSmoking": "X"
+  },
+  {
+   "name": "장독대",
+   "industry": "외식업",
+   "address": "광주광역시 동구 문화전당로 43, 3층(광산동)",
+   "phone": "062-223-5630",
+   "item": "주물럭쌈밥(2인이상주문가능)",
+   "price": 13000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "화롯불",
+   "industry": "외식업",
+   "address": "광주광역시 동구 백서로 168(서석동)",
+   "phone": "062-224-6119",
+   "item": "돼지갈비(250g)",
+   "price": 16000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "미미상회",
+   "industry": "외식업",
+   "address": "광주광역시 동구 백서로 180(서석동)",
+   "phone": "062-236-2879",
+   "item": "생삼겹(180g)",
+   "price": 12000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "수라상",
+   "industry": "외식업",
+   "address": "광주광역시 동구 제봉로82번길 13-9(동명동)",
+   "phone": "062-234-2002",
+   "item": "찌개(된장,순두부,청국장,김치)",
+   "price": 7000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "밥's",
+   "industry": "외식업",
+   "address": "광주광역시 동구 지산로 21, 102호(지산동)",
+   "phone": "062-222-2838",
+   "item": "돈가스",
+   "price": 4500,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "태능갈비(태능회관)",
+   "industry": "외식업",
+   "address": "광주광역시 동구 천변좌로 722, 1층(용산동)",
+   "phone": "062-234-2884",
+   "item": "돼지갈비(250g)-숯불, 돌판",
+   "price": 16000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "한우물",
+   "industry": "외식업",
+   "address": "광주광역시 동구 필문대로191번길 15-2(산수동)",
+   "phone": "062-675-9944",
+   "item": "생선구이(모듬)",
+   "price": 9000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "원지식당",
+   "industry": "외식업",
+   "address": "광주광역시 동구 학소로 96(소태동)",
+   "phone": "062-227-9934",
+   "item": "삼겹살(200g)",
+   "price": 13000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "진 숯불갈비",
+   "industry": "외식업",
+   "address": "광주광역시 동구 무등로 529(산수동) 05",
+   "phone": "07-1482-7550",
+   "item": "돼지갈비(220g)",
+   "price": 14000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "대왕김밥(대인동)",
+   "industry": "외식업",
+   "address": "광주광역시 동구 구성로204번길 15-6, 1층(대인동)",
+   "phone": "062-529-3363",
+   "item": "김밥",
+   "price": 3500,
+   "parking": "O",
+   "noSmoking": "X"
+  },
+  {
+   "name": "대왕김밥(학동)",
+   "industry": "외식업",
+   "address": "광주광역시 동구 남문로 671(학동)",
+   "phone": "062-223-0868",
+   "item": "김밥",
+   "price": 3000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "학동김밥",
+   "industry": "외식업",
+   "address": "광주광역시 동구 남문로 683, 1층(학동)",
+   "phone": "062-225-3248",
+   "item": "김밥",
+   "price": 3000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "칠미우동만두",
+   "industry": "외식업",
+   "address": "광주광역시 동구 지산로 69, 1층(지산동)",
+   "phone": "062-228-7228",
+   "item": "김밥",
+   "price": 3000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "마쏘라까망베르",
+   "industry": "외식업",
+   "address": "광주광역시 동구 필문대로205번길 19(지산동)",
+   "phone": "062-224-5004",
+   "item": "돈가스(L)",
+   "price": 9000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "헤어디자이너 수빈",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 의재로26번길 4-2, 1층(학동)",
+   "phone": "062-463-6402",
+   "item": "성인여자컷트",
+   "price": 12000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "삼미관",
+   "industry": "외식업",
+   "address": "광주광역시 동구 백서로189번길 14-32(서석동)",
+   "phone": "062-227-0391",
+   "item": "짬뽕",
+   "price": 8000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "참스민",
+   "industry": "외식업",
+   "address": "광주광역시 동구 남문로 752-3, 1층(학동)",
+   "phone": "062-232-3883",
+   "item": "김밥",
+   "price": 3000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "종합분식",
+   "industry": "외식업",
+   "address": "광주광역시 동구 장동로 23-3(장동)",
+   "phone": "062-225-4928",
+   "item": "김밥",
+   "price": 3000,
+   "parking": "O",
+   "noSmoking": "X"
+  },
+  {
+   "name": "교대헤어매직",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 무등로375번길 24, 1층(계림동)",
+   "phone": "062-523-1269",
+   "item": "성인여자컷트",
+   "price": 12000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "주영미용실",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 무등로375번길 27-1, 1층(계림동)",
+   "phone": "062-529-3184",
+   "item": "성인여자컷트",
+   "price": 12000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "명문목욕탕",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 지원로 5(소태동)",
+   "phone": "062-227-2459",
+   "item": "성인",
+   "price": 6000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "충오식육식당",
+   "industry": "외식업",
+   "address": "광주광역시 동구 구성로 154(수기동)",
+   "phone": "062-228-7251",
+   "item": "삼겹살(200g)",
+   "price": 15000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "계림동나주곰탕",
+   "industry": "외식업",
+   "address": "광주광역시 동구 구성로 262-9(계림동)",
+   "phone": "062-225-0970",
+   "item": "곰탕",
+   "price": 10000,
+   "parking": "X",
+   "noSmoking": "O"
+  },
+  {
+   "name": "호수목욕탕",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 구성로194번길 7-1(대인동)",
+   "phone": "062-226-1142",
+   "item": "목욕",
+   "price": 4000,
+   "parking": "X",
+   "noSmoking": "X"
+  },
+  {
+   "name": "옥땡김밥",
+   "industry": "외식업",
+   "address": "광주광역시 동구 무등로 503-1(산수동)",
+   "phone": "062-263-0527",
+   "item": "김밥",
+   "price": 2500,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "골목식당",
+   "industry": "외식업",
+   "address": "광주광역시 동구 서석로7번길 6-16(불로동)",
+   "phone": "062-224-2065",
+   "item": "병어조림(2인)",
+   "price": 30000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "서림미용실",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 운림길 23, 상가동 202호(운림동, 무등파크맨션)",
+   "phone": "062-228-2909",
+   "item": "성인여자컷트",
+   "price": 10000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "이가네한우방",
+   "industry": "외식업",
+   "address": "광주광역시 동구 의재로26번길 6(학동)",
+   "phone": "062-222-4614",
+   "item": "삼겹살(200g)",
+   "price": 15000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "전지적돼지시점",
+   "industry": "외식업",
+   "address": "광주광역시 동구 지산로 40(지산동)",
+   "phone": "062-224-1656",
+   "item": "김치찌개",
+   "price": 7500,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "보성웰빙식당",
+   "industry": "외식업",
+   "address": "광주광역시 동구 학소로106번길 19(소태동)",
+   "phone": "062-228-5530",
+   "item": "삼겹살(200g)",
+   "price": 14000,
+   "parking": "O",
+   "noSmoking": "X"
+  },
+  {
+   "name": "담양국수",
+   "industry": "외식업",
+   "address": "광주광역시 동구 증심사길30번길 28-3(운림동)",
+   "phone": "062-226-1174",
+   "item": "멸치국수, 비빔국수",
+   "price": 6000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "나젤로",
+   "industry": "외식업",
+   "address": "광주광역시 동구 필문대로153번길 29(산수동)",
+   "phone": "062-223-2277",
+   "item": "알리오올리오 파스타",
+   "price": 11000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "덕산오징어보쌈",
+   "industry": "외식업",
+   "address": "광주광역시 동구 남문로622번길 20(소태동)",
+   "phone": "062-223-5868",
+   "item": "점심백반",
+   "price": 8000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "이가진우동",
+   "industry": "외식업",
+   "address": "광주광역시 동구 학소로 141(학동)",
+   "phone": "062-233-3488",
+   "item": "우동",
+   "price": 5500,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "마시타",
+   "industry": "외식업",
+   "address": "광주광역시 동구 서석로85번길 8(대의동)",
+   "phone": "070-4027-2166",
+   "item": "라멘, 규동",
+   "price": 7500,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "그냥집밥",
+   "industry": "외식업",
+   "address": "광주광역시 동구 서석로85번길 8-3(대의동)",
+   "phone": "062-223-2624",
+   "item": "한식뷔페",
+   "price": 8000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "인촌",
+   "industry": "외식업",
+   "address": "광주광역시 동구 구성로194번길 20-1, 1층(금남로4가)",
+   "phone": "062-234-3389",
+   "item": "고등어구이, 숯불주물럭구이",
+   "price": 10000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "대접",
+   "industry": "외식업",
+   "address": "광주광역시 동구 서석로85번길 8-7(대의동)",
+   "phone": "062-651-9998",
+   "item": "잔치/비빔국수",
+   "price": 4500,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "광주아이폰DR아이픽스",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 금남로 250-8, 1층(금남로1가)",
+   "phone": "062-222-9968",
+   "item": "아이폰공임(부품X)",
+   "price": 20000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "헤어필(학동)",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 천변우로 603, 상가동 1층(학동)",
+   "phone": "062-227-4690",
+   "item": "성인컷트",
+   "price": 10000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "지혜머리방",
+   "industry": "기타개인서비스업",
+   "address": "광주광역시 동구 남문로754번길 2-11(학동)",
+   "phone": "062-226-6639",
+   "item": "성인컷트",
+   "price": 12000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "무등산국밥",
+   "industry": "외식업",
+   "address": "광주광역시 동구 제봉로17번길 2(학동)",
+   "phone": "062-223-2051",
+   "item": "국밥",
+   "price": 7000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "(유)디커피스토리",
+   "industry": "외식업",
+   "address": "광주광역시 동구 서남로 1, 1층(서석동)",
+   "phone": "062-224-1410",
+   "item": "아메리카노",
+   "price": 2000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "무창이네",
+   "industry": "외식업",
+   "address": "광주광역시 동구 필문대로191번길 5-12(산수동) 05",
+   "phone": "07-1431-0007",
+   "item": "뚝배기불고기",
+   "price": 9900,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "특미참기름",
+   "industry": "외식업",
+   "address": "광주광역시 동구 제봉로17번길 13-6, 1층 123호(학동)",
+   "phone": "062-222-8003",
+   "item": "참기름(350ml)",
+   "price": 12000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "영광굴비",
+   "industry": "외식업",
+   "address": "광주광역시 동구 제봉로17번길 9-5(학동) 05",
+   "phone": "07-1350-3590",
+   "item": "부세굴비구이(2마리)",
+   "price": 12000,
+   "parking": "O",
+   "noSmoking": "O"
+  },
+  {
+   "name": "신원참기름",
+   "industry": "외식업",
+   "address": "광주광역시 동구 필문대로205번길 33-1(지산동)",
+   "phone": "062-222-6823",
+   "item": "참기름(350ml)",
+   "price": 12000,
+   "parking": "O",
+   "noSmoking": "X"
+  }
+ ]
+}
