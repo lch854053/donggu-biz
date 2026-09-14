@@ -46,6 +46,21 @@ test("keeps the newest name when a stop code repeats across chunks", () => {
   assert.equal(snapshot.stops[0].rides, 2);
 });
 
+test("reads the new deployment layout by header names", () => {
+  // 거래일자,요일,시간,버스ID,노선코드,노선명,정류장번호,정류장명,ARS_ID,승하차,권종,거래건수,거래금액
+  const header = "거래일자,요일,시간,버스ID,노선코드,노선명,정류장번호,정류장명,자동응답시스템아이디(ARS_ID),승하차,권종,거래건수,거래금액";
+  const rows = [
+    ["2026-04-01", "수", "5", "775243", "1", "순환01(시청행)", "1016", "풍암우미아파트", "2262", "승차", "일반", "3", "3750"],
+    ["2026-04-01", "수", "5", "775243", "1", "순환01(시청행)", "1016", "풍암우미아파트", "2262", "하차", "일반", "1", "0"]
+  ];
+  const snapshot = buildBusSnapshot(accumulateBusRows(createBusAccumulator(), rows, header));
+  assert.equal(snapshot.stops[0].code, "1016");
+  assert.equal(snapshot.stops[0].name, "풍암우미아파트");
+  assert.equal(snapshot.stops[0].rides, 3);
+  assert.equal(snapshot.stops[0].alights, 1);
+  assert.equal(snapshot.months[0].month, "2026-04");
+});
+
 test("rejects a snapshot without months or stops", () => {
   const empty = buildBusSnapshot(createBusAccumulator());
   assert.throws(() => assertBusSnapshotHealthy(empty));

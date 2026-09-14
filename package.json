@@ -29,7 +29,10 @@
     "update-commercial-vacancy": "node scripts/import-commercial-vacancy.mjs",
     "update-women-enterprises": "node scripts/import-women-enterprises.mjs",
     "update-designation-matches": "node scripts/update-designation-matches.mjs",
-    "update-goodprice": "node scripts/import-goodprice.mjs"
+    "update-goodprice": "node scripts/import-goodprice.mjs",
+    "authorize-datasets": "node scripts/authorize-datasets.mjs",
+    "fetch-service-key": "node scripts/fetch-service-key.mjs",
+    "authorize-portals": "node scripts/authorize-portals.mjs"
   },
   "engines": {
     "node": ">=20"

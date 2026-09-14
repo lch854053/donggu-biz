@@ -58,10 +58,11 @@ const chunks = isZip ? csvChunksFromZip(resolve(process.cwd(), inputPath)) : csv
 for await (const { name, text } of chunks) {
   const lines = text.split(/\r?\n/).filter(Boolean);
   // 배포본에 따라 헤더 열에 공백 패딩이 붙는다(예: "거래일자            ,거래,...").
+  // 열 구조가 구·신 두 가지라 위치가 아니라 헤더 이름으로 읽는다.
   const header = lines[0].split(",").map((cell) => cell.trim()).join(",");
   if (!header.startsWith("거래일자,")) throw new Error(`"${name}" 헤더가 예상과 다릅니다: ${header.slice(0, 60)}`);
   const rows = lines.slice(1).map((line) => line.split(","));
-  accumulateBusRows(accumulator, rows);
+  accumulateBusRows(accumulator, rows, header);
   chunkCount += 1;
   console.log(`[bus] ${name}: 누적 정류장 ${accumulator.stops.size}곳`);
 }
