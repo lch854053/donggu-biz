@@ -63,6 +63,13 @@ try {
     await ensureLoggedIn(page, { waitForLogin: true, timeoutMs: 600000 });
     await page.goto("https://www.data.go.kr/iim/api/selectAcountList.do", { waitUntil: "domcontentloaded" }).catch(() => null);
     await page.waitForTimeout(2000);
+    // 신청 목록이 수백 건이면 목록 검색으로 좁힌다.
+    const keywordField = page.locator("#searchKeyword1");
+    if (await keywordField.count()) {
+      await keywordField.fill("근로복지공단");
+      await page.locator('button:has-text("검색")').first().click().catch(() => null);
+      await page.waitForTimeout(2000);
+    }
     const text = await bodyText(page);
     const block = text.split("\n").map((line) => line.trim()).filter(Boolean);
     const index = block.findIndex((line) => line.includes("근로복지공단"));
