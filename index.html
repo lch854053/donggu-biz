@@ -190,6 +190,13 @@
               <span>국민연금 가입 상태</span>
               <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 국민연금 탈퇴 사업장 포함</label>
             </div>
+            <div class="field">
+              <span>지정기업</span>
+              <label class="check-line"><input type="checkbox" id="npsDesignationSocial"> 사회적기업</label>
+              <label class="check-line"><input type="checkbox" id="npsDesignationCoop"> 협동조합</label>
+              <label class="check-line"><input type="checkbox" id="npsDesignationDisabled"> 장애인기업</label>
+              <label class="check-line"><input type="checkbox" id="npsDesignationWomen"> 여성기업</label>
+            </div>
           </div>
           <div class="action-row">
             <button class="button button-primary" id="npsRunBtn" type="button">조회 시작</button>
@@ -495,6 +502,10 @@
               <span>주요상권</span>
               <select id="marketTableZoneFilter"><option value="">전체 주요상권</option></select>
             </label>
+            <div class="field">
+              <span>지정 인허가</span>
+              <label class="check-line"><input type="checkbox" id="marketTableModelRestaurant"> 모범음식점</label>
+            </div>
             <label class="field">
               <span>정렬 기준</span>
               <select id="marketTableSortSelect">

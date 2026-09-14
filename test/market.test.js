@@ -279,6 +279,18 @@ test("filters stores by administrative dong, category and query", () => {
   assert.deepEqual(filterStores(stores, { storeName: "충장로" }), []);
 });
 
+test("source slug filter keeps stores carrying any of the license sources", () => {
+  const designated = { ...stores[0], id: "store-model", sourceSlugs: ["general_restaurants", "excellent_restaurant_info"] };
+  const plain = { ...stores[0], id: "store-plain" };
+  assert.deepEqual(
+    filterStores([designated, plain], { sourceSlugs: ["excellent_restaurant_info"] }).map((store) => store.id),
+    ["store-model"]
+  );
+  // 조건이 비면 출처를 보지 않는다.
+  assert.equal(filterStores([designated, plain], { sourceSlugs: [] }).length, 2);
+  assert.equal(filterStores([designated, plain], {}).length, 2);
+});
+
 test("uses either a zone or an administrative dong, never both", () => {
   const zoneGeometry = { type: "Polygon", coordinates: [] };
   assert.deepEqual(buildLocationFilter("계림1동", zoneGeometry), { zoneGeometry });

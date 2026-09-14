@@ -26,7 +26,9 @@
     "promote-localdata": "node scripts/promote-localdata.mjs",
     "import-road-polygons": "node scripts/import-road-polygons.mjs",
     "update-bus-boarding": "node scripts/import-bus-boarding.mjs",
-    "update-commercial-vacancy": "node scripts/import-commercial-vacancy.mjs"
+    "update-commercial-vacancy": "node scripts/import-commercial-vacancy.mjs",
+    "update-women-enterprises": "node scripts/import-women-enterprises.mjs",
+    "update-designation-matches": "node scripts/update-designation-matches.mjs"
   },
   "engines": {
     "node": ">=20"

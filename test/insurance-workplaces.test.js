@@ -6,9 +6,11 @@ import { mergeEmploymentInsuranceRows } from "../lib/employment-insurance.js";
 import { DONGGU_ADMIN_DONGS } from "../lib/admin-dong.js";
 import {
   combineInsuranceWorkplaces,
+  designationNameKey,
   insuranceAdminDongs,
   insuranceIndustrySectionCodes,
   matchesInsuranceWorkplaceCriteria,
+  resolveWorkplaceDesignations,
   sortInsuranceWorkplaces
 } from "../lib/insurance-workplaces.js";
 
@@ -96,6 +98,36 @@ test("employment-only rows remain visible in the default combined view", () => {
   assert.equal(matchesInsuranceWorkplaceCriteria(row, {}), true);
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { source: "nps" }), false);
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { source: "employment" }), true);
+});
+
+test("designation name key strips legal forms and cooperative suffixes", () => {
+  assert.equal(designationNameKey("(사)아이티케어복지회"), designationNameKey("아이티케어복지회"));
+  assert.equal(designationNameKey("라이프공동체 사회적협동조합"), designationNameKey("라이프공동체협동조합"));
+  assert.equal(designationNameKey("(주)그린나라기업"), designationNameKey("그린나라기업"));
+  assert.notEqual(designationNameKey("한성회관"), designationNameKey("금남회관"));
+});
+
+test("resolves workplace designations from business numbers and names", () => {
+  const index = {
+    byName: { 아이티케어복지회: ["사회적기업"] },
+    byBusinessNumber: { "4163260145": ["여성기업"] }
+  };
+  const row = {
+    nps: { name: "(사)아이티케어복지회", bizNoPrefix: "123456" },
+    employmentInsurance: { name: "아이티케어복지회", businessRegistrationNumber: "416-32-60145" }
+  };
+  assert.deepEqual(resolveWorkplaceDesignations(row, index).sort(), ["사회적기업", "여성기업"]);
+  // 색인에 없는 사업장은 지정이 비어 있다.
+  assert.deepEqual(resolveWorkplaceDesignations({ nps: { name: "금빛치과의원", bizNoPrefix: "999999" }, employmentInsurance: null }, index), []);
+});
+
+test("designation criteria keep rows matching any selected designation", () => {
+  const coopRow = { nps: null, employmentInsurance: null, designations: ["협동조합"] };
+  assert.equal(matchesInsuranceWorkplaceCriteria(coopRow, { designations: ["사회적기업", "협동조합"] }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria(coopRow, { designations: ["여성기업"] }), false);
+  // 아무 것도 선택하지 않으면 지정 조건은 작동하지 않는다.
+  assert.equal(matchesInsuranceWorkplaceCriteria(coopRow, { designations: [] }), true);
+  assert.equal(matchesInsuranceWorkplaceCriteria({ nps: null, employmentInsurance: null }, { designations: ["여성기업"] }), false);
 });
 
 test("grouped insurance rows remain searchable by every source record", () => {

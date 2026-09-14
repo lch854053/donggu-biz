@@ -1355,7 +1355,6 @@ function marketTableCriteria() {
     storeName: $("marketTableNameInput").value.trim(),
     adminDong: $("marketTableDongFilter").value,
     largeCode: $("marketTableIndustryFilter").value,
-    sourceSlugs: $("marketTableModelRestaurant").checked ? ["excellent_restaurant_info"] : [],
     zoneGeometry: zone?.geometry || null
   };
 }
@@ -1381,7 +1380,6 @@ function marketTableCriteriaLabel() {
     $("marketTableSortSelect").selectedOptions[0]?.textContent
   ].filter((value) => value && !value.startsWith("전체"));
   if (storeName) values.unshift(`업소명 ${storeName}`);
-  if ($("marketTableModelRestaurant").checked) values.unshift("모범음식점");
   return values.length ? values.join(" · ") : "전체 업소";
 }
 
@@ -1429,7 +1427,6 @@ function clearMarketTableSearch() {
   $("marketTableIndustryFilter").value = "";
   $("marketTableZoneFilter").value = "";
   $("marketTableSortSelect").value = "name-asc";
-  $("marketTableModelRestaurant").checked = false;
   marketTableRows = [];
   marketTablePageNo = 1;
   marketTableAppliedLabel = "";
@@ -2273,8 +2270,7 @@ function npsCriteria() {
     adminDong: $("npsAdminDongSelect").value,
     includeWithdrawn: $("npsIncludeWithdrawn").checked,
     sectionCode: section === NPS_UNKNOWN_SECTION_VALUE ? "" : section,
-    unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE,
-    designations: NPS_DESIGNATION_CHECKBOXES.filter(([id]) => $(id).checked).map(([, label]) => label)
+    unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE
   };
 }
 
@@ -2412,16 +2408,13 @@ function renderNpsTable() {
     const nps = row.nps;
     const employment = row.employmentInsurance;
     const name = nps?.name || employment?.name || "-";
-    const designationBadges = (row.designations || [])
-      .map((kind) => `<span class="badge badge-yellow">${escapeHtml(kind)}</span>`)
-      .join(" ");
     const businessNumber = employment?.businessRegistrationNumber
       || (nps?.bizNoPrefix ? `${nps.bizNoPrefix}-****` : "-");
     const address = employment?.address || nps?.address || "-";
     const npsSubscribers = typeof nps?.subscriberCount === "number" ? `${nps.subscriberCount.toLocaleString("ko-KR")}명` : "-";
     return `<tr${opened ? ' class="is-open"' : ""}>
     <td class="seq">${offset + index + 1}</td>
-    <td>${escapeHtml(name)}${designationBadges ? ` ${designationBadges}` : ""}</td>
+    <td>${escapeHtml(name)}</td>
     <td>${insuranceSourceBadge(row)}</td>
     <td class="mono">${escapeHtml(businessNumber)}</td>
     <td>${escapeHtml(displayAddress(address) || "-")}</td>
@@ -3074,7 +3067,6 @@ $("npsClearBtn").addEventListener("click", () => {
   $("npsAdminDongSelect").value = "";
   $("npsSectionSelect").value = "";
   $("npsIncludeWithdrawn").checked = false;
-  for (const [id] of NPS_DESIGNATION_CHECKBOXES) $(id).checked = false;
   npsPageNo = 1;
   npsDetail = { key: "", seq: "", html: "" };
   npsBusinessStatus = { key: "", state: "idle", data: null, error: "" };
@@ -3089,7 +3081,6 @@ $("npsBusinessNumberInput").addEventListener("keydown", (event) => { if (event.k
 $("npsAdminDongSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsSectionSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsIncludeWithdrawn").addEventListener("change", markNpsCriteriaDirty);
-for (const [id] of NPS_DESIGNATION_CHECKBOXES) $(id).addEventListener("change", markNpsCriteriaDirty);
 
 $("npsSortSelect").addEventListener("change", (event) => {
   npsSort = event.target.value;
