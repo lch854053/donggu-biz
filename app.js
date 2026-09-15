@@ -24,7 +24,7 @@ import {
   hasIndustryDetail,
   hydrateSnapshotWorkplace,
   isSameWorkplaceDetail,
-  isSameWorkplaceListItem,
+  pickSnapshotWorkplaceRows,
   ymdYear
 } from "./lib/nps.js";
 import {
@@ -2829,6 +2829,15 @@ async function showNpsDetail(rowKey) {
     document.querySelector("#npsResultBody .detail-row")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
+  // 눌렀다는 반응을 먼저 보여준다. 실제 값은 아래에서 채운다.
+  const npsLoading = `<section class="detail-section">
+    <h3>국민연금 상세 정보</h3>
+    <p>국민연금 사업장 상세 정보를 불러오는 중입니다.</p>
+  </section>`;
+  npsDetail = { key: rowKey, seq: nps.seq || "", html: `${npsLoading}${employmentInsuranceDetailHtml(employment, { sharedWithNps: true })}` };
+  renderNpsTable();
+  document.querySelector("#npsResultBody .detail-row")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
   // 스냅샷의 seq는 자료생성월 배치가 바뀌면 다른 사업장을 가린다. 목록 조회로 이
   // 사업장의 현재 (seq, 기준월) 쌍을 다시 찾아 카드와 월별 추이에 쓴다.
   const freshRows = await fetchFreshHistoryRows(nps);
@@ -2836,13 +2845,6 @@ async function showNpsDetail(rowKey) {
     ? freshRows
     : (nps.historyRows ?? []).filter((row) => row.seq && row.month);
   const seq = historyRows[0]?.seq || nps.seq || "";
-
-  const npsLoading = `<section class="detail-section">
-    <h3>국민연금 상세 정보</h3>
-    <p>국민연금 사업장 상세 정보를 불러오는 중입니다.</p>
-  </section>`;
-  npsDetail = { key: rowKey, seq, html: `${npsLoading}${employmentInsuranceDetailHtml(employment, { sharedWithNps: true })}` };
-  renderNpsTable();
 
   let base;
   let verified = false;
@@ -2913,20 +2915,19 @@ async function showNpsDetail(rowKey) {
 
 /**
  * 스냅샷의 seq는 자료생성월 배치가 바뀌면 다른 사업장을 가린다. 목록 조회로 이
- * 사업장의 현재 (seq, 기준월) 쌍을 다시 찾아온다. 이름이 바뀌었거나 목록에 없으면
- * 빈 배열을 돌려 스냅샷에 남은 seq를 쓰게 한다.
+ * 사업장의 현재 (seq, 기준월) 쌍을 다시 찾아온다. 이름 대신 사업자번호 앞자리로
+ * 물어본다 — 정확한 조건이라 0건 재시도가 붙지 않고, 이름이 바뀌어도 찾아진다.
+ * 실패하면 빈 배열을 돌려 스냅샷에 남은 seq를 쓰게 한다.
  */
 async function fetchFreshHistoryRows(nps) {
   try {
     const payload = await fetchNps({
       action: "search",
-      wkplNm: nps.name,
+      bzowrRgstNo: nps.bizNoPrefix,
       sido: npsSnapshot?.sido || "",
       sggu: npsSnapshot?.sggu || ""
     });
-    return (payload.items || [])
-      .filter((item) => item.seq && item.dataCreatedMonth && isSameWorkplaceListItem(item, nps))
-      .sort((left, right) => String(right.dataCreatedMonth).localeCompare(String(left.dataCreatedMonth)));
+    return pickSnapshotWorkplaceRows(payload.items || [], nps);
   } catch {
     return [];
   }
