@@ -175,6 +175,9 @@ async function fetchFirstItem(url) {
  * 기간별 현황을 한 번씩 불러 가입자 수·고지금액·취득·상실을 모은다.
  */
 async function handleHistory(query, apiKey, res) {
+  // 낡은 seq는 자료생성월 배치가 바뀐 뒤 다른 사업장으로 응답할 수 있다. 사업자번호
+  // 앞자리를 함께 받아 각 달의 응답이 같은 사업장인지 확인하고, 다른 달은 버린다.
+  const expectedBizNo = toBizNoPrefix(query.bizNo);
   const points = String(query.seqs ?? '')
     .split(',')
     .map((token) => {
@@ -191,6 +194,7 @@ async function handleHistory(query, apiKey, res) {
       fetchFirstItem(npsRequestUrl({ operation: 'getDetailInfoSearchV2', apiKey, params: { seq }, variant })),
       fetchFirstItem(npsRequestUrl({ operation: 'getPdAcctoSttusInfoSearchV2', apiKey, params: { seq, pageNo: '1', numOfRows: '1' }, variant }))
     ]);
+    if (expectedBizNo && toBizNoPrefix(detail?.bzowrRgstNo) !== expectedBizNo) return null;
     if (!detail && !period) return null;
     const compact = compactWorkplaceDetail({ ...(detail ?? {}), ...(period ?? {}) });
     return {

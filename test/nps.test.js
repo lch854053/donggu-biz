@@ -5,6 +5,7 @@ import {
   addressArea,
   displayAddress,
   hydrateSnapshotWorkplace,
+  isSameWorkplaceDetail,
   matchesWorkplaceCriteria,
   ymdYear,
   compactWorkplace,
@@ -561,6 +562,22 @@ test("상세 항목은 제공되지 않은 취득·상실자 수를 0으로 꾸�
   assert.equal(detail.lostSubscriberCount, null);
 });
 
+test("상세조회 응답이 같은 사업장인지 사업자번호 앞자리로 확인한다", () => {
+  const workplace = { bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합" };
+  assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합" }, workplace), true);
+  // 낡은 seq는 배치가 바뀐 뒤 다른 사업장으로 응답할 수 있다.
+  assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "408815", name: "(주)유진건철" }, workplace), false);
+  assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "" }, workplace), false);
+  assert.equal(isSameWorkplaceDetail(null, workplace), false);
+});
+
+test("탈퇴하지 않은 사업장의 탈퇴일 자리표시값은 빈 값으로 둔다", () => {
+  assert.equal(compactWorkplaceDetail({ ...sampleItem, scsnDt: "00010101" }).withdrawnDate, "");
+  assert.equal(compactWorkplaceDetail({ ...sampleItem, scsnDt: "20250301" }).withdrawnDate, "20250301");
+  assert.equal(hydrateSnapshotWorkplace({ name: "가게", withdrawnDate: "00010101" }).withdrawnDate, "");
+  assert.equal(hydrateSnapshotWorkplace({ name: "가게", withdrawnDate: "20250301" }).withdrawnDate, "20250301");
+});
+
 test("같은 사업장의 월별 이력은 최근 기준월 한 건으로 접는다", () => {
   const merged = mergeWorkplaceHistory([
     compactWorkplace({ ...sampleItem, seq: "1", dataCrtYm: "202605", wkplNm: "(주)광주은행" }),
@@ -656,6 +673,41 @@ test("nps 프록시는 seq 없는 추이 요청을 upstream 전에 막는다", a
     await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "history", seqs: "" } }, res);
     assert.equal(res.statusCode, 400);
   } finally {
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
+test("nps 프록시는 사업자번호 앞자리가 다른 달의 추이 응답을 버린다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  global.fetch = async (url) => {
+    const text = String(url);
+    const seq = new URL(text).searchParams.get("seq");
+    // 낡은 seq가 이 사업장이 아닌 다른 사업장으로 응답하는 상황을 흉내 낸다.
+    const item = seq === "11"
+      ? { ...sampleItem, jnngpCnt: "100" }
+      : { ...sampleItem, bzowrRgstNo: "999999", wkplNm: "(주)유진건철", jnngpCnt: "9999" };
+    if (text.includes("getPdAcctoSttusInfoSearchV2")) {
+      return new Response(JSON.stringify(npsEnvelope([{ nwAcqzrCnt: "4" }], 1)), { status: 200 });
+    }
+    return new Response(JSON.stringify(npsEnvelope([item], 1)), { status: 200 });
+  };
+  process.env.NPS_SERVICE_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    await handler({
+      method: "GET",
+      headers: { host: "localhost:3000" },
+      query: { action: "history", seqs: "12:202607,11:202605", bizNo: "408815" }
+    }, res);
+    assert.equal(res.statusCode, 200);
+    // 사업장이 다른 202607 달은 버리고 같은 사업장의 202605 달만 남는다.
+    assert.deepEqual(res.body.series.map((point) => point.month), ["202605"]);
+    assert.equal(res.body.series[0].subscriberCount, 100);
+  } finally {
+    global.fetch = originalFetch;
     if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
     else process.env.NPS_SERVICE_KEY = originalKey;
   }

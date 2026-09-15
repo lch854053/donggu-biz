@@ -5,7 +5,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compactWorkplace, compactWorkplaceDetail, mergeWorkplaceHistory, parseNpsBody } from "../lib/nps.js";
+import { compactWorkplace, compactWorkplaceDetail, isSameWorkplaceDetail, mergeWorkplaceHistory, parseNpsBody } from "../lib/nps.js";
 import { NPS_MAX_ROWS, NPS_VARIANTS, normalizeServiceKey, npsRequestUrl } from "../lib/nps-request.js";
 import { adminDongForAddress, createAdminDongLookup } from "../lib/admin-dong.js";
 
@@ -127,14 +127,19 @@ for (let offset = 0; offset < items.length; offset += DETAIL_CONCURRENCY) {
     try {
       const detail = await fetchDetail(workplace.seq);
       // 상세조회 응답에는 자료생성년월이 없다. 목록에서 얻은 기준월과 이력은 그대로 둔다.
-      if (detail) {
-        items[offset + index] = {
-          ...workplace,
-          ...detail,
-          seq: workplace.seq,
-          dataCreatedMonth: workplace.dataCreatedMonth
-        };
+      if (!detail) return;
+      // 낡은 seq로 다른 사업장이 응답하면 그 값을 섞지 않고 목록 정보만 남긴다.
+      if (!isSameWorkplaceDetail(detail, workplace)) {
+        failed += 1;
+        console.warn(`[nps] ${workplace.seq} 상세조회 불일치: ${workplace.name}이 아닌 응답(${detail.name || "이름 없음"})`);
+        return;
       }
+      items[offset + index] = {
+        ...workplace,
+        ...detail,
+        seq: workplace.seq,
+        dataCreatedMonth: workplace.dataCreatedMonth
+      };
     } catch (error) {
       failed += 1;
       console.warn(`[nps] ${workplace.seq} 상세조회 실패: ${error.message}`);

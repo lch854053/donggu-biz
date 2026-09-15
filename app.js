@@ -23,6 +23,7 @@ import {
   displayAddress,
   hasIndustryDetail,
   hydrateSnapshotWorkplace,
+  isSameWorkplaceDetail,
   ymdYear
 } from "./lib/nps.js";
 import {
@@ -2837,34 +2838,40 @@ async function showNpsDetail(rowKey) {
   renderNpsTable();
 
   let base;
+  let verified = false;
   try {
     const payload = await fetchNps({ action: "detail", seq });
     const detail = payload.items?.[0];
     if (!detail) throw new Error("사업장 상세 정보를 찾을 수 없습니다.");
+    // 스냅샷의 seq는 자료생성월 배치의 일련번호라 시간이 지나면 다른 사업장을 가린다.
+    // 사업자번호 앞자리가 다른 응답은 버리고 스냅샷에 담긴 값을 대신 보여준다.
+    verified = isSameWorkplaceDetail(detail, nps);
+    const info = verified ? detail : nps;
     const row = (label, value) => (value == null ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
     const people = (value) => (value == null ? null : `${value.toLocaleString("ko-KR")}명`);
     const enrichedAddresses = insuranceAddressValues(employment);
     const enrichedPostalCodes = insurancePostalCodeValues(employment);
     const businessNumber = employment?.businessRegistrationNumber
-      || (detail.bizNoPrefix ? `${detail.bizNoPrefix}-****` : "-");
-    const address = enrichedAddresses.join(" / ") || displayAddress(detail.address) || "-";
+      || (info.bizNoPrefix ? `${info.bizNoPrefix}-****` : "-");
+    const address = enrichedAddresses.join(" / ") || displayAddress(info.address) || "-";
     base = `<section class="detail-section">
       <h3>국민연금 상세 정보</h3>
-      <p class="selection-name">${escapeHtml(detail.name)}</p>
+      <p class="selection-name">${escapeHtml(info.name)}</p>
+      ${verified ? "" : `<p class="field-note">국민연금 실시간 상세조회가 이 사업장과 맞는 응답을 주지 않아 스냅샷(${monthLabel(info.dataCreatedMonth)} 기준) 값을 표시합니다.</p>`}
       <dl>
         ${row("사업자등록번호", escapeHtml(businessNumber))}
         ${row("법인등록번호", corporateRegistrationNumberHtml(businessNumber))}
         ${row("소재지", escapeHtml(address))}
         ${enrichedPostalCodes.length ? row("우편번호", escapeHtml(enrichedPostalCodes.join(" / "))) : ""}
-        ${row("업종 대분류", escapeHtml(detail.sectionName))}
-        ${row("사업장 형태", escapeHtml(detail.styleName))}
-        ${row("가입 상태", escapeHtml(detail.statusName))}
-        ${row("사업장 등록일", escapeHtml(formatYmd(detail.registeredDate)))}
-        ${row("사업장 탈퇴일", detail.withdrawnDate ? escapeHtml(formatYmd(detail.withdrawnDate)) : null)}
-        ${row("가입자 수", people(detail.subscriberCount))}
-        ${row("월별 신규 취득자", people(detail.newSubscriberCount))}
-        ${row("월별 상실 가입자", people(detail.lostSubscriberCount))}
-        ${row("당월 고지금액", detail.monthlyNoticeAmount == null ? "-" : `${detail.monthlyNoticeAmount.toLocaleString("ko-KR")}원`)}
+        ${row("업종 대분류", escapeHtml(info.sectionName))}
+        ${row("사업장 형태", escapeHtml(info.styleName))}
+        ${row("가입 상태", escapeHtml(info.statusName))}
+        ${row("사업장 등록일", escapeHtml(formatYmd(info.registeredDate)))}
+        ${row("사업장 탈퇴일", info.withdrawnDate ? escapeHtml(formatYmd(info.withdrawnDate)) : null)}
+        ${row("가입자 수", people(info.subscriberCount))}
+        ${row("월별 신규 취득자", people(info.newSubscriberCount))}
+        ${row("월별 상실 가입자", people(info.lostSubscriberCount))}
+        ${row("당월 고지금액", info.monthlyNoticeAmount == null ? "-" : `${info.monthlyNoticeAmount.toLocaleString("ko-KR")}원`)}
       </dl>
     </section>`;
   } catch (error) {
@@ -2879,7 +2886,10 @@ async function showNpsDetail(rowKey) {
   }
   if (npsDetail.key !== rowKey) return;
 
-  const historyRows = (nps.historyRows ?? []).filter((row) => row.seq && row.month);
+  // 상세 응답조차 다른 사업장이었다면 월별 이력의 낡은 seq도 믿을 수 없다. 그래프를 생략한다.
+  const historyRows = verified
+    ? (nps.historyRows ?? []).filter((row) => row.seq && row.month)
+    : [];
   const pending = historyRows.length >= 2 ? `<section class="detail-section nps-history-section">
     <h3 class="chart-heading">국민연금 월별 추이</h3>
     <p class="summary-empty">국민연금 월별 추이를 불러오는 중입니다.</p>
@@ -2890,17 +2900,17 @@ async function showNpsDetail(rowKey) {
   document.querySelector("#npsResultBody .detail-row")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   if (!pending) return;
 
-  const charts = await npsHistoryHtml(historyRows);
+  const charts = await npsHistoryHtml(historyRows, nps.bizNoPrefix);
   if (npsDetail.key !== rowKey) return;
   npsDetail = { key: rowKey, seq, html: base + charts + employmentHtml };
   renderNpsTable();
 }
 
 /** 접어 둔 월별 이력을 불러 상세 카드 아래에 붙일 추이 그래프 마크업을 만든다. */
-async function npsHistoryHtml(historyRows) {
+async function npsHistoryHtml(historyRows, bizNo = "") {
   try {
     const seqs = historyRows.slice(0, NPS_HISTORY_MAX_POINTS).map((row) => `${row.seq}:${row.month}`).join(",");
-    const { series } = await fetchNps({ action: "history", seqs });
+    const { series } = await fetchNps({ action: "history", seqs, bizNo });
     const points = (series || []).filter((point) => point.month).sort((a, b) => a.month.localeCompare(b.month));
     if (points.length < 2) return "";
     return `<section class="detail-section nps-history-section">
