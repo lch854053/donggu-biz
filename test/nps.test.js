@@ -563,34 +563,40 @@ test("상세 항목은 제공되지 않은 취득·상실자 수를 0으로 꾸�
   assert.equal(detail.lostSubscriberCount, null);
 });
 
-test("상세조회 응답이 같은 사업장인지 사업자번호 앞자리로 확인한다", () => {
-  const workplace = { bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합" };
+test("상세조회 응답이 같은 사업장인지 번호 앞자리와 이름으로 확인한다", () => {
+  const workplace = { bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합", address: "광주광역시 동구 계림로20번길" };
   assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합" }, workplace), true);
-  // 낡은 seq는 배치가 바뀐 뒤 다른 사업장으로 응답할 수 있다.
+  assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합", address: "" }, workplace), true);
+  // 번호 앞자리는 관할·업종이 같은 사업장끼리 널리 겹치므로 이름이 다르면 다른 사업장이다.
+  assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "157820", name: "목민산업(주)", address: "광주광역시 동구 서남로" }, workplace), false);
+  // 주소는 건물번호 없는 도로명이라 같은 길의 이웃도 겹친다 — 주소만으로는 같은 사업장이 아니다.
+  assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "157820", name: "대한저축은행", address: "광주광역시 동구 계림로20번길" }, workplace), false);
+  // 개명한 사업장도 여기서는 다른 사업장이다. 실시간 값 대신 스냅샷 값을 쓰게 한다.
+  assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "157820", name: "빛고을기살림", address: "광주광역시 동구 계림로20번길" }, workplace), false);
   assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "408815", name: "(주)유진건철" }, workplace), false);
   assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "" }, workplace), false);
   assert.equal(isSameWorkplaceDetail(null, workplace), false);
 });
 
-test("목록 검색 결과에서 스냅샷의 사업장 행을 골라 최근 기준월부터 정렬한다", () => {
+test("목록 검색 결과에서 스냅샷의 사업장 행만 골라 최근 기준월부터 정렬한다", () => {
   const workplace = { bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합", address: "광주광역시 동구 계림로20번길" };
   const rows = pickSnapshotWorkplaceRows([
     { seq: "3", dataCreatedMonth: "202608", bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합", address: workplace.address },
     { seq: "1", dataCreatedMonth: "202606", bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합", address: workplace.address },
     { seq: "9", dataCreatedMonth: "202607", bizNoPrefix: "408815", name: "기살림빛고을사회적협동조합", address: workplace.address }, // 다른 사업장
     { seq: "", dataCreatedMonth: "202605", bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합", address: workplace.address }, // seq 없음
-    { seq: "4", dataCreatedMonth: "202607", bizNoPrefix: "157820", name: "빛고을기살림", address: workplace.address }, // 개명했지만 같은 자리
-    { seq: "7", dataCreatedMonth: "202605", bizNoPrefix: "157820", name: "우리동구철물", address: "광주광역시 동구 서남로" } // 번호 앞자리만 같은 다른 사업장
+    { seq: "4", dataCreatedMonth: "202607", bizNoPrefix: "157820", name: "빛고을기살림", address: workplace.address }, // 개명한 행
+    { seq: "7", dataCreatedMonth: "202605", bizNoPrefix: "157820", name: "우리동구철물", address: workplace.address } // 같은 길의 이웃 사업장
   ], workplace);
-  // 이름이나 주소가 같은 행만 남고, 최근 기준월부터 {seq, month}로 정렬된다.
-  assert.deepEqual(rows.map((row) => row.seq), ["3", "4", "1"]);
-  assert.deepEqual(rows.map((row) => row.month), ["202608", "202607", "202606"]);
+  // 이름이 같은 행만 남고, 최근 기준월부터 {seq, month}로 정렬된다.
+  assert.deepEqual(rows.map((row) => row.seq), ["3", "1"]);
+  assert.deepEqual(rows.map((row) => row.month), ["202608", "202606"]);
 
-  // 이름과 주소가 모두 다른 행뿐이면 개명·이전을 함께 지나간 우리 사업장일 수 있으니 남긴다.
-  const allChanged = pickSnapshotWorkplaceRows([
+  // 번호 앞자리만 같은 다른 사업장의 행으로 그래프를 그리지 않는다.
+  const stranger = pickSnapshotWorkplaceRows([
     { seq: "7", dataCreatedMonth: "202605", bizNoPrefix: "157820", name: "우리동구철물", address: "광주광역시 동구 서남로" }
   ], workplace);
-  assert.deepEqual(allChanged.map((row) => row.seq), ["7"]);
+  assert.deepEqual(stranger, []);
 });
 
 test("탈퇴하지 않은 사업장의 탈퇴일 자리표시값은 빈 값으로 둔다", () => {

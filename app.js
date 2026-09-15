@@ -2838,12 +2838,10 @@ async function showNpsDetail(rowKey) {
   renderNpsTable();
   document.querySelector("#npsResultBody .detail-row")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
 
-  // 스냅샷의 seq는 자료생성월 배치가 바뀌면 다른 사업장을 가린다. 목록 조회로 이
-  // 사업장의 현재 (seq, 기준월) 쌍을 다시 찾아 카드와 월별 추이에 쓴다.
-  const freshRows = await fetchFreshHistoryRows(nps);
-  const historyRows = freshRows.length
-    ? freshRows
-    : (nps.historyRows ?? []).filter((row) => row.seq && row.month);
+  // 스냅샷의 seq는 자료생성월 배치가 바뀌면 다른 사업장을 가린다. 지금 목록에
+  // 있는 이 사업장의 (seq, 기준월)만 카드와 월별 추이에 쓴다. 목록에 없는
+  // 사업장(탈퇴 등)은 그래프를 그릴 근거가 없으니 낡은 seq로 시도하지 않는다.
+  const historyRows = await fetchFreshHistoryRows(nps);
   const seq = historyRows[0]?.seq || nps.seq || "";
 
   let base;
@@ -2852,8 +2850,8 @@ async function showNpsDetail(rowKey) {
     const payload = await fetchNps({ action: "detail", seq });
     const detail = payload.items?.[0];
     if (!detail) throw new Error("사업장 상세 정보를 찾을 수 없습니다.");
-    // 스냅샷의 seq는 자료생성월 배치의 일련번호라 시간이 지나면 다른 사업장을 가린다.
-    // 사업자번호 앞자리가 다른 응답은 버리고 스냅샷에 담긴 값을 대신 보여준다.
+    // 응답이 같은 사업장인지 번호 앞자리와 이름·주소로 확인하고, 다르면 스냅샷에
+    // 담긴 값을 대신 보여준다.
     verified = isSameWorkplaceDetail(detail, nps);
     const info = verified ? detail : nps;
     const row = (label, value) => (value == null ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
