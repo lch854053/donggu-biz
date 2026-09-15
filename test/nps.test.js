@@ -6,6 +6,7 @@ import {
   displayAddress,
   hydrateSnapshotWorkplace,
   isSameWorkplaceDetail,
+  isSameWorkplaceListItem,
   matchesWorkplaceCriteria,
   ymdYear,
   compactWorkplace,
@@ -569,6 +570,14 @@ test("상세조회 응답이 같은 사업장인지 사업자번호 앞자리로
   assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "408815", name: "(주)유진건철" }, workplace), false);
   assert.equal(isSameWorkplaceDetail({ bizNoPrefix: "" }, workplace), false);
   assert.equal(isSameWorkplaceDetail(null, workplace), false);
+});
+
+test("목록 검색 결과는 이름까지 같아야 같은 사업장으로 본다", () => {
+  const workplace = { bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합" };
+  assert.equal(isSameWorkplaceListItem({ bizNoPrefix: "157820", name: "기살림빛고을사회적협동조합" }, workplace), true);
+  assert.equal(isSameWorkplaceListItem({ bizNoPrefix: "157820", name: "기살림빛고을주식회사" }, workplace), false);
+  assert.equal(isSameWorkplaceListItem({ bizNoPrefix: "157820", name: "기살림빛고을 사회적협동조합" }, workplace), true);
+  assert.equal(isSameWorkplaceListItem({ bizNoPrefix: "408815", name: "기살림빛고을사회적협동조합" }, workplace), false);
 });
 
 test("탈퇴하지 않은 사업장의 탈퇴일 자리표시값은 빈 값으로 둔다", () => {

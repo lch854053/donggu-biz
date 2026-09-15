@@ -24,6 +24,7 @@ import {
   hasIndustryDetail,
   hydrateSnapshotWorkplace,
   isSameWorkplaceDetail,
+  isSameWorkplaceListItem,
   ymdYear
 } from "./lib/nps.js";
 import {
@@ -2821,7 +2822,6 @@ async function showNpsDetail(rowKey) {
   if (!listRow) return;
   const nps = listRow.nps;
   const employment = listRow.employmentInsurance;
-  const seq = nps?.seq || "";
   npsBusinessStatus = { key: rowKey, state: "idle", data: null, error: "" };
   if (!nps) {
     npsDetail = { key: rowKey, seq: "", html: employmentInsuranceDetailHtml(employment) };
@@ -2829,6 +2829,13 @@ async function showNpsDetail(rowKey) {
     document.querySelector("#npsResultBody .detail-row")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
+  // 스냅샷의 seq는 자료생성월 배치가 바뀌면 다른 사업장을 가린다. 목록 조회로 이
+  // 사업장의 현재 (seq, 기준월) 쌍을 다시 찾아 카드와 월별 추이에 쓴다.
+  const freshRows = await fetchFreshHistoryRows(nps);
+  const historyRows = freshRows.length
+    ? freshRows
+    : (nps.historyRows ?? []).filter((row) => row.seq && row.month);
+  const seq = historyRows[0]?.seq || nps.seq || "";
 
   const npsLoading = `<section class="detail-section">
     <h3>국민연금 상세 정보</h3>
@@ -2886,10 +2893,8 @@ async function showNpsDetail(rowKey) {
   }
   if (npsDetail.key !== rowKey) return;
 
-  // 상세 응답조차 다른 사업장이었다면 월별 이력의 낡은 seq도 믿을 수 없다. 그래프를 생략한다.
-  const historyRows = verified
-    ? (nps.historyRows ?? []).filter((row) => row.seq && row.month)
-    : [];
+  // 각 달의 응답이 같은 사업장인지는 프록시가 사업자번호 앞자리로 확인하며,
+  // 다른 사업장이 응답한 달은 버려진다.
   const pending = historyRows.length >= 2 ? `<section class="detail-section nps-history-section">
     <h3 class="chart-heading">국민연금 월별 추이</h3>
     <p class="summary-empty">국민연금 월별 추이를 불러오는 중입니다.</p>
@@ -2904,6 +2909,27 @@ async function showNpsDetail(rowKey) {
   if (npsDetail.key !== rowKey) return;
   npsDetail = { key: rowKey, seq, html: base + charts + employmentHtml };
   renderNpsTable();
+}
+
+/**
+ * 스냅샷의 seq는 자료생성월 배치가 바뀌면 다른 사업장을 가린다. 목록 조회로 이
+ * 사업장의 현재 (seq, 기준월) 쌍을 다시 찾아온다. 이름이 바뀌었거나 목록에 없으면
+ * 빈 배열을 돌려 스냅샷에 남은 seq를 쓰게 한다.
+ */
+async function fetchFreshHistoryRows(nps) {
+  try {
+    const payload = await fetchNps({
+      action: "search",
+      wkplNm: nps.name,
+      sido: npsSnapshot?.sido || "",
+      sggu: npsSnapshot?.sggu || ""
+    });
+    return (payload.items || [])
+      .filter((item) => item.seq && item.dataCreatedMonth && isSameWorkplaceListItem(item, nps))
+      .sort((left, right) => String(right.dataCreatedMonth).localeCompare(String(left.dataCreatedMonth)));
+  } catch {
+    return [];
+  }
 }
 
 /** 접어 둔 월별 이력을 불러 상세 카드 아래에 붙일 추이 그래프 마크업을 만든다. */
