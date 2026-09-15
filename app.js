@@ -1375,10 +1375,7 @@ function marketTableCriteria() {
     storeName: $("marketTableNameInput").value.trim(),
     adminDong: $("marketTableDongFilter").value,
     largeCode: $("marketTableIndustryFilter").value,
-    sourceSlugs: [
-      ...($("marketTableModelRestaurant").checked ? ["excellent_restaurant_info"] : []),
-      ...($("marketTableGoodprice").checked ? ["goodprice"] : [])
-    ],
+    sourceSlugs: $("marketTableDesignation").value ? [$("marketTableDesignation").value] : [],
     zoneGeometry: zone?.geometry || null
   };
 }
@@ -1404,8 +1401,8 @@ function marketTableCriteriaLabel() {
     $("marketTableSortSelect").selectedOptions[0]?.textContent
   ].filter((value) => value && !value.startsWith("전체"));
   if (storeName) values.unshift(`업소명 ${storeName}`);
-  if ($("marketTableModelRestaurant").checked) values.unshift("모범음식점");
-  if ($("marketTableGoodprice").checked) values.unshift("착한가격업소");
+  const designation = $("marketTableDesignation");
+  if (designation.value) values.unshift(designation.selectedOptions[0]?.textContent);
   return values.length ? values.join(" · ") : "전체 업소";
 }
 
@@ -1453,8 +1450,7 @@ function clearMarketTableSearch() {
   $("marketTableIndustryFilter").value = "";
   $("marketTableZoneFilter").value = "";
   $("marketTableSortSelect").value = "name-asc";
-  $("marketTableModelRestaurant").checked = false;
-  $("marketTableGoodprice").checked = false;
+  $("marketTableDesignation").value = "";
   marketTableRows = [];
   marketTablePageNo = 1;
   marketTableAppliedLabel = "";

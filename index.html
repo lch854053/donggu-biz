@@ -505,11 +505,14 @@
               <span>주요상권</span>
               <select id="marketTableZoneFilter"><option value="">전체 주요상권</option></select>
             </label>
-            <div class="field">
+            <label class="field">
               <span>지정 상가</span>
-              <label class="check-line"><input type="checkbox" id="marketTableModelRestaurant"> 모범음식점</label>
-              <label class="check-line"><input type="checkbox" id="marketTableGoodprice"> 착한가격업소</label>
-            </div>
+              <select id="marketTableDesignation">
+                <option value="">전체</option>
+                <option value="excellent_restaurant_info">모범음식점</option>
+                <option value="goodprice">착한가격업소</option>
+              </select>
+            </label>
             <label class="field">
               <span>정렬 기준</span>
               <select id="marketTableSortSelect">
