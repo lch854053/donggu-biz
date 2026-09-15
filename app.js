@@ -2913,14 +2913,16 @@ async function showNpsDetail(rowKey) {
 
 /**
  * 스냅샷의 seq는 자료생성월 배치가 바뀌면 다른 사업장을 가린다. 목록 조회로 이
- * 사업장의 현재 (seq, 기준월) 쌍을 다시 찾아온다. 이름 대신 사업자번호 앞자리로
- * 물어본다 — 정확한 조건이라 0건 재시도가 붙지 않고, 이름이 바뀌어도 찾아진다.
- * 실패하면 빈 배열을 돌려 스냅샷에 남은 seq를 쓰게 한다.
+ * 사업장의 현재 (seq, 기준월) 쌍을 다시 찾아온다. 이름과 번호 앞자리를 함께 물어
+ * 결과를 우리 사업장으로 좁힌다 — 번호 앞자리만 물으면 같은 앞자리를 쓰는 이웃
+ * 사업장의 행까지 수백 건이 되어 100건 페이지에 우리 행이 빠질 수 있다. 실패하면
+ * 빈 배열을 돌려 그래프를 생략하게 한다.
  */
 async function fetchFreshHistoryRows(nps) {
   try {
     const payload = await fetchNps({
       action: "search",
+      wkplNm: nps.name,
       bzowrRgstNo: nps.bizNoPrefix,
       sido: npsSnapshot?.sido || "",
       sggu: npsSnapshot?.sggu || ""
