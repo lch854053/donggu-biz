@@ -7,6 +7,11 @@ on:
   schedule:
     # 2·5·8·11월 3일 09:00(KST). 분기 갱신이면 충분한 자료다.
     - cron: "0 0 3 2,5,8,11 *"
+  # 워크플로우·임포터를 고치면 다시 검증한다. dispatch 권한 없이 돌리는 통로이기도 하다.
+  push:
+    paths:
+      - ".github/workflows/update-academies-neis.yml"
+      - "scripts/import-academies-neis.mjs"
 
 permissions:
   contents: write
