@@ -33,7 +33,8 @@
     "authorize-datasets": "node scripts/authorize-datasets.mjs",
     "fetch-service-key": "node scripts/fetch-service-key.mjs",
     "authorize-portals": "node scripts/authorize-portals.mjs",
-    "update-academies-neis": "node scripts/import-academies-neis.mjs"
+    "update-academies-neis": "node scripts/import-academies-neis.mjs",
+    "fetch-api-endpoints": "node scripts/fetch-api-endpoints.mjs"
   },
   "engines": {
     "node": ">=20"

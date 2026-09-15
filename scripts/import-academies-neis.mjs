@@ -68,17 +68,20 @@ const csvCell = (value) => {
 async function fetchJson(url) {
   // 이 머신은 openapi.neis.go.kr로의 직접 연결이 막혀 있어 브라우저 네트워크 스택으로 우회한다.
   try {
-    const response = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
-    if (response.ok) return await response.json();
+    const response = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" }, signal: AbortSignal.timeout(90000) });
+    const text = await response.text();
+    console.log(`[academies-neis] 직접 연결 HTTP ${response.status}, 응답 ${text.length}자 (${response.headers.get("content-type") ?? "?"})`);
+    if (response.ok) return JSON.parse(text);
   } catch (error) {
-    console.warn("[academies-neis] 직접 연결 실패, 브라우저로 우회합니다:", error.cause?.code ?? error.message);
+    console.warn(`[academies-neis] 직접 연결 실패, 브라우저로 우회합니다: ${error.message}`);
   }
   const { chromium } = await import("playwright");
-  const browser = await chromium.launch({ channel: "msedge", headless: true });
+  const browser = await chromium.launch({ channel: "msedge", headless: true }).catch(async () => chromium.launch({ headless: true }));
   try {
     const page = await browser.newPage();
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-    const text = await page.locator("body").innerText();
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 180000 });
+    const text = await page.locator("body").innerText({ timeout: 120000 });
+    console.log(`[academies-neis] 브라우저 응답 ${text.length}자`);
     return JSON.parse(text);
   } finally {
     await browser.close();
