@@ -582,8 +582,9 @@ test("목록 검색 결과에서 스냅샷의 사업장 행을 골라 최근 기
     { seq: "4", dataCreatedMonth: "202607", bizNoPrefix: "157820", name: "빛고을기살림", address: workplace.address }, // 개명했지만 같은 자리
     { seq: "7", dataCreatedMonth: "202605", bizNoPrefix: "157820", name: "우리동구철물", address: "광주광역시 동구 서남로" } // 번호 앞자리만 같은 다른 사업장
   ], workplace);
-  // 이름이나 주소가 같은 행만 남고, 최근 기준월부터 정렬된다.
+  // 이름이나 주소가 같은 행만 남고, 최근 기준월부터 {seq, month}로 정렬된다.
   assert.deepEqual(rows.map((row) => row.seq), ["3", "4", "1"]);
+  assert.deepEqual(rows.map((row) => row.month), ["202608", "202607", "202606"]);
 
   // 이름과 주소가 모두 다른 행뿐이면 개명·이전을 함께 지나간 우리 사업장일 수 있으니 남긴다.
   const allChanged = pickSnapshotWorkplaceRows([

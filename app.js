@@ -2939,7 +2939,12 @@ async function npsHistoryHtml(historyRows, bizNo = "") {
     const seqs = historyRows.slice(0, NPS_HISTORY_MAX_POINTS).map((row) => `${row.seq}:${row.month}`).join(",");
     const { series } = await fetchNps({ action: "history", seqs, bizNo });
     const points = (series || []).filter((point) => point.month).sort((a, b) => a.month.localeCompare(b.month));
-    if (points.length < 2) return "";
+    if (points.length < 2) {
+      return `<section class="detail-section nps-history-section">
+        <h3 class="chart-heading">국민연금 월별 추이</h3>
+        <p class="summary-empty">확인할 수 있는 월별 자료가 2개월 미만이라 추이를 그리지 못했습니다.</p>
+      </section>`;
+    }
     return `<section class="detail-section nps-history-section">
       <h3 class="chart-heading">국민연금 월별 추이 <span class="chart-note">${points.length}개월</span></h3>
       <div class="chart-grid">
