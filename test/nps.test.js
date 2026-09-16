@@ -387,6 +387,30 @@ test("nps 프록시는 상세조회에 seq만 넘기고 기간별 현황을 합�
   }
 });
 
+test("nps 프록시는 periods=0이면 기간별 현황을 더 부르지 않는다", async () => {
+  const originalFetch = global.fetch;
+  const originalKey = process.env.NPS_SERVICE_KEY;
+  const requestedUrls = [];
+  global.fetch = async (url) => {
+    requestedUrls.push(String(url));
+    return new Response(JSON.stringify(npsEnvelope([sampleItem], 1)), { status: 200 });
+  };
+  process.env.NPS_SERVICE_KEY = "test-key";
+
+  try {
+    const res = responseRecorder();
+    // 스냅샷 수집은 월별 취득·상실이 필요 없어 호출 수를 아끼려고 periods=0을 넘긴다.
+    await handler({ method: "GET", headers: { host: "localhost:3000" }, query: { action: "detail", seq: "20240101", periods: "0" } }, res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(requestedUrls.length, 1);
+    assert.match(requestedUrls[0], /getDetailInfoSearchV2/);
+  } finally {
+    global.fetch = originalFetch;
+    if (originalKey === undefined) delete process.env.NPS_SERVICE_KEY;
+    else process.env.NPS_SERVICE_KEY = originalKey;
+  }
+});
+
 test("nps 프록시는 파라미터 오류를 만나면 다른 표기법으로 한 번 더 부른다", async () => {
   const originalFetch = global.fetch;
   const originalKey = process.env.NPS_SERVICE_KEY;

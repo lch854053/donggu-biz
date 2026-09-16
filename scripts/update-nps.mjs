@@ -24,8 +24,13 @@ const REQUEST_TIMEOUT_MS = 20000;
 const DETAIL_CONCURRENCY = 4;
 const DETAIL_PAUSE_MS = 60;
 
+// 러너에서 data.go.kr에 직접 닿지 못하는 때가 있다(연결 시간 초과가 조합·재시도
+// 전부에서 계속되면 차단으로 본다). NPS_PROXY_BASE를 지정하면 배포 사이트의
+// /api/nps 프록시로 같은 조회를 한다. 프록시는 서비스키를 대신 넣고 파라미터
+// 조합도 골라 주며, 응답은 목록·상세가 이미 정규화된 JSON으로 온다.
+const proxyBase = (process.env.NPS_PROXY_BASE || "").trim().replace(/\/+$/, "");
 const apiKey = normalizeServiceKey(process.env.NPS_SERVICE_KEY);
-if (!apiKey) throw new Error("NPS_SERVICE_KEY 환경변수가 필요합니다.");
+if (!proxyBase && !apiKey) throw new Error("NPS_SERVICE_KEY 환경변수나 NPS_PROXY_BASE가 필요합니다.");
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outputPath = resolve(root, "data/nps_donggu.json");
@@ -76,17 +81,61 @@ function searchUrl(pageNo, variant) {
   });
 }
 
+/** 배포 사이트의 /api/nps 프록시로 조회한다. 응답은 이미 정규화된 JSON이다. */
+async function requestProxy(params) {
+  const url = `${proxyBase}/api/nps?${new URLSearchParams(params)}`;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(url, { signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+      const body = await response.json().catch(() => null);
+      if (response.ok && body && !body.error) return body;
+      throw new Error(`HTTP ${response.status} ${body?.error || ""}`.trim());
+    } catch (error) {
+      if (attempt === MAX_RETRIES) throw error;
+      const cause = error.cause?.code || error.cause?.message || "";
+      const wait = Math.min(MAX_RETRY_WAIT_MS, 1000 * 2 ** attempt);
+      console.warn(`[nps] 프록시 요청 실패 ${attempt}/${MAX_RETRIES} (${error.message}${cause ? `: ${cause}` : ""}), ${wait / 1000}초 뒤 다시 시도합니다.`);
+      await sleep(wait);
+    }
+  }
+}
+
+/**
+ * 목록 한 페이지. 프록시 경유 응답은 이미 정규화된 항목이고, 직접 조회 응답은 여기서
+ * 같은 형태로 정규화해 두 경로가 같은 모양으로 흐르게 한다.
+ */
+async function fetchSearchPage(pageNo, variant) {
+  if (proxyBase) {
+    const body = await requestProxy({
+      action: "search",
+      sido: REGION.sido,
+      sggu: REGION.sggu,
+      pageNo: String(pageNo),
+      numOfRows: String(NPS_MAX_ROWS)
+    });
+    return { items: (body.items ?? []).filter((workplace) => workplace.seq), totalCount: body.totalCount ?? 0 };
+  }
+  const page = await request(searchUrl(pageNo, variant));
+  return { items: page.items.map(compactWorkplace).filter((workplace) => workplace.seq), totalCount: page.totalCount };
+}
+
 /**
  * 파라미터 표기·코드 형식 조합 중 실제로 결과가 나오는 것을 첫 페이지로 찾아낸다.
  * 한 조합이 오류로 끝나도 멈추지 않는다. 상대가 잠깐 막혀 있는 것이라면 다음 조합을
- * 시도하는 동안 열릴 수 있고, 정말 안 열리면 마지막에 사유를 모아 알린다.
+ * 시도하는 동안 열릴 수 있고, 정말 안 열리면 마지막에 사유를 모아 알린다. 프록시
+ * 경유일 때는 조합 고르기가 프록시 안에서 이미 끝난다.
  */
-async function pickVariant() {
+async function pickFirstPage() {
+  if (proxyBase) {
+    const page = await fetchSearchPage(1, NPS_VARIANTS[0]);
+    if (!page.items.length) throw new Error("프록시 목록 조회가 0건입니다.");
+    return { variant: NPS_VARIANTS[0], page };
+  }
   const failures = [];
   for (const variant of NPS_VARIANTS) {
     const label = `${variant.style}/${variant.region}`;
     try {
-      const page = await request(searchUrl(1, variant));
+      const page = await fetchSearchPage(1, variant);
       if (page.items.length) return { variant, page };
       console.log(`[nps] ${label} 조합은 0건, 다음 조합을 시도합니다.`);
     } catch (error) {
@@ -101,26 +150,32 @@ async function pickVariant() {
   throw new Error("어떤 파라미터 조합으로도 사업장을 찾지 못했습니다.");
 }
 
-const { variant, page: firstPage } = await pickVariant();
-console.log(`[nps] ${variant.style}/${variant.region} 조합 사용, 전체 ${firstPage.totalCount}건`);
+const { variant, page: firstPage } = await pickFirstPage();
+console.log(proxyBase
+  ? `[nps] 프록시 경유(${proxyBase})로 수집합니다, 전체 ${firstPage.totalCount}건`
+  : `[nps] ${variant.style}/${variant.region} 조합 사용, 전체 ${firstPage.totalCount}건`);
 
-const rawItems = [...firstPage.items];
+const collected = [...firstPage.items];
 const pageCount = Math.min(MAX_PAGES, Math.ceil(firstPage.totalCount / NPS_MAX_ROWS) || 1);
 for (let pageNo = 2; pageNo <= pageCount; pageNo += 1) {
-  const page = await request(searchUrl(pageNo, variant));
+  const page = await fetchSearchPage(pageNo, variant);
   if (!page.items.length) break;
-  rawItems.push(...page.items);
-  console.log(`[nps] 목록 ${pageNo}/${pageCount} 페이지, ${rawItems.length}/${firstPage.totalCount}건`);
+  collected.push(...page.items);
+  console.log(`[nps] 목록 ${pageNo}/${pageCount} 페이지, ${collected.length}/${firstPage.totalCount}건`);
   await sleep(DETAIL_PAUSE_MS);
 }
 
 // 같은 사업장이 자료생성년월마다 한 건씩 쌓여 온다. 먼저 최근 기준월 한 건으로 접어야
 // 상세조회를 이력 수만큼 중복해서 부르지 않는다.
-const collected = rawItems.map(compactWorkplace).filter((workplace) => workplace.seq);
 const items = mergeWorkplaceHistory(collected);
 console.log(`[nps] 이력 ${collected.length}건을 사업장 ${items.length}개로 합쳤습니다. 상세조회로 업종을 채웁니다.`);
 
 async function fetchDetail(seq) {
+  if (proxyBase) {
+    // 수집에 필요 없는 월별 취득·상실은 프록시가 기간별 현황을 더 부르지 않게 periods=0으로 뺀다.
+    const body = await requestProxy({ action: "detail", seq, periods: "0" });
+    return body.items?.[0] ?? null;
+  }
   const url = npsRequestUrl({ operation: "getDetailInfoSearchV2", apiKey, params: { seq }, variant });
   const [item] = (await request(url)).items;
   return item ? compactWorkplaceDetail(item) : null;

@@ -283,7 +283,9 @@ export default async function handler(req, res) {
     }
 
     if (parsed.items.length) preferredVariant = candidate.index;
-    if (request.action === 'detail' && parsed.items.length) {
+    // periods=0은 월별 취득·상실이 필요 없는 호출(스냅샷 수집 등)이 API 호출 수를
+    // 아끼려고 쓰는 표식이다.
+    if (request.action === 'detail' && query.periods !== '0' && parsed.items.length) {
       const counts = await fetchPeriodCounts(request.params.seq, apiKey);
       if (counts) Object.assign(parsed.items[0], counts);
     }

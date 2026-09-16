@@ -24,20 +24,17 @@ jobs:
       - run: npm ci
       - name: Check service key
         env:
-          NPS_SERVICE_KEY: ${{ secrets.NPS_SERVICE_KEY }}
           JUSO_API_KEY: ${{ secrets.JUSO_API_KEY }}
         run: |
-          if [ -z "$NPS_SERVICE_KEY" ]; then
-            echo "NPS_SERVICE_KEY 저장소 Secret이 없습니다. 디코딩 키를 등록한 뒤 다시 실행하세요." >&2
-            exit 1
-          fi
           if [ -z "$JUSO_API_KEY" ]; then
             echo "JUSO_API_KEY 저장소 Secret이 없습니다. 도로명주소 API 키를 등록한 뒤 다시 실행하세요." >&2
             exit 1
           fi
+      # 러너에서 data.go.kr에 직접 닿지 못하는 때가 많아(연결 시간 초과), 배포
+      # 사이트의 /api/nps 프록시로 수집한다. 프록시가 서비스키를 대신 넣는다.
       - run: npm run update-nps
         env:
-          NPS_SERVICE_KEY: ${{ secrets.NPS_SERVICE_KEY }}
+          NPS_PROXY_BASE: https://donggu-biz.vercel.app
       - run: npm run enrich-insurance-admin-dongs
         env:
           JUSO_API_KEY: ${{ secrets.JUSO_API_KEY }}
