@@ -3,11 +3,16 @@
 // 화면에서 실시간으로 할 일이 아니라 월 1회 배치로 돌린다.
 
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import dns from "node:dns";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { compactWorkplace, compactWorkplaceDetail, isSameWorkplaceDetail, mergeWorkplaceHistory, parseNpsBody } from "../lib/nps.js";
 import { NPS_MAX_ROWS, NPS_VARIANTS, normalizeServiceKey, npsRequestUrl } from "../lib/nps-request.js";
 import { adminDongForAddress, createAdminDongLookup } from "../lib/admin-dong.js";
+
+// GitHub Actions 러너에서 apis.data.go.kr의 IPv6 경로가 막히면 fetch가 전부 실패한다.
+// IPv4를 우선해 이런 환경 차이를 줄인다.
+dns.setDefaultResultOrder("ipv4first");
 
 const REGION = { label: "광주광역시 동구", sido: "29", sggu: "110" };
 const MAX_PAGES = 500;
@@ -52,8 +57,10 @@ async function request(url) {
       return parseNpsBody(body);
     } catch (error) {
       if (attempt === MAX_RETRIES) throw error;
+      // "fetch failed"만으로는 원인을 알 수 없어 네트워크 계층 코드를 함께 남긴다.
+      const cause = error.cause?.code || error.cause?.message || "";
       const wait = Math.min(MAX_RETRY_WAIT_MS, 1000 * 2 ** attempt);
-      console.warn(`[nps] 요청 실패 ${attempt}/${MAX_RETRIES} (${error.message}), ${wait / 1000}초 뒤 다시 시도합니다.`);
+      console.warn(`[nps] 요청 실패 ${attempt}/${MAX_RETRIES} (${error.message}${cause ? `: ${cause}` : ""}), ${wait / 1000}초 뒤 다시 시도합니다.`);
       await sleep(wait);
     }
   }
@@ -83,8 +90,9 @@ async function pickVariant() {
       if (page.items.length) return { variant, page };
       console.log(`[nps] ${label} 조합은 0건, 다음 조합을 시도합니다.`);
     } catch (error) {
-      failures.push(`${label}: ${error.message}`);
-      console.warn(`[nps] ${label} 조합 실패 (${error.message}), 다음 조합을 시도합니다.`);
+      const cause = error.cause?.code || error.cause?.message || "";
+      failures.push(`${label}: ${error.message}${cause ? ` (${cause})` : ""}`);
+      console.warn(`[nps] ${label} 조합 실패 (${error.message}${cause ? `: ${cause}` : ""}), 다음 조합을 시도합니다.`);
     }
   }
   if (failures.length === NPS_VARIANTS.length) {
