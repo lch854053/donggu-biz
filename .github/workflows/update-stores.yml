@@ -30,10 +30,12 @@ jobs:
           SDSC_SERVICE_KEY: ${{ secrets.SDSC_SERVICE_KEY }}
           LOCALDATA_SERVICE_KEY: ${{ secrets.LOCALDATA_SERVICE_KEY || secrets.SDSC_SERVICE_KEY }}
           KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          VWORLD_KEY: ${{ secrets.VWORLD_KEY }}
+          VWORLD_DOMAIN: https://donggu-biz.vercel.app
       - run: npm run update-zones
         env:
           VWORLD_KEY: ${{ secrets.VWORLD_KEY }}
-          VWORLD_DOMAIN: https://biz-lookup.vercel.app
+          VWORLD_DOMAIN: https://donggu-biz.vercel.app
       - run: npm run update-closed-licenses
         env:
           LOCALDATA_SERVICE_KEY: ${{ secrets.LOCALDATA_SERVICE_KEY || secrets.SDSC_SERVICE_KEY }}
