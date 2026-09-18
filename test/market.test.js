@@ -522,8 +522,15 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(app, /function renderOutlineZoneStatistics\(stores, zoneName\)/);
   assert.match(app, /function outlineIndustryColor\(industry\)/);
   assert.match(app, /chartIndustryColor\(row\.name, index\)/);
+  assert.match(app, /function renderPieChart\(pie, rows, total, ariaLabel\)/);
+  assert.match(app, /class="pie-hit"/);
+  assert.match(app, /title: row\.name/);
+  assert.match(app, /label: "건수"/);
+  assert.match(app, /label: "비율"/);
+  assert.match(app, /closest\?\.\("\.chart-hit, \.pie-hit"\)/);
   assert.match(app, /L\.DomEvent\.stopPropagation\(event\)/);
   assert.doesNotMatch(app, /building-tooltip|clampOutlineTooltip|outlineTooltipHtml/);
+  assert.match(styles, /\.pie-hit:hover/);
   assert.doesNotMatch(styles, /building-tooltip/);
   assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
   assert.doesNotMatch(app, /marketMap\.setMinZoom\(Math\.max\(12/);
