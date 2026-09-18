@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import {
   excelSerialDate,
   employmentIndustrySectionCode,
+  insuranceStatusKind,
   matchesEmploymentInsuranceCriteria,
   sortEmploymentInsuranceRows,
   mergeEmploymentInsuranceRows
@@ -43,6 +44,18 @@ test("maps employment insurance 11th-industry codes to the shared section filter
   assert.equal(employmentIndustrySectionCode("86203"), "P");
   assert.equal(employmentIndustrySectionCode("999999"), "");
   assert.equal(employmentIndustrySectionCode(""), "");
+});
+
+test("classifies active and historical management records and summarizes active values first", () => {
+  const [group] = mergeEmploymentInsuranceRows(snapshot.items.filter((row) => row.businessRegistrationNumber === "4128107919"));
+
+  assert.equal(insuranceStatusKind({ employmentStatus: "계속", industrialStatus: "계속" }), "current");
+  assert.equal(insuranceStatusKind({ employmentStatus: "일괄유기", industrialStatus: "일괄유기" }), "historical");
+  assert.equal(group.currentSourceRows.length, 1);
+  assert.equal(group.historicalSourceRows.length, 1);
+  assert.equal(group.employmentWorkerCount, 26);
+  assert.equal(group.employmentStatus, "계속");
+  assert.deepEqual(group.workplaceManagementNumbers, ["41281079190", "41281079196"]);
 });
 
 test("employment insurance sort keeps source rows untouched", () => {

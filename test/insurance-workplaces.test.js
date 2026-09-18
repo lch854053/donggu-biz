@@ -100,6 +100,40 @@ test("employment-only rows remain visible in the default combined view", () => {
   assert.equal(matchesInsuranceWorkplaceCriteria(row, { source: "employment" }), true);
 });
 
+test("hides employment-only groups with only historical records unless requested", () => {
+  const [row] = combineInsuranceWorkplaces([], [{
+    ...employment,
+    id: "historical-only",
+    employmentStatus: "일괄유기",
+    industrialStatus: "일괄유기"
+  }]);
+
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, {}), false);
+  assert.equal(matchesInsuranceWorkplaceCriteria(row, { includeHistorical: true }), true);
+});
+
+test("keeps same-name same-address businesses separate when registration numbers differ", () => {
+  const rows = combineInsuranceWorkplaces([], [
+    employment,
+    { ...employment, id: "ei-other-business", businessRegistrationNumber: "1234567890" }
+  ]);
+
+  assert.equal(rows.length, 2);
+  assert.notEqual(rows[0].employmentInsurance.businessRegistrationNumber, rows[1].employmentInsurance.businessRegistrationNumber);
+});
+
+test("shows Jeil Construction as one group with current and historical management records", () => {
+  const groups = mergeEmploymentInsuranceRows(employmentSnapshot.items.filter((row) => row.businessRegistrationNumber === "4128107919"));
+  const rows = combineInsuranceWorkplaces(
+    npsSnapshot.items.filter((item) => item.name === "제이아이건설(주)"),
+    groups
+  );
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].employmentInsurance.currentSourceRows.length, 1);
+  assert.equal(rows[0].employmentInsurance.historicalSourceRows.length, 1);
+});
+
 test("designation name key strips legal forms and cooperative suffixes", () => {
   assert.equal(designationNameKey("(사)아이티케어복지회"), designationNameKey("아이티케어복지회"));
   assert.equal(designationNameKey("라이프공동체 사회적협동조합"), designationNameKey("라이프공동체협동조합"));
@@ -259,6 +293,46 @@ test("sorts combined rows by either insurance source without mutating input", ()
   assert.equal(rows[0].nps.seq, "nps-1");
 });
 
+test("uses current insurance records for industry, dong and worker sorting", () => {
+  const groups = mergeEmploymentInsuranceRows([
+    {
+      ...employment,
+      id: "current-with-history",
+      businessRegistrationNumber: "1111111111",
+      adminDong: "서남동",
+      employmentIndustryCode11: "41101",
+      employmentWorkerCount: 3,
+      industrialWorkerCount: 3
+    },
+    {
+      ...employment,
+      id: "historical-with-history",
+      businessRegistrationNumber: "1111111111",
+      adminDong: "충장동",
+      employmentIndustryCode11: "87101",
+      employmentWorkerCount: 99,
+      industrialWorkerCount: 99,
+      employmentStatus: "일괄유기",
+      industrialStatus: "일괄유기"
+    },
+    {
+      ...employment,
+      id: "other-current",
+      businessRegistrationNumber: "2222222222",
+      employmentWorkerCount: 50,
+      industrialWorkerCount: 50
+    }
+  ]);
+  const rows = combineInsuranceWorkplaces([], groups);
+  const grouped = rows.find((row) => row.employmentInsurance.businessRegistrationNumber === "1111111111");
+
+  assert.deepEqual([...insuranceIndustrySectionCodes(grouped)], ["F"]);
+  assert.deepEqual([...insuranceAdminDongs(grouped)], ["서남동"]);
+  assert.equal(matchesInsuranceWorkplaceCriteria(grouped, { sectionCode: "P" }), false);
+  assert.equal(matchesInsuranceWorkplaceCriteria(grouped, { adminDong: "충장동" }), false);
+  assert.equal(sortInsuranceWorkplaces(rows, "employment-desc")[0].employmentInsurance.businessRegistrationNumber, "2222222222");
+});
+
 test("current snapshots keep every source record in the integrated result", () => {
   const rows = combineInsuranceWorkplaces(npsSnapshot.items, employmentSnapshot.items);
   const npsIds = new Set(rows.filter((row) => row.nps).map((row) => row.nps.seq));
@@ -317,11 +391,16 @@ test("the insurance lookup uses one renamed tab", () => {
   assert.match(appJs, /callBusinessProxy\(\[businessNumber\]\)/);
   assert.match(appJs, /businessNumber: \$\("npsBusinessNumberInput"\)/);
   assert.match(appJs, /adminDong: \$\("npsAdminDongSelect"\)/);
+  assert.match(appJs, /includeHistorical: \$\("npsIncludeHistorical"\)\.checked/);
+  assert.match(appJs, /과거 관리기록/);
   assert.match(appJs, /insuranceAdminDongLabel\(row\)/);
   assert.doesNotMatch(appJs, /npsSourceSelect|npsStyleTabs|npsInsuranceStatusSelect|npsStyleCode/);
   assert.match(appJs, /insuranceIndustrySectionCodes\(row\)/);
   assert.match(appJs, /국민연금 월별 추이/);
   assert.match(appJs, /<h3>고용·산재보험 정보/);
+  assert.match(indexHtml, /id="npsIncludeHistorical"/);
+  assert.match(indexHtml, /종료·과거 관리기록 포함/);
+  assert.match(indexHtml, /한 사업자 그룹으로 표시/);
   assert.match(appJs, /기업 재무정보/);
   assert.match(appJs, /법인 전체 재무제표/);
   assert.match(appJs, /corporateRegistrationNumberHtml/);
