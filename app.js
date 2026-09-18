@@ -532,6 +532,7 @@ let markerCluster;
 let storeMarkers = [];
 let mainBizZones = [];
 let zoneLayer;
+let industryDistributionLayer;
 let selectedZoneNo = "";
 const zoneLeafletByNo = new Map();
 const CLUSTER_CHART_COLORS = ["#1d5e8c", "#49a36f", "#e09b32", "#8b67ad", "#d66161", "#93a0ad"];
@@ -787,6 +788,8 @@ function renderMarketMeta() {
 
 function initializeMap() {
   marketMap = L.map("marketMap", { zoomControl: true, preferCanvas: true }).setView(DONGGU_CENTER, 14);
+  marketMap.createPane("industryDistributionPane");
+  marketMap.getPane("industryDistributionPane").style.zIndex = 450;
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -1337,6 +1340,12 @@ function zoneStyle(feature) {
   };
 }
 
+function applyZoneLayerVisibility() {
+  if (!zoneLayer || !marketMap) return;
+  if ($("marketZoneToggle").checked) zoneLayer.addTo(marketMap);
+  else marketMap.removeLayer(zoneLayer);
+}
+
 function buildZoneLayer() {
   zoneLayer = L.geoJSON({ type: "FeatureCollection", features: mainBizZones }, {
     style: zoneStyle,
@@ -1358,6 +1367,7 @@ function buildZoneLayer() {
       });
     }
   }).addTo(marketMap);
+  applyZoneLayerVisibility();
 }
 
 function syncZoneTooltips() {
@@ -1403,6 +1413,7 @@ function populateMarketFilters() {
   $("zoneFilter").disabled = !mainBizZones.length;
   $("marketTableZoneFilter").disabled = !mainBizZones.length;
   $("outlineZoneFilter").disabled = !mainBizZones.length;
+  $("marketZoneToggle").disabled = !mainBizZones.length;
   $("outlineDongFilter").disabled = !dongs.length;
 }
 
@@ -1532,14 +1543,124 @@ function buildStoreMarkers() {
   });
 }
 
+const INDUSTRY_GRID_SIZE = 0.001;
+
+function clearIndustryDistribution() {
+  if (industryDistributionLayer && marketMap) marketMap.removeLayer(industryDistributionLayer);
+  industryDistributionLayer = null;
+}
+
+function populateMapIndustryOptions(stores) {
+  const select = $("mapIndustrySelect");
+  const current = select.value;
+  const categories = countBy(stores, "smallName").slice(0, 10);
+  select.replaceChildren(
+    new Option("업종을 선택하세요", ""),
+    ...categories.map(({ name, count }) => new Option(`${name} (${count.toLocaleString("ko-KR")}개)`, name))
+  );
+  if (categories.some((category) => category.name === current)) select.value = current;
+}
+
+function selectedIndustryStores() {
+  const name = $("mapIndustrySelect").value;
+  return name ? visibleStores.filter((store) => store.smallName === name) : [];
+}
+
+function industryGridColor(ratio) {
+  if (ratio >= .8) return "#1e3a8a";
+  if (ratio >= .6) return "#1d4ed8";
+  if (ratio >= .4) return "#2563eb";
+  if (ratio >= .2) return "#60a5fa";
+  return "#bfdbfe";
+}
+
+function renderIndustryGrid(stores, industryName) {
+  const cells = new Map();
+  for (const store of stores) {
+    if (!Number.isFinite(store.latitude) || !Number.isFinite(store.longitude)) continue;
+    const latIndex = Math.floor(store.latitude / INDUSTRY_GRID_SIZE);
+    const longitudeIndex = Math.floor(store.longitude / INDUSTRY_GRID_SIZE);
+    const key = `${latIndex}:${longitudeIndex}`;
+    const cell = cells.get(key) || {
+      count: 0,
+      minLatitude: latIndex * INDUSTRY_GRID_SIZE,
+      minLongitude: longitudeIndex * INDUSTRY_GRID_SIZE
+    };
+    cell.count += 1;
+    cells.set(key, cell);
+  }
+  const maxCount = Math.max(...[...cells.values()].map((cell) => cell.count), 1);
+  return L.layerGroup([...cells.values()].map((cell) => {
+    const ratio = cell.count / maxCount;
+    return L.rectangle([
+      [cell.minLatitude, cell.minLongitude],
+      [cell.minLatitude + INDUSTRY_GRID_SIZE, cell.minLongitude + INDUSTRY_GRID_SIZE]
+    ], {
+      pane: "industryDistributionPane",
+      color: "#1d4ed8",
+      weight: 1,
+      fillColor: industryGridColor(ratio),
+      fillOpacity: .18 + ratio * .5
+    }).bindTooltip(`<strong>${escapeHtml(industryName)}</strong><br>${cell.count.toLocaleString("ko-KR")}개 업소`, { sticky: true });
+  }));
+}
+
+function renderIndustryHeatmap(stores) {
+  const points = stores
+    .filter((store) => Number.isFinite(store.latitude) && Number.isFinite(store.longitude))
+    .map((store) => [store.latitude, store.longitude, 1]);
+  if (typeof L.heatLayer === "function") {
+    return L.heatLayer(points, {
+      pane: "industryDistributionPane",
+      radius: 26,
+      blur: 20,
+      minOpacity: .32,
+      maxZoom: 17,
+      gradient: { .15: "#dbeafe", .35: "#93c5fd", .6: "#3b82f6", .8: "#1d4ed8", 1: "#172554" }
+    });
+  }
+  return L.layerGroup(points.map(([latitude, longitude]) => L.circleMarker([latitude, longitude], {
+    pane: "industryDistributionPane",
+    radius: 9,
+    color: "#1d4ed8",
+    weight: 0,
+    fillColor: "#3b82f6",
+    fillOpacity: .22
+  })));
+}
+
+function renderIndustryDistribution() {
+  clearIndustryDistribution();
+  const name = $("mapIndustrySelect").value;
+  const meta = $("mapIndustryDistributionMeta");
+  if (!name) {
+    meta.textContent = "업종을 선택하면 현재 지도 범위의 분포를 표시합니다.";
+    return;
+  }
+  const stores = selectedIndustryStores();
+  const locatedStores = stores.filter((store) => Number.isFinite(store.latitude) && Number.isFinite(store.longitude));
+  if (!locatedStores.length) {
+    meta.textContent = `${name} · 좌표가 있는 업소가 없습니다.`;
+    return;
+  }
+  const mode = $("mapIndustryDistributionMode").value;
+  industryDistributionLayer = mode === "grid"
+    ? renderIndustryGrid(locatedStores, name)
+    : renderIndustryHeatmap(locatedStores);
+  industryDistributionLayer.addTo(marketMap);
+  meta.textContent = `${name} · ${stores.length.toLocaleString("ko-KR")}개 업소 · ${mode === "grid" ? "격자" : "히트맵"}`;
+}
+
 function applyMarketFilters() {
   closeClusterPanel();
   visibleStores = filterStores(activeMarketStores(), currentMarketFilters());
+  populateMapIndustryOptions(visibleStores);
   markerCluster.clearLayers();
   if ($("dongFilter").value || selectedZoneNo) {
     const visibleIds = new Set(visibleStores.map((store) => store.id));
     markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
   }
+  renderIndustryDistribution();
   renderSelectionOverview();
 }
 
@@ -1605,6 +1726,9 @@ $("dongFilter").addEventListener("change", (event) => {
   if (outlineMap) loadBuildingOutline();
 });
 $("zoneFilter").addEventListener("change", (event) => selectZone(event.target.value, Boolean(event.target.value)));
+$("marketZoneToggle").addEventListener("change", applyZoneLayerVisibility);
+$("mapIndustrySelect").addEventListener("change", renderIndustryDistribution);
+$("mapIndustryDistributionMode").addEventListener("change", renderIndustryDistribution);
 $("outlineZoneFilter").addEventListener("change", (event) => {
   customAreaFeature = null;
   $("outlineDongFilter").value = "";
@@ -1622,6 +1746,10 @@ $("outlineDongFilter").addEventListener("change", (event) => {
 });
 $("resetMarketBtn").addEventListener("click", () => {
   $("dongFilter").value = "";
+  $("marketZoneToggle").checked = true;
+  $("mapIndustrySelect").value = "";
+  $("mapIndustryDistributionMode").value = "heatmap";
+  applyZoneLayerVisibility();
   selectZone("", false);
   marketMap?.setView(DONGGU_CENTER, 14);
 });
