@@ -515,7 +515,7 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(html, /class="outline-legend" id="outlineLegend" hidden/);
   assert.doesNotMatch(html, /id="panel-analysis"/);
   assert.doesNotMatch(html, /id="tab-analysis"/);
-  assert.match(app, /if \(\$\("dongFilter"\)\.value \|\| selectedZoneNo\)/);
+  assert.match(app, /function applyMarketMarkerVisibility\(\)[\s\S]*markerCluster\.clearLayers\(\)/);
   assert.match(app, /storeName: \$\("marketTableNameInput"\)\.value\.trim\(\)/);
   assert.match(app, /\$\("marketTableNameInput"\)\.addEventListener\("keydown"[\s\S]*event\.key !== "Enter"[\s\S]*runMarketTableSearch\(\)/);
   assert.doesNotMatch(app, /outlineZoneLayer/);
@@ -534,13 +534,17 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(app, /label: "비율"/);
   assert.match(app, /closest\?\.\("\.chart-hit, \.pie-hit"\)/);
   assert.match(app, /function applyZoneLayerVisibility\(\)/);
+  assert.match(app, /function applyMarketMarkerVisibility\(\)/);
   assert.match(app, /function populateMapIndustryOptions\(stores\)/);
   assert.match(app, /function renderIndustryDistribution\(\)/);
+  assert.match(app, /filter\(\(\{ name \}\) => name !== "기타"\)/);
   assert.match(app, /L\.heatLayer\(points/);
+  assert.match(app, /minOpacity: \.16/);
   assert.match(app, /L\.DomEvent\.stopPropagation\(event\)/);
   assert.doesNotMatch(app, /building-tooltip|clampOutlineTooltip|outlineTooltipHtml/);
   assert.match(styles, /\.pie-hit:hover/);
   assert.match(styles, /\.map-distribution-controls/);
+  assert.match(styles, /\.leaflet-heatmap-layer \{ opacity: \.62; \}/);
   assert.doesNotMatch(styles, /building-tooltip/);
   assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
   assert.doesNotMatch(app, /marketMap\.setMinZoom\(Math\.max\(12/);
