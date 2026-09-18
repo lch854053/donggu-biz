@@ -1340,10 +1340,20 @@ function zoneStyle(feature) {
   };
 }
 
+function applyMarketMarkerVisibility() {
+  if (!markerCluster) return;
+  markerCluster.clearLayers();
+  if (!$(("marketZoneToggle")).checked || !($("dongFilter").value || selectedZoneNo)) return;
+  const visibleIds = new Set(visibleStores.map((store) => store.id));
+  markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
+}
+
 function applyZoneLayerVisibility() {
-  if (!zoneLayer || !marketMap) return;
-  if ($("marketZoneToggle").checked) zoneLayer.addTo(marketMap);
-  else marketMap.removeLayer(zoneLayer);
+  if (zoneLayer && marketMap) {
+    if ($("marketZoneToggle").checked) zoneLayer.addTo(marketMap);
+    else marketMap.removeLayer(zoneLayer);
+  }
+  applyMarketMarkerVisibility();
 }
 
 function buildZoneLayer() {
@@ -1553,7 +1563,7 @@ function clearIndustryDistribution() {
 function populateMapIndustryOptions(stores) {
   const select = $("mapIndustrySelect");
   const current = select.value;
-  const categories = countBy(stores, "smallName").slice(0, 10);
+  const categories = countBy(stores, "smallName").filter(({ name }) => name !== "기타").slice(0, 10);
   select.replaceChildren(
     new Option("업종을 선택하세요", ""),
     ...categories.map(({ name, count }) => new Option(`${name} (${count.toLocaleString("ko-KR")}개)`, name))
@@ -1614,9 +1624,9 @@ function renderIndustryHeatmap(stores) {
       pane: "industryDistributionPane",
       radius: 26,
       blur: 20,
-      minOpacity: .32,
+      minOpacity: .16,
       maxZoom: 17,
-      gradient: { .15: "#dbeafe", .35: "#93c5fd", .6: "#3b82f6", .8: "#1d4ed8", 1: "#172554" }
+      gradient: { .15: "#eff6ff", .35: "#dbeafe", .6: "#93c5fd", .8: "#3b82f6", 1: "#1d4ed8" }
     });
   }
   return L.layerGroup(points.map(([latitude, longitude]) => L.circleMarker([latitude, longitude], {
@@ -1625,7 +1635,7 @@ function renderIndustryHeatmap(stores) {
     color: "#1d4ed8",
     weight: 0,
     fillColor: "#3b82f6",
-    fillOpacity: .22
+    fillOpacity: .12
   })));
 }
 
@@ -1655,11 +1665,7 @@ function applyMarketFilters() {
   closeClusterPanel();
   visibleStores = filterStores(activeMarketStores(), currentMarketFilters());
   populateMapIndustryOptions(visibleStores);
-  markerCluster.clearLayers();
-  if ($("dongFilter").value || selectedZoneNo) {
-    const visibleIds = new Set(visibleStores.map((store) => store.id));
-    markerCluster.addLayers(storeMarkers.filter((marker) => visibleIds.has(marker.store.id)));
-  }
+  applyMarketMarkerVisibility();
   renderIndustryDistribution();
   renderSelectionOverview();
 }
