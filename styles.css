@@ -216,6 +216,9 @@ button { color: inherit; }
 .business-status-result { margin-top: 12px; }
 .insurance-business-summary { margin-bottom: 12px !important; }
 .insurance-workplace-groups { display: grid; gap: 12px; }
+.insurance-history { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.insurance-history summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
+.insurance-history .insurance-workplace-groups { margin-top: 10px; }
 .insurance-workplace-group { padding: 12px 14px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-raised); }
 .insurance-workplace-group h4 { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; color: var(--text-secondary); font-size: 15px; }
 .insurance-workplace-number { color: var(--text); font-size: 15px; }

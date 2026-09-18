@@ -164,9 +164,9 @@
           <div class="station-heading">
             <div>
               <h2 id="nps-input-title">4대보험 사업장 조회</h2>
-              <p class="source-note">출처 : 국민연금공단·근로복지공단 자료 (연 1회 갱신)<br>조회 지역 : 광주 동구<br>자료 범위 : 국민연금·고용·산재보험 (건강보험 자료는 제공하지 않습니다.)<br>행정동 : 도로명주소 검색 API로 확정된 주소만 표시<span class="field-note is-warn">국민연금만 표시되거나 고용·산재만 표시되거나 가입 데이터가 조회되지 않는 것은 미가입을 뜻하지 않습니다. 주소가 모호한 사업장은 행정동 미확인으로 남습니다.</span></p>
+              <p class="source-note">출처 : 국민연금공단·근로복지공단 자료 (연 1회 갱신)<br>조회 지역 : 광주 동구<br>자료 범위 : 국민연금·고용·산재보험 (건강보험 자료는 제공하지 않습니다.)<br>행정동 : 도로명주소 검색 API로 확정된 주소만 표시<br>고용·산재보험 : 같은 사업자등록번호는 한 사업자 그룹으로 표시하고 종료·과거 관리기록은 상세에서 확인<span class="field-note is-warn">국민연금만 표시되거나 고용·산재만 표시되거나 가입 데이터가 조회되지 않는 것은 미가입을 뜻하지 않습니다. 주소가 모호한 사업장은 행정동 미확인으로 남습니다.</span></p>
             </div>
-            <span class="count-badge" id="npsCountBadge">0개 사업장</span>
+            <span class="count-badge" id="npsCountBadge">0개 사업자 그룹</span>
           </div>
           <div class="query-grid" id="npsQueryGrid">
             <label class="field">
@@ -189,6 +189,10 @@
             <div class="field">
               <span>국민연금 가입 상태</span>
               <label class="check-line"><input type="checkbox" id="npsIncludeWithdrawn"> 국민연금 탈퇴 사업장 포함</label>
+            </div>
+            <div class="field">
+              <span>고용·산재 관리기록</span>
+              <label class="check-line"><input type="checkbox" id="npsIncludeHistorical"> 종료·과거 관리기록 포함</label>
             </div>
             <label class="field">
               <span>지정기업</span>

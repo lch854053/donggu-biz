@@ -29,6 +29,7 @@ import {
 } from "./lib/nps.js";
 import {
   EMPLOYMENT_INSURANCE_SNAPSHOT_URL,
+  insuranceStatusKind,
   insuranceTypeName,
   mergeEmploymentInsuranceRows
 } from "./lib/employment-insurance.js";
@@ -2293,6 +2294,7 @@ function npsCriteria() {
     businessNumber: $("npsBusinessNumberInput").value.trim(),
     adminDong: $("npsAdminDongSelect").value,
     includeWithdrawn: $("npsIncludeWithdrawn").checked,
+    includeHistorical: $("npsIncludeHistorical").checked,
     sectionCode: section === NPS_UNKNOWN_SECTION_VALUE ? "" : section,
     unknownIndustryOnly: section === NPS_UNKNOWN_SECTION_VALUE,
     designations: $(NPS_DESIGNATION_SELECT_ID).value ? [$(NPS_DESIGNATION_SELECT_ID).value] : []
@@ -2331,9 +2333,20 @@ function insuranceSourceRows(row) {
   return row?.sourceRows?.length ? row.sourceRows : row ? [row] : [];
 }
 
-function insuranceCoverageRows(row, kind) {
+function sourceRowStatusKind(row) {
+  return row?.insuranceStatusKind || insuranceStatusKind(row);
+}
+
+function insuranceCurrentSourceRows(row) {
+  const sourceRows = insuranceSourceRows(row);
+  const currentRows = sourceRows.filter((sourceRow) => sourceRowStatusKind(sourceRow) === "current");
+  return currentRows.length ? currentRows : sourceRows;
+}
+
+function insuranceCoverageRows(row, kind, { currentOnly = false } = {}) {
   const coveredTypes = kind === "employment" ? ["0", "2"] : ["0", "1"];
-  return insuranceSourceRows(row).filter((sourceRow) => coveredTypes.includes(sourceRow.insuranceType));
+  const sourceRows = currentOnly ? insuranceCurrentSourceRows(row) : insuranceSourceRows(row);
+  return sourceRows.filter((sourceRow) => coveredTypes.includes(sourceRow.insuranceType));
 }
 
 function insuranceWorkerCountValues(row, kind) {
@@ -2368,7 +2381,7 @@ function insuranceAdminDongLabel(row) {
 function insuranceWorkerCell(row, kind) {
   const employment = row.employmentInsurance;
   if (!employment) return '<span class="muted">-</span>';
-  const entries = insuranceCoverageRows(employment, kind)
+  const entries = insuranceCoverageRows(employment, kind, { currentOnly: true })
     .map((sourceRow) => ({
       sourceRow,
       count: sourceRow[kind === "employment" ? "employmentWorkerCount" : "industrialWorkerCount"]
@@ -2384,11 +2397,17 @@ function insuranceWorkerCell(row, kind) {
 
 function insuranceStatusBadges(row) {
   const statuses = [npsStatusBadge(row.nps)];
+  const sourceRows = insuranceSourceRows(row.employmentInsurance);
+  const currentRows = sourceRows.filter((sourceRow) => sourceRowStatusKind(sourceRow) === "current");
+  const visibleRows = currentRows.length ? currentRows : sourceRows;
   for (const kind of ["employment", "industrial"]) {
-    const values = [...new Set(insuranceCoverageRows(row.employmentInsurance, kind)
+    const values = [...new Set(insuranceCoverageRows({ sourceRows: visibleRows }, kind)
       .map((sourceRow) => sourceRow[kind === "employment" ? "employmentStatus" : "industrialStatus"])
       .filter(Boolean))];
     statuses.push(...values.map((value) => employmentInsuranceStatusBadge(`${kind === "employment" ? "고용" : "산재"} ${value}`)));
+  }
+  if (currentRows.length && currentRows.length < sourceRows.length) {
+    statuses.push(`<span class="badge badge-gray">과거 관리기록 ${sourceRows.length - currentRows.length}건</span>`);
   }
   const visibleStatuses = statuses.filter(Boolean);
   return visibleStatuses.join(" ") || '<span class="badge badge-gray">상태 미제공</span>';
@@ -2409,7 +2428,7 @@ function insuranceIndustryCell(row) {
       : nps && hasIndustryDetail(nps)
         ? [nps.sectionName || "업종 미상"]
         : [];
-  const employmentIndustries = [...new Set(insuranceSourceRows(employment)
+  const employmentIndustries = [...new Set(insuranceCurrentSourceRows(employment)
     .map((sourceRow) => [sourceRow.employmentIndustryCode11 || sourceRow.employmentIndustryCode, sourceRow.employmentIndustryName11 || sourceRow.employmentIndustryName].filter(Boolean).join(" "))
     .filter(Boolean))];
   if (!primaryIndustries.length && !employmentIndustries.length) return '<span class="muted">-</span>';
@@ -2467,7 +2486,7 @@ function renderNpsPager() {
 
 function renderNps() {
   const shown = filteredNpsRows().length;
-  $("npsCountBadge").textContent = `${shown.toLocaleString("ko-KR")}개 사업장`;
+  $("npsCountBadge").textContent = `${shown.toLocaleString("ko-KR")}개 사업자 그룹`;
   $("npsDownloadBtn").disabled = !shown;
   renderNpsTable();
   renderNpsPager();
@@ -2610,8 +2629,8 @@ async function runNpsLookup() {
     renderNps();
     renderNpsCriteriaState();
     $("npsProgressFill").style.width = "100%";
-    $("npsProgressText").textContent = `사업장 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`;
-    showToast(`사업장 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`);
+    $("npsProgressText").textContent = `사업자 그룹 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`;
+    showToast(`사업자 그룹 ${filteredNpsRows().length.toLocaleString("ko-KR")}개를 조회했습니다.`);
   } catch (error) {
     $("npsProgressFill").style.width = "0%";
     $("npsProgressText").textContent = error.message;
@@ -2652,42 +2671,51 @@ function employmentInsuranceDetailHtml(row, { sharedWithNps = false } = {}) {
   if (!row) return "";
   const detailRow = (label, value) => (value == null || value === "" ? "" : `<div><dt>${label}</dt><dd>${value}</dd></div>`);
   const sourceRows = insuranceSourceRows(row);
-  const managementGroups = new Map();
-  for (const sourceRow of sourceRows) {
-    const management = String(sourceRow.workplaceManagementNumber ?? "").trim();
-    const key = management || `source:${sourceRow.id}`;
-    const group = managementGroups.get(key) || [];
-    group.push(sourceRow);
-    managementGroups.set(key, group);
-  }
-  const managementSections = [...managementGroups.entries()].map(([management, rows]) => {
-    const groupedRow = { sourceRows: rows };
-    const details = [];
-    const addresses = [...new Set(rows.map((sourceRow) => sourceRow.address).filter(Boolean))];
-    const typeNames = [...new Set(rows.map((sourceRow) => sourceRow.insuranceTypeName || insuranceTypeName(sourceRow.insuranceType)).filter(Boolean))];
-    if (!sharedWithNps) addresses.forEach((address) => details.push(detailRow("사업장 주소", escapeHtml(address))));
-    if (typeNames.length) details.push(detailRow("보험 구분", escapeHtml(typeNames.join(" · "))));
-
-    for (const kind of ["employment", "industrial"]) {
-      const label = kind === "employment" ? "고용보험" : "산재보험";
-      const countField = kind === "employment" ? "employmentWorkerCount" : "industrialWorkerCount";
-      const dateField = kind === "employment" ? "employmentEstablishedDate" : "industrialEstablishedDate";
-      const statusField = kind === "employment" ? "employmentStatus" : "industrialStatus";
-      for (const sourceRow of insuranceCoverageRows(groupedRow, kind)) {
-        details.push(detailRow(`${label} 상시근로자`, employmentInsuranceCountLabel(sourceRow[countField])));
-        details.push(detailRow(`${label} 성립일자`, sourceRow[dateField] ? escapeHtml(formatYmd(sourceRow[dateField])) : "미기재"));
-        details.push(detailRow(`${label} 사업 구분`, sourceRow[statusField] ? employmentInsuranceStatusBadge(sourceRow[statusField]) : "미기재"));
-        const industryCode = sourceRow.employmentIndustryCode11 || sourceRow.employmentIndustryCode;
-        const industryName = sourceRow.employmentIndustryName11 || sourceRow.employmentIndustryName;
-        if (industryCode || industryName) details.push(detailRow(`${label} 업종`, escapeHtml([industryCode, industryName].filter(Boolean).join(" "))));
-      }
+  const renderManagementSections = (rows) => {
+    const managementGroups = new Map();
+    for (const sourceRow of rows) {
+      const management = String(sourceRow.workplaceManagementNumber ?? "").trim();
+      const key = management || `source:${sourceRow.id}`;
+      const group = managementGroups.get(key) || [];
+      group.push(sourceRow);
+      managementGroups.set(key, group);
     }
+    return [...managementGroups.entries()].map(([management, managementRows]) => {
+      const groupedRow = { sourceRows: managementRows };
+      const details = [];
+      const addresses = [...new Set(managementRows.map((sourceRow) => sourceRow.address).filter(Boolean))];
+      const typeNames = [...new Set(managementRows.map((sourceRow) => sourceRow.insuranceTypeName || insuranceTypeName(sourceRow.insuranceType)).filter(Boolean))];
+      if (!sharedWithNps) addresses.forEach((address) => details.push(detailRow("사업장 주소", escapeHtml(address))));
+      if (typeNames.length) details.push(detailRow("보험 구분", escapeHtml(typeNames.join(" · "))));
 
-    return `<section class="insurance-workplace-group">
-      <h4>사업장관리번호 <span class="insurance-workplace-number mono">${escapeHtml(management || "미기재")}</span></h4>
-      <dl>${details.join("")}</dl>
-    </section>`;
-  }).join("");
+      for (const kind of ["employment", "industrial"]) {
+        const label = kind === "employment" ? "고용보험" : "산재보험";
+        const countField = kind === "employment" ? "employmentWorkerCount" : "industrialWorkerCount";
+        const dateField = kind === "employment" ? "employmentEstablishedDate" : "industrialEstablishedDate";
+        const statusField = kind === "employment" ? "employmentStatus" : "industrialStatus";
+        for (const sourceRow of insuranceCoverageRows(groupedRow, kind)) {
+          details.push(detailRow(`${label} 상시근로자`, employmentInsuranceCountLabel(sourceRow[countField])));
+          details.push(detailRow(`${label} 성립일자`, sourceRow[dateField] ? escapeHtml(formatYmd(sourceRow[dateField])) : "미기재"));
+          details.push(detailRow(`${label} 사업 구분`, sourceRow[statusField] ? employmentInsuranceStatusBadge(sourceRow[statusField]) : "미기재"));
+          const industryCode = sourceRow.employmentIndustryCode11 || sourceRow.employmentIndustryCode;
+          const industryName = sourceRow.employmentIndustryName11 || sourceRow.employmentIndustryName;
+          if (industryCode || industryName) details.push(detailRow(`${label} 업종`, escapeHtml([industryCode, industryName].filter(Boolean).join(" "))));
+        }
+      }
+
+      return `<section class="insurance-workplace-group">
+        <h4>사업장관리번호 <span class="insurance-workplace-number mono">${escapeHtml(management || "미기재")}</span></h4>
+        <dl>${details.join("")}</dl>
+      </section>`;
+    }).join("");
+  };
+  const historicalRows = sourceRows.filter((sourceRow) => sourceRowStatusKind(sourceRow) === "historical");
+  const currentRows = sourceRows.filter((sourceRow) => sourceRowStatusKind(sourceRow) !== "historical");
+  const primaryRows = currentRows.length ? currentRows : sourceRows;
+  const currentSections = renderManagementSections(primaryRows);
+  const historicalSections = currentRows.length && historicalRows.length
+    ? `<details class="insurance-history"><summary>과거·종료 관리기록 ${historicalRows.length}건</summary><div class="insurance-workplace-groups">${renderManagementSections(historicalRows)}</div></details>`
+    : "";
 
   const businessSummary = sharedWithNps ? "" : `<dl class="insurance-business-summary">
       ${detailRow("사업자등록번호", escapeHtml(row.businessRegistrationNumber || "-"))}
@@ -2696,7 +2724,8 @@ function employmentInsuranceDetailHtml(row, { sharedWithNps = false } = {}) {
   return `<section class="detail-section">
     <h3>고용·산재보험 정보 ${employmentInsuranceTypeBadge(row)}</h3>
     ${businessSummary}
-    <div class="insurance-workplace-groups">${managementSections}</div>
+    <div class="insurance-workplace-groups">${currentSections}</div>
+    ${historicalSections}
   </section>`;
 }
 
@@ -3135,6 +3164,7 @@ $("npsClearBtn").addEventListener("click", () => {
   $("npsAdminDongSelect").value = "";
   $("npsSectionSelect").value = "";
   $("npsIncludeWithdrawn").checked = false;
+  $("npsIncludeHistorical").checked = false;
   $(NPS_DESIGNATION_SELECT_ID).value = "";
   npsPageNo = 1;
   npsDetail = { key: "", seq: "", html: "" };
@@ -3150,6 +3180,7 @@ $("npsBusinessNumberInput").addEventListener("keydown", (event) => { if (event.k
 $("npsAdminDongSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsSectionSelect").addEventListener("change", markNpsCriteriaDirty);
 $("npsIncludeWithdrawn").addEventListener("change", markNpsCriteriaDirty);
+$("npsIncludeHistorical").addEventListener("change", markNpsCriteriaDirty);
 $(NPS_DESIGNATION_SELECT_ID).addEventListener("change", markNpsCriteriaDirty);
 
 $("npsSortSelect").addEventListener("change", (event) => {
