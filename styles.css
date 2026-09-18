@@ -481,6 +481,26 @@ tbody tr:hover td { background: #f6f8fa; }
 }
 .field select:disabled { opacity: .5; }
 
+.map-layer-toggle {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+.map-layer-toggle input { width: 16px; height: 16px; margin: 2px 0 0; flex: none; accent-color: var(--accent); }
+.map-layer-toggle strong { display: block; font-size: 12px; }
+.map-layer-toggle small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+.map-layer-toggle:has(input:disabled) { cursor: not-allowed; opacity: .6; }
+.map-distribution-controls { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.map-distribution-controls .rail-heading { margin-bottom: 12px; }
+.map-distribution-controls .field { margin-bottom: 10px; }
+.map-distribution-meta { margin: 4px 0 0; color: var(--text-muted); font: 11px/1.5 var(--mono); }
+
 .summary-row { margin-bottom: 10px; }
 .summary-label { margin-bottom: 4px; display: flex; justify-content: space-between; gap: 8px; color: var(--text-secondary); font-size: 12px; }
 .summary-label strong { color: var(--text); font-family: var(--mono); }
