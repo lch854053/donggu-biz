@@ -639,6 +639,50 @@ function chartIndustryColor(industry, index) {
   return SMALL_CHART_COLORS[index % SMALL_CHART_COLORS.length];
 }
 
+function pieRatio(count, total) {
+  return total ? `${(count / total * 100).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}%` : "0%";
+}
+
+function piePoint(angle) {
+  return [50 + 50 * Math.cos(angle), 50 + 50 * Math.sin(angle)];
+}
+
+function pieSegmentPath(start, end) {
+  if (end - start >= 0.999999) return "M 50 0 A 50 50 0 1 1 49.999 100 A 50 50 0 1 1 50 0 Z";
+  const startPoint = piePoint(-Math.PI / 2 + start * Math.PI * 2);
+  const endPoint = piePoint(-Math.PI / 2 + end * Math.PI * 2);
+  const largeArc = end - start > 0.5 ? 1 : 0;
+  return `M 50 50 L ${startPoint[0].toFixed(3)} ${startPoint[1].toFixed(3)} A 50 50 0 ${largeArc} 1 ${endPoint[0].toFixed(3)} ${endPoint[1].toFixed(3)} Z`;
+}
+
+function renderPieChart(pie, rows, total, ariaLabel) {
+  let offset = 0;
+  const segments = rows.map((row, index) => {
+    const start = total ? offset / total : 0;
+    offset += row.count;
+    const end = total ? offset / total : 0;
+    const color = chartIndustryColor(row.name, index);
+    const ratio = pieRatio(row.count, total);
+    const tip = {
+      title: row.name,
+      rows: [
+        { label: "건수", color, value: `${row.count.toLocaleString("ko-KR")}개` },
+        { label: "비율", color, value: ratio }
+      ]
+    };
+    const dataTip = escapeHtml(JSON.stringify(tip));
+    const label = escapeHtml(`${row.name}: ${row.count.toLocaleString("ko-KR")}개 (${ratio})`);
+    const shape = end - start >= 0.999999
+      ? `<circle class="pie-hit" cx="50" cy="50" r="50" fill="${color}" aria-label="${label}" data-tip="${dataTip}"></circle>`
+      : `<path class="pie-hit" d="${pieSegmentPath(start, end)}" fill="${color}" aria-label="${label}" data-tip="${dataTip}"></path>`;
+    return shape;
+  }).join("");
+
+  pie.style.background = segments ? "none" : "var(--line)";
+  pie.innerHTML = segments ? `<svg class="pie-chart-svg" viewBox="0 0 100 100" aria-hidden="true">${segments}</svg>` : "";
+  pie.setAttribute("aria-label", ariaLabel);
+}
+
 async function initializeMarket() {
   if (marketInitialized) {
     if (!$("market-view-analysis").hidden) initializeBuildingOutline();
@@ -790,15 +834,8 @@ function clusterIndustryRows(stores) {
 
 function renderStoreIndustryChart(stores, panelConfig) {
   const { categories, rows } = clusterIndustryRows(stores);
-  let offset = 0;
-  const segments = rows.map((row, index) => {
-    const start = offset;
-    offset += row.count / stores.length * 100;
-    return `${chartIndustryColor(row.name, index)} ${start}% ${offset}%`;
-  });
   const pie = $(panelConfig.pieId);
-  pie.style.background = `conic-gradient(${segments.join(",")})`;
-  pie.setAttribute("aria-label", `총 ${stores.length}개 업소의 업종 분포`);
+  renderPieChart(pie, rows, stores.length, `총 ${stores.length.toLocaleString("ko-KR")}개 업소의 업종 분포`);
   $(panelConfig.statsMetaId).textContent = `총 ${stores.length.toLocaleString("ko-KR")}개 · ${categories.length.toLocaleString("ko-KR")}개 업종`;
   $(panelConfig.legendId).innerHTML = rows.map((row, index) => `<div>
     <i style="background:${chartIndustryColor(row.name, index)}"></i>
@@ -819,15 +856,8 @@ function topIndustryRows(stores, field, limit = 10) {
 function renderIndustryPieChart(stores, config) {
   const { categories, rows } = topIndustryRows(stores, config.field);
   const total = stores.length;
-  let offset = 0;
-  const segments = rows.map((row, index) => {
-    const start = offset;
-    offset += total ? row.count / total * 100 : 0;
-    return `${chartIndustryColor(row.name, index)} ${start}% ${offset}%`;
-  });
   const pie = $(config.pieId);
-  pie.style.background = segments.length ? `conic-gradient(${segments.join(",")})` : "var(--line)";
-  pie.setAttribute("aria-label", `${config.title} 총 ${total.toLocaleString("ko-KR")}개 업소의 업종 분포`);
+  renderPieChart(pie, rows, total, `${config.title} 총 ${total.toLocaleString("ko-KR")}개 업소의 업종 분포`);
   $(config.legendId).innerHTML = rows.map((row, index) => `<div class="outline-stat-legend-row">
     <i style="background:${chartIndustryColor(row.name, index)}"></i>
     <span title="${escapeHtml(row.name)}">${escapeHtml(row.name)}</span>
@@ -844,6 +874,7 @@ function clearOutlineStatistics() {
   ["outlineLargePie", "outlineSmallPie"].forEach((id) => {
     $(id).style.removeProperty("background");
     $(id).removeAttribute("aria-label");
+    $(id).replaceChildren();
   });
   ["outlineLargeLegend", "outlineSmallLegend"].forEach((id) => $(id).replaceChildren());
 }
@@ -3120,7 +3151,8 @@ function showChartTip(hit, clientX, clientY) {
     return;
   }
   const node = chartTipNode();
-  node.innerHTML = `<strong>${escapeHtml(tip.month)}</strong>${tip.rows.map(({ label, color, value }) =>
+  const heading = tip.title || tip.month;
+  node.innerHTML = `${heading ? `<strong>${escapeHtml(heading)}</strong>` : ""}${tip.rows.map(({ label, color, value }) =>
     `<span><i style="background:${escapeHtml(color)}"></i>${escapeHtml(label)}<b>${escapeHtml(value)}</b></span>`).join("")}`;
   node.hidden = false;
   const box = node.getBoundingClientRect();
@@ -3131,7 +3163,7 @@ function showChartTip(hit, clientX, clientY) {
 }
 
 document.addEventListener("mousemove", (event) => {
-  const hit = event.target.closest?.(".chart-hit");
+  const hit = event.target.closest?.(".chart-hit, .pie-hit");
   if (hit) showChartTip(hit, event.clientX, event.clientY);
   else hideChartTip();
 });
