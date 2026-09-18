@@ -649,6 +649,14 @@ test("publishes only retained VWorld zones", async () => {
   assert.deepEqual(filterVworldZones(payload.features), payload.features);
 });
 
+test("draws commercial zones with high-visibility blue styles", async () => {
+  const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  assert.match(appSource, /color: selected \? "#0b4f8a" : "#2d6fb7"/);
+  assert.match(appSource, /fillColor: selected \? "#3b82f6" : "#75a9df"/);
+  assert.match(appSource, /fillOpacity: selected \? \.28 : \.14/);
+  assert.match(appSource, /fillColor: "#5b98ff", fillOpacity: \.24/);
+});
+
 test("limits the commercial analysis map to the selected zone", async () => {
   const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
   assert.match(appSource, /minZoom:\s*OUTLINE_MAP_MIN_ZOOM/);

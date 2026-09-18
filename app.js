@@ -1329,11 +1329,11 @@ function activeMarketStores() {
 function zoneStyle(feature) {
   const selected = feature.properties.no === selectedZoneNo;
   return {
-    color: selected ? "#83b3ff" : "#f2ce68",
+    color: selected ? "#0b4f8a" : "#2d6fb7",
     weight: selected ? 3 : 2,
-    opacity: selected ? 1 : .82,
-    fillColor: selected ? "#5b98ff" : "#f2ce68",
-    fillOpacity: selected ? .18 : .06
+    opacity: selected ? 1 : .92,
+    fillColor: selected ? "#3b82f6" : "#75a9df",
+    fillOpacity: selected ? .28 : .14
   };
 }
 
@@ -1349,7 +1349,11 @@ function buildZoneLayer() {
           L.DomEvent.stopPropagation(event.originalEvent);
           selectZone(properties.no, true);
         },
-        mouseover() { if (properties.no !== selectedZoneNo) layer.setStyle({ weight: 3, fillOpacity: .12 }); },
+        mouseover() {
+          if (properties.no !== selectedZoneNo) {
+            layer.setStyle({ color: "#0b4f8a", weight: 3, opacity: 1, fillColor: "#5b98ff", fillOpacity: .24 });
+          }
+        },
         mouseout() { zoneLayer.resetStyle(layer); }
       });
     }
