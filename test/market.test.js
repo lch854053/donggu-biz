@@ -497,6 +497,7 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(html, /id="buildingOutlineMap"/);
   assert.match(html, /id="buildingOutline3DMap"[^>]*hidden/);
   assert.match(html, /id="buildingOutline3DCanvas"/);
+  assert.match(html, /id="outline3DControls"[^>]*hidden/);
   assert.match(html, /id="outlineMode2DBtn"/);
   assert.match(html, /id="outlineMode3DBtn"/);
   assert.match(html, /id="outline3DStatus"/);
@@ -548,6 +549,13 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(app, /L\.heatLayer\(points/);
   assert.match(app, /minOpacity: \.16/);
   assert.match(app, /function setOutlineMode\(mode\)/);
+  assert.match(app, /let outline3DAllowed = false/);
+  assert.match(app, /outline3DAllowed = !view && Boolean\(zone\)/);
+  assert.match(app, /if \(!outline3DAllowed && outlineMode === "3d"\) \{/);
+  assert.match(app, /controls\.hidden = !outline3DAllowed/);
+  assert.match(app, /buildingOutline3DMap"\)\.hidden = outlineMode !== "3d" \|\| !outline3DAllowed/);
+  assert.match(app, /if \(mode === "3d" && !outline3DAllowed\)/);
+  assert.match(app, /if \(!outline3DAllowed \|\| !local3DCanvas \|\| !local3DContext\) return/);
   assert.match(app, /function renderLocal3DScene\(\)/);
   assert.match(app, /function initializeLocal3DRenderer\(\)/);
   assert.match(app, /LOCAL_3D_HEIGHT_EXAGGERATION/);

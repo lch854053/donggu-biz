@@ -644,6 +644,7 @@ let local3DContext = null;
 let local3DResizeObserver = null;
 let local3DPointer = null;
 let local3DHitRegions = [];
+let outline3DAllowed = false;
 const local3DCamera = { yaw: -0.62, pitch: 0.58, zoom: 1.2, panX: 0, panY: 0 };
 
 function outlineIndustryColor(industry) {
@@ -1184,6 +1185,12 @@ async function loadBuildingOutline(view = null) {
   const isDong = view?.mode === "dong";
   const dongName = isDong ? view.adminDong : "";
   const zone = isArea ? view.feature : selectedZone();
+  outline3DAllowed = !view && Boolean(zone);
+  if (!outline3DAllowed && outlineMode === "3d") {
+    outlineMode = "2d";
+    setOutline3DStatus("2D 윤곽 모드입니다. 3D 매스는 키 없이 정적 건물 데이터로 주요상권 조회에서만 표시합니다.");
+  }
+  syncOutlineModeUI();
   const requestId = ++outlineLoadId;
   clearOutlineLayers();
   if ((!zone && !isDong) || !outlineMap) {
@@ -1316,7 +1323,7 @@ async function loadBuildingOutline(view = null) {
     renderOutlineLegend();
     renderOutlineZoneStatistics(stores, zoneName);
     renderZoneClosure(isDong ? { adminDong: dongName, properties: { name: zoneName } } : zone, stores);
-    if (outlineMode === "3d") {
+    if (outline3DAllowed && outlineMode === "3d") {
       initializeLocal3DRenderer();
       setTimeout(() => {
         resizeLocal3DCanvas();
@@ -1495,7 +1502,7 @@ function local3DCanvasPoint(event) {
 }
 
 function renderLocal3DScene() {
-  if (!local3DCanvas || !local3DContext) return;
+  if (!outline3DAllowed || !local3DCanvas || !local3DContext) return;
   const width = local3DCanvas.clientWidth || local3DCanvas.parentElement?.clientWidth || 0;
   const height = local3DCanvas.clientHeight || local3DCanvas.parentElement?.clientHeight || 0;
   if (width < 2 || height < 2) return;
@@ -1680,10 +1687,14 @@ function syncOutlineModeUI() {
     button.classList.toggle("is-active", active);
     button.setAttribute("aria-pressed", String(active));
   }
+  const controls = $("outline3DControls");
+  if (controls) controls.hidden = !outline3DAllowed;
+  const mode3DButton = $("outlineMode3DBtn");
+  if (mode3DButton) mode3DButton.disabled = !outline3DAllowed;
   $("buildingOutlineMap").hidden = outlineMode === "3d";
-  $("buildingOutline3DMap").hidden = outlineMode !== "3d";
+  $("buildingOutline3DMap").hidden = outlineMode !== "3d" || !outline3DAllowed;
   $("outlineLegend").hidden = outlineMode === "3d" || !outlineFeatures.length;
-  if (outlineMode === "3d") setTimeout(() => {
+  if (outline3DAllowed && outlineMode === "3d") setTimeout(() => {
     initializeLocal3DRenderer();
     resizeLocal3DCanvas();
   }, 0);
@@ -1691,10 +1702,15 @@ function syncOutlineModeUI() {
 }
 
 function setOutlineMode(mode) {
+  if (mode === "3d" && !outline3DAllowed) {
+    outlineMode = "2d";
+    syncOutlineModeUI();
+    return;
+  }
   outlineMode = mode === "3d" ? "3d" : "2d";
   syncOutlineModeUI();
   if (outlineMode === "2d") {
-    setOutline3DStatus("2D 윤곽 모드입니다. 3D 매스는 키 없이 정적 건물 데이터로 표시합니다.");
+    setOutline3DStatus("2D 윤곽 모드입니다. 3D 매스는 키 없이 정적 건물 데이터로 주요상권 조회에서만 표시합니다.");
     setTimeout(() => outlineMap?.invalidateSize(), 0);
     return;
   }
