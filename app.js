@@ -625,12 +625,16 @@ let outlineStoresById = new Map();
 let outlineLoadId = 0;
 const outlineCellCache = new Map();
 let outlineRoadFeaturesCache = null;
-const VWORLD_3D_VERSION = "3.0";
-const VWORLD_3D_KEY_STORAGE_KEY = "vworld3DApiKey";
+const LOCAL_3D_METERS_PER_FLOOR = 3;
+const LOCAL_3D_HEIGHT_EXAGGERATION = 2.2;
+const LOCAL_3D_MAX_FLOORS = 40;
 let outlineMode = "2d";
-let vworld3DMap = null;
-let vworld3DScriptPromise = null;
-let vworld3DReadyZone = "";
+let local3DCanvas = null;
+let local3DContext = null;
+let local3DResizeObserver = null;
+let local3DPointer = null;
+let local3DHitRegions = [];
+const local3DCamera = { yaw: -0.62, pitch: 0.58, zoom: 1, panX: 0, panY: 0 };
 
 function outlineIndustryColor(industry) {
   if (industry === "점포 미연결") return OUTLINE_UNMATCHED_COLOR;
@@ -1044,6 +1048,7 @@ function clearOutlineLayers() {
   outlineRoadFeatures = [];
   outlineIndustryById = new Map();
   outlineStoresById = new Map();
+  local3DHitRegions = [];
   $("outlineWorkspace").hidden = true;
   $("outlineLegend").replaceChildren();
   $("outlineLegend").hidden = true;
@@ -1299,9 +1304,12 @@ async function loadBuildingOutline(view = null) {
     renderOutlineLegend();
     renderOutlineZoneStatistics(stores, zoneName);
     renderZoneClosure(isDong ? { adminDong: dongName, properties: { name: zoneName } } : zone, stores);
-    if (outlineMode === "3d" && vworld3DMap && !isDong && vworld3DReadyZone !== (selectedZoneNo || "")) {
-      vworld3DReadyZone = selectedZoneNo || "";
-      flyVworld3DToZone(zone);
+    if (outlineMode === "3d") {
+      initializeLocal3DRenderer();
+      setTimeout(() => {
+        resizeLocal3DCanvas();
+        updateLocal3DStatus();
+      }, 0);
     }
     if (outlineFeatures.length) {
       $("outlineState").hidden = true;
@@ -1316,85 +1324,291 @@ async function loadBuildingOutline(view = null) {
   }
 }
 
-function vworld3DStatusNode() {
-  return $("vworld3DStatus");
+function outline3DStatusNode() {
+  return $("outline3DStatus");
 }
 
-function setVworld3DStatus(message) {
-  const node = vworld3DStatusNode();
+function setOutline3DStatus(message) {
+  const node = outline3DStatusNode();
   if (node) node.textContent = message;
 }
 
-function getVworld3DKey() {
-  const inputValue = $("vworld3DKeyInput")?.value.trim() || "";
-  if (inputValue) return inputValue;
-  const windowKey = String(window.VWORLD_3D_API_KEY || "").trim();
-  if (windowKey) return windowKey;
-  try {
-    return String(localStorage.getItem(VWORLD_3D_KEY_STORAGE_KEY) || "").trim();
-  } catch {
-    return "";
+function local3DGeometryRings(feature) {
+  const geometry = feature?.geometry;
+  const polygons = geometry?.type === "MultiPolygon"
+    ? geometry.coordinates
+    : geometry?.type === "Polygon"
+      ? [geometry.coordinates]
+      : [];
+  return polygons
+    .map((polygon) => polygon?.[0])
+    .filter((ring) => Array.isArray(ring) && ring.length >= 4);
+}
+
+function local3DHeight(feature) {
+  const floors = Number(feature?.properties?.floors);
+  const normalizedFloors = Number.isFinite(floors) && floors > 0
+    ? Math.min(floors, LOCAL_3D_MAX_FLOORS)
+    : 1;
+  return normalizedFloors * LOCAL_3D_METERS_PER_FLOOR;
+}
+
+function local3DSceneBounds() {
+  let bounds = null;
+  const extend = (box) => {
+    if (!box) return;
+    bounds = bounds
+      ? [
+        Math.min(bounds[0], box[0]), Math.min(bounds[1], box[1]),
+        Math.max(bounds[2], box[2]), Math.max(bounds[3], box[3])
+      ]
+      : [...box];
+  };
+  for (const feature of outlineFeatures) extend(geometryBounds(feature.geometry));
+  if (!bounds) extend(geometryBounds(selectedZone()?.geometry));
+  return bounds || [DONGGU_CENTER[1] - .01, DONGGU_CENTER[0] - .01, DONGGU_CENTER[1] + .01, DONGGU_CENTER[0] + .01];
+}
+
+function local3DColor(feature) {
+  const industry = outlineIndustryById.get(String(feature?.id));
+  return industry ? outlineIndustryColor(industry) : OUTLINE_UNMATCHED_COLOR;
+}
+
+function local3DShade(color, amount) {
+  const raw = String(color || "#586276").replace("#", "");
+  const normalized = raw.length === 3 ? raw.split("").map((value) => value + value).join("") : raw;
+  const base = Number.parseInt(normalized, 16);
+  if (!Number.isFinite(base)) return color;
+  const target = amount >= 0 ? 255 : 0;
+  const ratio = Math.min(1, Math.abs(amount));
+  const channels = [base >> 16, (base >> 8) & 255, base & 255]
+    .map((channel) => Math.round(channel + (target - channel) * ratio));
+  return `rgb(${channels.join(",")})`;
+}
+
+function local3DViewPoint(point, height, centerLongitude, centerLatitude) {
+  const longitudeScale = 111320 * Math.cos(centerLatitude * Math.PI / 180);
+  const x = (point[0] - centerLongitude) * longitudeScale;
+  const y = (point[1] - centerLatitude) * 110540;
+  const cosine = Math.cos(local3DCamera.yaw);
+  const sine = Math.sin(local3DCamera.yaw);
+  const viewX = x * cosine - y * sine;
+  const depth = x * sine + y * cosine;
+  return {
+    x: viewX,
+    y: -depth * Math.sin(local3DCamera.pitch)
+      - height * Math.cos(local3DCamera.pitch) * LOCAL_3D_HEIGHT_EXAGGERATION,
+    depth
+  };
+}
+
+function local3DMetrics(width, height) {
+  const bounds = local3DSceneBounds();
+  const centerLongitude = (bounds[0] + bounds[2]) / 2;
+  const centerLatitude = (bounds[1] + bounds[3]) / 2;
+  const corners = [
+    [bounds[0], bounds[1]], [bounds[2], bounds[1]],
+    [bounds[2], bounds[3]], [bounds[0], bounds[3]]
+  ];
+  const maximumHeight = Math.max(LOCAL_3D_METERS_PER_FLOOR, ...outlineFeatures.map(local3DHeight));
+  const views = corners.flatMap((corner) => [
+    local3DViewPoint(corner, 0, centerLongitude, centerLatitude),
+    local3DViewPoint(corner, maximumHeight, centerLongitude, centerLatitude)
+  ]);
+  const minX = Math.min(...views.map((view) => view.x));
+  const maxX = Math.max(...views.map((view) => view.x));
+  const minY = Math.min(...views.map((view) => view.y));
+  const maxY = Math.max(...views.map((view) => view.y));
+  const extentX = Math.max(1, maxX - minX);
+  const extentY = Math.max(1, maxY - minY);
+  const fitScale = Math.min((width - 72) / extentX, (height - 108) / extentY);
+  return {
+    width,
+    height,
+    centerLongitude,
+    centerLatitude,
+    minX,
+    maxX,
+    minY,
+    maxY,
+    scale: Math.max(.05, fitScale) * local3DCamera.zoom
+  };
+}
+
+function local3DProject(point, height, metrics) {
+  const view = local3DViewPoint(point, height, metrics.centerLongitude, metrics.centerLatitude);
+  return {
+    x: metrics.width / 2 + local3DCamera.panX + (view.x - (metrics.minX + metrics.maxX) / 2) * metrics.scale,
+    y: metrics.height / 2 + 24 + local3DCamera.panY + (view.y - (metrics.minY + metrics.maxY) / 2) * metrics.scale,
+    depth: view.depth
+  };
+}
+
+function local3DPath(context, points) {
+  if (!points.length) return;
+  context.beginPath();
+  context.moveTo(points[0].x, points[0].y);
+  for (const point of points.slice(1)) context.lineTo(point.x, point.y);
+  context.closePath();
+}
+
+function local3DPointInPolygon(point, polygon) {
+  let inside = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+    const currentPoint = polygon[index];
+    const previousPoint = polygon[previous];
+    const crosses = currentPoint.y > point.y !== previousPoint.y > point.y;
+    if (crosses && point.x < (previousPoint.x - currentPoint.x) * (point.y - currentPoint.y)
+      / (previousPoint.y - currentPoint.y) + currentPoint.x) inside = !inside;
+  }
+  return inside;
+}
+
+function local3DCanvasPoint(event) {
+  const rect = local3DCanvas.getBoundingClientRect();
+  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+}
+
+function renderLocal3DScene() {
+  if (!local3DCanvas || !local3DContext) return;
+  const width = local3DCanvas.clientWidth || local3DCanvas.parentElement?.clientWidth || 0;
+  const height = local3DCanvas.clientHeight || local3DCanvas.parentElement?.clientHeight || 0;
+  if (width < 2 || height < 2) return;
+
+  const context = local3DContext;
+  const metrics = local3DMetrics(width, height);
+  context.clearRect(0, 0, width, height);
+  context.fillStyle = "#0b1020";
+  context.fillRect(0, 0, width, height);
+  context.lineJoin = "round";
+  context.lineCap = "round";
+
+  const bounds = local3DSceneBounds();
+  const ground = [
+    [bounds[0], bounds[1]], [bounds[2], bounds[1]],
+    [bounds[2], bounds[3]], [bounds[0], bounds[3]]
+  ].map((point) => local3DProject(point, 0, metrics));
+  local3DPath(context, ground);
+  context.fillStyle = "#172333";
+  context.fill();
+  context.strokeStyle = "rgba(140, 174, 205, .3)";
+  context.lineWidth = 1;
+  context.stroke();
+
+  const entries = [];
+  for (const feature of outlineFeatures) {
+    const height = local3DHeight(feature);
+    for (const ring of local3DGeometryRings(feature)) {
+      const groundPoints = ring.map((point) => local3DProject(point, 0, metrics));
+      const topPoints = ring.map((point) => local3DProject(point, height, metrics));
+      const depth = groundPoints.reduce((total, point) => total + point.depth, 0) / groundPoints.length;
+      entries.push({ feature, height, groundPoints, topPoints, depth, color: local3DColor(feature) });
+    }
+  }
+  entries.sort((left, right) => left.depth - right.depth);
+  local3DHitRegions = [];
+
+  for (const entry of entries) {
+    for (let index = 0; index < entry.groundPoints.length - 1; index += 1) {
+      const side = [
+        entry.groundPoints[index], entry.groundPoints[index + 1],
+        entry.topPoints[index + 1], entry.topPoints[index]
+      ];
+      local3DPath(context, side);
+      context.fillStyle = local3DShade(entry.color, index % 2 ? -.42 : -.3);
+      context.fill();
+      context.strokeStyle = "rgba(3, 9, 18, .35)";
+      context.lineWidth = .5;
+      context.stroke();
+    }
+    local3DPath(context, entry.topPoints);
+    context.fillStyle = local3DShade(entry.color, -.08);
+    context.fill();
+    context.strokeStyle = "rgba(225, 238, 250, .32)";
+    context.lineWidth = .65;
+    context.stroke();
+    const stores = outlineStoresById.get(String(entry.feature.id)) || [];
+    if (stores.length) local3DHitRegions.push({ polygon: entry.topPoints, stores });
   }
 }
 
-function vworld3DScriptUrl(apiKey) {
-  const domain = window.location.host || "";
-  const params = new URLSearchParams({ version: VWORLD_3D_VERSION, apiKey });
-  if (domain) params.set("domain", domain);
-  return `https://map.vworld.kr/js/webglMapInit.js.do?${params.toString()}`;
+function resizeLocal3DCanvas() {
+  if (!local3DCanvas || !local3DContext) return;
+  const rect = local3DCanvas.getBoundingClientRect();
+  const width = Math.max(1, Math.round(rect.width));
+  const height = Math.max(1, Math.round(rect.height));
+  const devicePixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+  const pixelWidth = Math.round(width * devicePixelRatio);
+  const pixelHeight = Math.round(height * devicePixelRatio);
+  if (local3DCanvas.width !== pixelWidth || local3DCanvas.height !== pixelHeight) {
+    local3DCanvas.width = pixelWidth;
+    local3DCanvas.height = pixelHeight;
+    local3DContext.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  }
+  renderLocal3DScene();
 }
 
-function loadVworld3DScript(apiKey) {
-  if (vworld3DScriptPromise) return vworld3DScriptPromise;
-  vworld3DScriptPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = vworld3DScriptUrl(apiKey);
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => {
-      vworld3DScriptPromise = null;
-      reject(new Error("VWorld 3D 스크립트를 불러오지 못했습니다. 키와 등록 도메인을 확인해 주세요."));
+function initializeLocal3DRenderer() {
+  if (local3DContext) return;
+  local3DCanvas = $("buildingOutline3DCanvas");
+  if (!local3DCanvas) return;
+  local3DContext = local3DCanvas.getContext("2d");
+  if (!local3DContext) return;
+  local3DCanvas.addEventListener("pointerdown", (event) => {
+    local3DPointer = {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      moved: false,
+      yaw: local3DCamera.yaw,
+      pitch: local3DCamera.pitch
     };
-    document.head.appendChild(script);
+    local3DCanvas.setPointerCapture(event.pointerId);
   });
-  return vworld3DScriptPromise;
-}
-
-function zoneCenter(zone) {
-  const bounds = zone?.geometry ? geometryBounds(zone.geometry) : null;
-  if (!bounds) return null;
-  return [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
-}
-
-function createVworld3DMap(apiKey) {
-  const center = zoneCenter(selectedZone()) || [DONGGU_CENTER[1], DONGGU_CENTER[0]];
-  const map = new vw.Map();
-  map.setOption({
-    mapId: "buildingOutline3DMap",
-    initPosition: new vw.CameraPosition(
-      new vw.CoordZ(center[0], center[1], 1800),
-      new vw.Direction(0, -55, 0)
-    ),
-    logo: true,
-    navigation: true
+  local3DCanvas.addEventListener("pointermove", (event) => {
+    if (!local3DPointer || local3DPointer.id !== event.pointerId) return;
+    const deltaX = event.clientX - local3DPointer.x;
+    const deltaY = event.clientY - local3DPointer.y;
+    if (Math.hypot(deltaX, deltaY) > 4) local3DPointer.moved = true;
+    local3DCamera.yaw = local3DPointer.yaw + deltaX * .008;
+    local3DCamera.pitch = Math.max(.32, Math.min(.92, local3DPointer.pitch + deltaY * .004));
+    renderLocal3DScene();
   });
-  map.start();
-  return map;
-}
-
-function flyVworld3DToZone(zone) {
-  if (!vworld3DMap || !zone) return;
-  const center = zoneCenter(zone);
-  if (!center) return;
-  try {
-    const camera = ws3d.viewer.camera;
-    camera.flyTo({
-      destination: Cesium.Cartesian3.fromDegrees(center[0], center[1], 1400),
-      orientation: { heading: Cesium.Math.toRadians(0), pitch: Cesium.Math.toRadians(-55), roll: 0 }
-    });
-  } catch (error) {
-    console.warn("[vworld-3d] camera move failed", error);
+  const finishPointer = (event) => {
+    if (!local3DPointer || local3DPointer.id !== event.pointerId) return;
+    if (!local3DPointer.moved) {
+      const point = local3DCanvasPoint(event);
+      for (let index = local3DHitRegions.length - 1; index >= 0; index -= 1) {
+        const region = local3DHitRegions[index];
+        if (local3DPointInPolygon(point, region.polygon)) {
+          renderOutlinePanel(region.stores);
+          break;
+        }
+      }
+    }
+    local3DPointer = null;
+    if (local3DCanvas.hasPointerCapture(event.pointerId)) local3DCanvas.releasePointerCapture(event.pointerId);
+  };
+  local3DCanvas.addEventListener("pointerup", finishPointer);
+  local3DCanvas.addEventListener("pointercancel", finishPointer);
+  local3DCanvas.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    local3DCamera.zoom = Math.max(.55, Math.min(4, local3DCamera.zoom * Math.exp(-event.deltaY * .001)));
+    renderLocal3DScene();
+  }, { passive: false });
+  if (typeof ResizeObserver === "function") {
+    local3DResizeObserver = new ResizeObserver(resizeLocal3DCanvas);
+    local3DResizeObserver.observe(local3DCanvas);
+  } else {
+    window.addEventListener("resize", resizeLocal3DCanvas);
   }
+}
+
+function updateLocal3DStatus() {
+  const knownFloors = outlineFeatures.filter((feature) => Number(feature.properties?.floors) > 0).length;
+  const unknownFloors = Math.max(0, outlineFeatures.length - knownFloors);
+  const name = selectedZone()?.properties?.name || $("outlineZoneName")?.textContent || "선택 상권";
+  setOutline3DStatus(`${name} · ${outlineFeatures.length.toLocaleString("ko-KR")}개 건물 · 층수 확인 ${knownFloors.toLocaleString("ko-KR")}개 / 미상 ${unknownFloors.toLocaleString("ko-KR")}개 · 드래그: 회전 · 휠: 확대`);
 }
 
 function syncOutlineModeUI() {
@@ -1405,41 +1619,27 @@ function syncOutlineModeUI() {
   }
   $("buildingOutlineMap").hidden = outlineMode === "3d";
   $("buildingOutline3DMap").hidden = outlineMode !== "3d";
-  if (outlineMode === "3d") setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
+  if (outlineMode === "3d") setTimeout(() => {
+    initializeLocal3DRenderer();
+    resizeLocal3DCanvas();
+  }, 0);
   else setTimeout(() => outlineMap?.invalidateSize(), 0);
 }
 
-async function setOutlineMode(mode) {
+function setOutlineMode(mode) {
   outlineMode = mode === "3d" ? "3d" : "2d";
   syncOutlineModeUI();
   if (outlineMode === "2d") {
-    setVworld3DStatus("2D 윤곽 모드입니다. 3D는 VWorld 키와 등록 도메인이 필요합니다.");
+    setOutline3DStatus("2D 윤곽 모드입니다. 3D 매스는 키 없이 정적 건물 데이터로 표시합니다.");
     setTimeout(() => outlineMap?.invalidateSize(), 0);
     return;
   }
-  const apiKey = getVworld3DKey();
-  if (!apiKey) {
-    setVworld3DStatus("VWorld 3D 키를 입력해 주세요. 키는 이 브라우저에만 저장됩니다.");
-    $("vworld3DKeyInput")?.focus();
-    return;
-  }
-  try {
-    localStorage.setItem(VWORLD_3D_KEY_STORAGE_KEY, apiKey);
-  } catch {
-    // 저장 실패해도 3D 로딩은 계속한다.
-  }
-  setVworld3DStatus("VWorld 3D 지도를 불러오는 중입니다.");
-  try {
-    await loadVworld3DScript(apiKey);
-    if (typeof vw?.Map !== "function") throw new Error("VWorld 3D 객체를 찾지 못했습니다.");
-    if (!vworld3DMap) vworld3DMap = createVworld3DMap(apiKey);
-    vworld3DReadyZone = selectedZoneNo || "";
-    flyVworld3DToZone(selectedZone());
-    const zoneName = selectedZone()?.properties?.name || "동구";
-    setVworld3DStatus(`${zoneName} 3D 매스 표시 중입니다. 내장 3D 건물과 지형을 사용합니다.`);
-  } catch (error) {
-    setVworld3DStatus(`${error.message}`);
-  }
+  initializeLocal3DRenderer();
+  setOutline3DStatus("정적 건물 데이터를 3D 매스로 그리는 중입니다.");
+  setTimeout(() => {
+    resizeLocal3DCanvas();
+    updateLocal3DStatus();
+  }, 0);
 }
 
 function initializeBuildingOutline() {
@@ -1459,26 +1659,6 @@ function initializeBuildingOutline() {
 
 for (const outlineModeButton of document.querySelectorAll("[data-outline-mode]")) {
   outlineModeButton.addEventListener("click", () => setOutlineMode(outlineModeButton.dataset.outlineMode));
-}
-
-$("vworld3DKeyInput")?.addEventListener("change", (event) => {
-  const value = event.target.value.trim();
-  try {
-    if (value) localStorage.setItem(VWORLD_3D_KEY_STORAGE_KEY, value);
-    else localStorage.removeItem(VWORLD_3D_KEY_STORAGE_KEY);
-  } catch {
-    // 저장 실패해도 입력값으로 3D를 시도할 수 있다.
-  }
-  if (outlineMode === "3d" && value) setOutlineMode("3d");
-});
-
-try {
-  const savedVworld3DKey = localStorage.getItem(VWORLD_3D_KEY_STORAGE_KEY) || "";
-  if (savedVworld3DKey && $("vworld3DKeyInput") && !$("vworld3DKeyInput").value) {
-    $("vworld3DKeyInput").value = savedVworld3DKey;
-  }
-} catch {
-  // 저장소 접근 실패 시 키 복원을 건너뛴다.
 }
 
 syncOutlineModeUI();

@@ -496,10 +496,11 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(html, /id="outlineZoneFilter"/);
   assert.match(html, /id="buildingOutlineMap"/);
   assert.match(html, /id="buildingOutline3DMap"[^>]*hidden/);
+  assert.match(html, /id="buildingOutline3DCanvas"/);
   assert.match(html, /id="outlineMode2DBtn"/);
   assert.match(html, /id="outlineMode3DBtn"/);
-  assert.match(html, /id="vworld3DKeyInput"/);
-  assert.match(html, /id="vworld3DStatus"/);
+  assert.match(html, /id="outline3DStatus"/);
+  assert.doesNotMatch(html, /vworld3DKeyInput/);
   assert.match(html, /id="outlineStatistics"[^>]*hidden/);
   assert.match(html, /id="outlineLargePie"/);
   assert.match(html, /id="outlineSmallPie"/);
@@ -546,9 +547,11 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(app, /L\.heatLayer\(points/);
   assert.match(app, /minOpacity: \.16/);
   assert.match(app, /function setOutlineMode\(mode\)/);
-  assert.match(app, /function loadVworld3DScript\(apiKey\)/);
-  assert.match(app, /webglMapInit\.js\.do/);
-  assert.match(app, /vworld3DApiKey/);
+  assert.match(app, /function renderLocal3DScene\(\)/);
+  assert.match(app, /function initializeLocal3DRenderer\(\)/);
+  assert.match(app, /LOCAL_3D_HEIGHT_EXAGGERATION/);
+  assert.match(app, /키 없이 정적 건물 데이터/);
+  assert.doesNotMatch(app, /loadVworld3DScript|webglMapInit\.js\.do|vworld3DApiKey/);
   assert.doesNotMatch(app, /[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}/);
   assert.match(app, /L\.DomEvent\.stopPropagation\(event\)/);
   assert.doesNotMatch(app, /building-tooltip|clampOutlineTooltip|outlineTooltipHtml/);
@@ -556,6 +559,7 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(styles, /\.map-distribution-controls/);
   assert.match(styles, /\.leaflet-heatmap-layer \{ opacity: \.62; \}/);
   assert.match(styles, /#buildingOutline3DMap/);
+  assert.match(styles, /#buildingOutline3DCanvas/);
   assert.match(styles, /\.outline-3d-controls/);
   assert.doesNotMatch(styles, /building-tooltip/);
   assert.doesNotMatch(app, /marketMap\.setMaxBounds\(leafletBounds\.pad/);
