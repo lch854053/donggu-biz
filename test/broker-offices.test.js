@@ -74,35 +74,50 @@ test("EDOffices 응답을 파싱한다", () => {
   assert.deepEqual(zero.offices, []);
 });
 
-test("카카오 주소 검색으로 좌표를 찾는다", async () => {
+test("VWorld 주소 검색으로 좌표를 찾는다", async () => {
   const calls = [];
   const fetchImpl = async (url) => {
     calls.push(String(url));
     return {
       ok: true,
-      text: async () => "",
-      json: async () => ({
-        documents: [{ road_address: { x: "126.9196", y: "35.1526" }, address: { x: "126.9", y: "35.1" } }]
-      })
+      json: async () => ({ response: { status: "OK", refined: { text: "…동계천로 39 (계림동)" }, result: { point: { x: "126.9196", y: "35.1526" } } } })
     };
   };
-  const coordinate = await fetchAddressCoordinate("전남광주통합특별시 동구 동계천로 39", "kakao-key", { fetchImpl });
+  const coordinate = await fetchAddressCoordinate("전남광주통합특별시 동구 동계천로 39", {
+    key: "vworld-key", domain: "https://donggu-biz.vercel.app", fetchImpl
+  });
   assert.deepEqual(coordinate, { longitude: 126.9196, latitude: 35.1526 });
   assert.equal(calls.length, 1);
-  assert.match(calls[0], /dapi\.kakao\.com\/v2\/local\/search\/address\.json/);
-  assert.match(calls[0], /query=/);
+  assert.match(calls[0], /req\/address/);
+  assert.match(calls[0], /type=ROAD/);
+  assert.match(calls[0], /key=vworld-key/);
+});
+
+test("도로명이 실패하면 지번으로 다시 시도한다", async () => {
+  const types = [];
+  const fetchImpl = async (url) => {
+    types.push(/type=(ROAD|PARCEL)/.exec(url)[1]);
+    if (types.at(-1) === "ROAD") return { ok: false, json: async () => ({}) };
+    return { ok: true, json: async () => ({ response: { status: "OK", result: { point: { x: "126.9", y: "35.1" } } } }) };
+  };
+  const coordinate = await fetchAddressCoordinate("전남광주통합특별시 동구 산수동 1000", {
+    key: "vworld-key", domain: "https://donggu-biz.vercel.app", fetchImpl
+  });
+  assert.deepEqual(coordinate, { longitude: 126.9, latitude: 35.1 });
+  assert.deepEqual(types, ["ROAD", "PARCEL"]);
 });
 
 test("검색 결과가 없으면 null을 돌려 수집이 막히지 않게 한다", async () => {
-  const fetchImpl = async () => ({ ok: true, text: async () => "", json: async () => ({ documents: [] }) });
-  const coordinate = await fetchAddressCoordinate("없는 주소", "kakao-key", { fetchImpl });
+  const fetchImpl = async () => ({ ok: true, json: async () => ({ response: { status: "ERROR" } }) });
+  const coordinate = await fetchAddressCoordinate("없는 주소", { key: "k", domain: "d", fetchImpl, maxRetries: 1 });
   assert.equal(coordinate, null);
 });
 
-test("주소나 키가 비었으면 호출하지 않는다", async () => {
+test("주소나 키·도메인이 비었으면 호출하지 않는다", async () => {
   let called = 0;
   const fetchImpl = async () => { called += 1; };
-  assert.equal(await fetchAddressCoordinate("", "kakao-key", { fetchImpl }), null);
-  assert.equal(await fetchAddressCoordinate("주소", "", { fetchImpl }), null);
+  assert.equal(await fetchAddressCoordinate("", { key: "k", domain: "d", fetchImpl }), null);
+  assert.equal(await fetchAddressCoordinate("주소", { key: "", domain: "d", fetchImpl }), null);
+  assert.equal(await fetchAddressCoordinate("주소", { key: "k", domain: "", fetchImpl }), null);
   assert.equal(called, 0);
 });

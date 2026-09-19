@@ -15,7 +15,7 @@
 - 광주 동구 상가업소 지도와 상호 배타적인 행정동·주요상권 조회
 - 매월 갱신하는 상가정보와 행정안전부 인허가(영업 중) 보완 스냅샷의 업소를 지도와 표에서 조회
 - 설정된 행정안전부 인허가 130개 원천(건강·반려동물·체육·게임·유흥·식품·숙박·직업·관광·대규모점포·인쇄·공연·영화·의료기기·축산판매·모범음식점 등)을 관리번호·주소·좌표로 중복 제거
-- VWorld 국가중점데이터API의 부동산중개업정보(국토교통부)를 보강 원천으로 함께 수집. 좌표가 응답에 없어 카카오 주소 검색으로 좌표를 채운다(영업중 기준, 광주 동구 약 320건)
+- VWorld 국가중점데이터API의 부동산중개업정보(국토교통부)를 보강 원천으로 함께 수집. Actions 러너에서 api.vworld.kr 연결이 자주 끊기므로, 한국 네트워크에서 `npm run update-brokers`로 받아 `data/broker_offices_donggu.json` 스냅샷을 커밋하면 update-stores가 파일을 읽어 반영한다(영업중 기준, 광주 동구 약 320건). 좌표는 VWorld 주소 검색으로 채운다
 - 스냅샷 메타데이터에 원천별 건수·매칭 건수·추가 건수·좌표 누락 건수를 기록
 - 선택한 행정동 또는 주요상권의 상위 10개 업종 소분류 분석
 - 지도에서 주요상권을 선택하면 기존 점포·클러스터 마커로 업소 위치를 확인
@@ -187,7 +187,14 @@ npm run update-corporate-financials
 
 ### 부동산중개업 보강
 
-부동산중개사무소는 행안부 인허가 개방 대상이 아니라 `lib/broker-offices.js`가 VWorld 국가중점데이터API(`https://api.vworld.kr/ned/data/getEBOfficeInfo`, 국토교통부)에서 따로 받는다. 같은 `VWORLD_KEY`에 `VWORLD_DOMAIN`으로 등록한 도메인을 `domain` 파라미터와 Referer로 함께 보내야 인증된다. 광주·전남 행정통합으로 동구 시군구코드가 `29110`에서 `12210`으로 바뀌었으므로 `ldCode=12210`으로 조회하고, 영업중(`sttusSeCode=1`)만 담는다. 좌표는 응답에 없어 카카오 주소 검색으로 채운 뒤 다른 인허가 행과 같은 병합 파이프라인에 태운다.
+부동산중개사무소는 행안부 인허가 개방 대상이 아니라 `lib/broker-offices.js`가 VWorld 국가중점데이터API(`https://api.vworld.kr/ned/data/getEBOfficeInfo`, 국토교통부)에서 따로 받는다. Actions 러너에서 api.vworld.kr 연결이 자주 끊기므로 API를 워크플로에서 직접 부르지 않고, 한국 네트워크에서 아래 절차로 스냅샷 파일을 만들어 커밋한다.
+
+```bash
+VWORLD_KEY=… VWORLD_DOMAIN=https://donggu-biz.vercel.app npm run update-brokers
+npm test
+```
+
+같은 `VWORLD_KEY`에 `VWORLD_DOMAIN`으로 등록한 도메인을 `domain` 파라미터와 Referer로 함께 보내야 인증된다. 광주·전남 행정통합으로 동구 시군구코드가 `29110`에서 `12210`으로 바뀌었으므로 `ldCode=12210`으로 조회하고, 영업중(`sttusSeCode=1`)만 담는다. 좌표는 응답에 없어 VWorld 주소 검색(`req/address`)으로 채운 뒤 `data/broker_offices_donggu.json`으로 저장하고, update-stores가 이 파일을 읽어 다른 인허가 행과 같은 병합 파이프라인에 태운다.
 
 `npm run authorize-localdata`가 후보 하나마다 데이터셋 검색 → 활용신청 → 요청주소 확인을 한 번에 처리합니다. 브라우저가 열리면 로그인을 직접 완료하고, 실제 제출 시에만 `--submit`과 확인 문자열 `APPLY_PERSONAL`을 사용합니다. 찾아낸 `datasetId`와 확인된 요청주소는 후보 파일에 되써 두므로, 다시 실행하면 검색을 건너뜁니다. 로그인 정보·CAPTCHA·브라우저 프로필은 저장소에 포함하지 않습니다.
 

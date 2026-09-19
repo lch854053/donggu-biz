@@ -18,14 +18,7 @@ import { fetchLocaldataSource } from "../lib/localdata-client.js";
 import { createLicenseAdminDongResolver } from "../lib/license-admin-dong.js";
 import { createAdminDongLookup } from "../lib/admin-dong.js";
 import { enrichStoreAddresses } from "../lib/kakao-local.js";
-import {
-  BROKER_OFFICES_URL,
-  BROKER_STATUS_ACTIVE,
-  fetchAddressCoordinate,
-  fetchBrokerOffices,
-  GWANGJU_DONGGU_LD_CODE,
-  normalizeBrokerOffice
-} from "../lib/broker-offices.js";
+import { BROKER_OFFICES_URL } from "../lib/broker-offices.js";
 
 const API_URL = "https://apis.data.go.kr/B553077/api/open/sdsc2/storeListInDong";
 const SIGNGU_CODE = "12210";
@@ -36,9 +29,6 @@ const REQUEST_TIMEOUT_MS = 20000;
 const key = process.env.SDSC_SERVICE_KEY;
 const localdataKey = process.env.LOCALDATA_SERVICE_KEY;
 const kakaoKey = process.env.KAKAO_REST_API_KEY;
-const vworldKey = process.env.VWORLD_KEY;
-const vworldDomain = process.env.VWORLD_DOMAIN || "https://donggu-biz.vercel.app";
-const GEOCODE_PAUSE_MS = 120;
 
 if (!key) throw new Error("SDSC_SERVICE_KEY 환경변수가 필요합니다.");
 
@@ -159,48 +149,30 @@ if (localdataKey) {
   console.log(`[localdata] ${unavailableCount ? `${unavailableCount} sources unavailable, ` : ""}${extraSources.length} sources collected`);
 }
 
-// VWorld 국가중점데이터API의 부동산중개업정보(국토교통부). 인허가 API와 달리 좌표가
-// 없어 카카오 주소 검색으로 좌표를 채운 뒤 같은 병합 파이프라인에 태운다.
-if (vworldKey) {
-  try {
-    const brokerResult = await fetchBrokerOffices({
-      key: vworldKey,
-      domain: vworldDomain,
-      ldCode: GWANGJU_DONGGU_LD_CODE,
-      statusCode: BROKER_STATUS_ACTIVE
-    });
-    const brokerLicenses = brokerResult.offices.map((office) => {
-      const license = normalizeBrokerOffice(office);
-      license.adminDong = adminDongForLicense(license.address || license.lotAddress, license);
-      return license;
-    });
-    let geocodedCount = 0;
-    if (kakaoKey) {
-      for (const license of brokerLicenses) {
-        const coordinate = await fetchAddressCoordinate(license.address || license.lotAddress, kakaoKey);
-        if (coordinate) {
-          license.longitude = coordinate.longitude;
-          license.latitude = coordinate.latitude;
-          geocodedCount += 1;
-        }
-        await sleep(GEOCODE_PAUSE_MS);
-      }
-    } else {
-      console.warn(`[broker] 좌표 보강을 건너뛴다: KAKAO_REST_API_KEY 환경변수가 없다.`);
-    }
-    supplementalLicenses.push(...brokerLicenses);
-    extraSources.push({
-      datasetId: "ned.getEBOfficeInfo",
-      slug: "vworld_broker_offices",
-      title: "국토교통부_부동산중개업정보(VWorld 국가중점데이터API)",
-      endpoint: BROKER_OFFICES_URL,
-      sourceCount: brokerResult.totalCount,
-      activeCount: brokerLicenses.length,
-      sourceUpdatedAt: brokerResult.lastUpdatedAt,
-      geocodedCount
-    });
-    console.log(`[broker] ${brokerLicenses.length} offices (geocoded ${geocodedCount})`);
-  } catch (error) {
+// VWorld 국가중점데이터API의 부동산중개업정보(국토교통부). Actions 러너에서
+// api.vworld.kr 연결이 자주 끊기므로, npm run update-brokers로 만든 스냅샷
+// 파일을 읽는다. 파일이 없으면 조용히 건너뛴다.
+try {
+  const brokerPayload = JSON.parse(await readFile(resolve(root, "data/broker_offices_donggu.json"), "utf8"));
+  const brokerOffices = Array.isArray(brokerPayload.offices) ? brokerPayload.offices : [];
+  const brokerLicenses = brokerOffices.map((office) => {
+    const license = { ...office, adminDong: adminDongForLicense(office.address || office.lotAddress, office) };
+    return license;
+  });
+  supplementalLicenses.push(...brokerLicenses);
+  extraSources.push({
+    datasetId: "ned.getEBOfficeInfo",
+    slug: "vworld_broker_offices",
+    title: "국토교통부_부동산중개업정보(VWorld 국가중점데이터API)",
+    endpoint: BROKER_OFFICES_URL,
+    sourceCount: Number(brokerPayload.meta?.totalCount) || brokerLicenses.length,
+    activeCount: brokerLicenses.length,
+    sourceUpdatedAt: brokerPayload.meta?.sourceUpdatedAt || "",
+    geocodedCount: Number(brokerPayload.meta?.geocodedCount) || 0
+  });
+  console.log(`[broker] ${brokerLicenses.length} offices (geocoded ${brokerPayload.meta?.geocodedCount ?? "?"})`);
+} catch (error) {
+  if (error.code !== "ENOENT") {
     console.warn(`[broker] skipped: ${error.message}`);
     extraSources.push({
       datasetId: "ned.getEBOfficeInfo",
