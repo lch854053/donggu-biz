@@ -625,6 +625,12 @@ let outlineStoresById = new Map();
 let outlineLoadId = 0;
 const outlineCellCache = new Map();
 let outlineRoadFeaturesCache = null;
+const VWORLD_3D_VERSION = "3.0";
+const VWORLD_3D_KEY_STORAGE_KEY = "vworld3DApiKey";
+let outlineMode = "2d";
+let vworld3DMap = null;
+let vworld3DScriptPromise = null;
+let vworld3DReadyZone = "";
 
 function outlineIndustryColor(industry) {
   if (industry === "점포 미연결") return OUTLINE_UNMATCHED_COLOR;
@@ -1293,6 +1299,10 @@ async function loadBuildingOutline(view = null) {
     renderOutlineLegend();
     renderOutlineZoneStatistics(stores, zoneName);
     renderZoneClosure(isDong ? { adminDong: dongName, properties: { name: zoneName } } : zone, stores);
+    if (outlineMode === "3d" && vworld3DMap && !isDong && vworld3DReadyZone !== (selectedZoneNo || "")) {
+      vworld3DReadyZone = selectedZoneNo || "";
+      flyVworld3DToZone(zone);
+    }
     if (outlineFeatures.length) {
       $("outlineState").hidden = true;
     } else {
@@ -1303,6 +1313,132 @@ async function loadBuildingOutline(view = null) {
     if (requestId !== outlineLoadId) return;
     clearOutlineLayers();
     setOutlineState(`${error.message} 데이터가 배포되었는지 확인해 주세요.`, true);
+  }
+}
+
+function vworld3DStatusNode() {
+  return $("vworld3DStatus");
+}
+
+function setVworld3DStatus(message) {
+  const node = vworld3DStatusNode();
+  if (node) node.textContent = message;
+}
+
+function getVworld3DKey() {
+  const inputValue = $("vworld3DKeyInput")?.value.trim() || "";
+  if (inputValue) return inputValue;
+  const windowKey = String(window.VWORLD_3D_API_KEY || "").trim();
+  if (windowKey) return windowKey;
+  try {
+    return String(localStorage.getItem(VWORLD_3D_KEY_STORAGE_KEY) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function vworld3DScriptUrl(apiKey) {
+  const domain = window.location.host || "";
+  const params = new URLSearchParams({ version: VWORLD_3D_VERSION, apiKey });
+  if (domain) params.set("domain", domain);
+  return `https://map.vworld.kr/js/webglMapInit.js.do?${params.toString()}`;
+}
+
+function loadVworld3DScript(apiKey) {
+  if (vworld3DScriptPromise) return vworld3DScriptPromise;
+  vworld3DScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = vworld3DScriptUrl(apiKey);
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => {
+      vworld3DScriptPromise = null;
+      reject(new Error("VWorld 3D 스크립트를 불러오지 못했습니다. 키와 등록 도메인을 확인해 주세요."));
+    };
+    document.head.appendChild(script);
+  });
+  return vworld3DScriptPromise;
+}
+
+function zoneCenter(zone) {
+  const bounds = zone?.geometry ? geometryBounds(zone.geometry) : null;
+  if (!bounds) return null;
+  return [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2];
+}
+
+function createVworld3DMap(apiKey) {
+  const center = zoneCenter(selectedZone()) || [DONGGU_CENTER[1], DONGGU_CENTER[0]];
+  const map = new vw.Map();
+  map.setOption({
+    mapId: "buildingOutline3DMap",
+    initPosition: new vw.CameraPosition(
+      new vw.CoordZ(center[0], center[1], 1800),
+      new vw.Direction(0, -55, 0)
+    ),
+    logo: true,
+    navigation: true
+  });
+  map.start();
+  return map;
+}
+
+function flyVworld3DToZone(zone) {
+  if (!vworld3DMap || !zone) return;
+  const center = zoneCenter(zone);
+  if (!center) return;
+  try {
+    const camera = ws3d.viewer.camera;
+    camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(center[0], center[1], 1400),
+      orientation: { heading: Cesium.Math.toRadians(0), pitch: Cesium.Math.toRadians(-55), roll: 0 }
+    });
+  } catch (error) {
+    console.warn("[vworld-3d] camera move failed", error);
+  }
+}
+
+function syncOutlineModeUI() {
+  for (const button of document.querySelectorAll("[data-outline-mode]")) {
+    const active = button.dataset.outlineMode === outlineMode;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  }
+  $("buildingOutlineMap").hidden = outlineMode === "3d";
+  $("buildingOutline3DMap").hidden = outlineMode !== "3d";
+  if (outlineMode === "3d") setTimeout(() => window.dispatchEvent(new Event("resize")), 0);
+  else setTimeout(() => outlineMap?.invalidateSize(), 0);
+}
+
+async function setOutlineMode(mode) {
+  outlineMode = mode === "3d" ? "3d" : "2d";
+  syncOutlineModeUI();
+  if (outlineMode === "2d") {
+    setVworld3DStatus("2D 윤곽 모드입니다. 3D는 VWorld 키와 등록 도메인이 필요합니다.");
+    setTimeout(() => outlineMap?.invalidateSize(), 0);
+    return;
+  }
+  const apiKey = getVworld3DKey();
+  if (!apiKey) {
+    setVworld3DStatus("VWorld 3D 키를 입력해 주세요. 키는 이 브라우저에만 저장됩니다.");
+    $("vworld3DKeyInput")?.focus();
+    return;
+  }
+  try {
+    localStorage.setItem(VWORLD_3D_KEY_STORAGE_KEY, apiKey);
+  } catch {
+    // 저장 실패해도 3D 로딩은 계속한다.
+  }
+  setVworld3DStatus("VWorld 3D 지도를 불러오는 중입니다.");
+  try {
+    await loadVworld3DScript(apiKey);
+    if (typeof vw?.Map !== "function") throw new Error("VWorld 3D 객체를 찾지 못했습니다.");
+    if (!vworld3DMap) vworld3DMap = createVworld3DMap(apiKey);
+    vworld3DReadyZone = selectedZoneNo || "";
+    flyVworld3DToZone(selectedZone());
+    const zoneName = selectedZone()?.properties?.name || "동구";
+    setVworld3DStatus(`${zoneName} 3D 매스 표시 중입니다. 내장 3D 건물과 지형을 사용합니다.`);
+  } catch (error) {
+    setVworld3DStatus(`${error.message}`);
   }
 }
 
@@ -1320,6 +1456,32 @@ function initializeBuildingOutline() {
   setTimeout(() => outlineMap.invalidateSize(), 0);
   loadBuildingOutline();
 }
+
+for (const outlineModeButton of document.querySelectorAll("[data-outline-mode]")) {
+  outlineModeButton.addEventListener("click", () => setOutlineMode(outlineModeButton.dataset.outlineMode));
+}
+
+$("vworld3DKeyInput")?.addEventListener("change", (event) => {
+  const value = event.target.value.trim();
+  try {
+    if (value) localStorage.setItem(VWORLD_3D_KEY_STORAGE_KEY, value);
+    else localStorage.removeItem(VWORLD_3D_KEY_STORAGE_KEY);
+  } catch {
+    // 저장 실패해도 입력값으로 3D를 시도할 수 있다.
+  }
+  if (outlineMode === "3d" && value) setOutlineMode("3d");
+});
+
+try {
+  const savedVworld3DKey = localStorage.getItem(VWORLD_3D_KEY_STORAGE_KEY) || "";
+  if (savedVworld3DKey && $("vworld3DKeyInput") && !$("vworld3DKeyInput").value) {
+    $("vworld3DKeyInput").value = savedVworld3DKey;
+  }
+} catch {
+  // 저장소 접근 실패 시 키 복원을 건너뛴다.
+}
+
+syncOutlineModeUI();
 
 function selectedZone() {
   return mainBizZones.find((feature) => feature.properties.no === selectedZoneNo) || null;
