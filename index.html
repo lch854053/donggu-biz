@@ -399,11 +399,7 @@
                 <button class="button button-quiet is-active" id="outlineMode2DBtn" type="button" data-outline-mode="2d" aria-pressed="true">2D 윤곽</button>
                 <button class="button button-quiet" id="outlineMode3DBtn" type="button" data-outline-mode="3d" aria-pressed="false">3D 매스</button>
               </div>
-              <label class="field outline-3d-key-field">
-                <span>VWorld 3D 키 (브라우저에만 보관)</span>
-                <input id="vworld3DKeyInput" type="password" autocomplete="off" placeholder="키 입력 후 3D 매스 선택">
-              </label>
-              <p class="outline-3d-status" id="vworld3DStatus" role="status">2D 윤곽 모드입니다. 3D는 VWorld 키와 등록 도메인이 필요합니다.</p>
+              <p class="outline-3d-status" id="outline3DStatus" role="status">2D 윤곽 모드입니다. 3D 매스는 키 없이 정적 건물 데이터로 표시합니다.</p>
             </section>
             <div class="data-note">
               <strong>지도 해석</strong>
@@ -412,7 +408,9 @@
           </aside>
           <section class="outline-map-stage" aria-label="선택 상권 건물 윤곽 지도">
             <div id="buildingOutlineMap"></div>
-            <div id="buildingOutline3DMap" hidden></div>
+            <div id="buildingOutline3DMap" hidden>
+              <canvas id="buildingOutline3DCanvas" aria-label="선택 상권 3D 건물 매스"></canvas>
+            </div>
             <aside class="cluster-panel" id="outlinePanel" aria-labelledby="outlinePanelTitle" hidden>
               <header class="cluster-panel-head">
                 <div>
