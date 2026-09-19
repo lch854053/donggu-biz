@@ -391,6 +391,20 @@
               <h3 id="outlineZoneName">선택 상권</h3>
             </div>
             <p class="outline-zone-meta" id="outlineZoneMeta"></p>
+            <section class="outline-3d-controls" aria-labelledby="outline3DTitle">
+              <div class="rail-heading">
+                <h3 id="outline3DTitle">3D 건물 매스</h3>
+              </div>
+              <div class="outline-mode-toggle" role="group" aria-label="건물 지도 모드">
+                <button class="button button-quiet is-active" id="outlineMode2DBtn" type="button" data-outline-mode="2d" aria-pressed="true">2D 윤곽</button>
+                <button class="button button-quiet" id="outlineMode3DBtn" type="button" data-outline-mode="3d" aria-pressed="false">3D 매스</button>
+              </div>
+              <label class="field outline-3d-key-field">
+                <span>VWorld 3D 키 (브라우저에만 보관)</span>
+                <input id="vworld3DKeyInput" type="password" autocomplete="off" placeholder="키 입력 후 3D 매스 선택">
+              </label>
+              <p class="outline-3d-status" id="vworld3DStatus" role="status">2D 윤곽 모드입니다. 3D는 VWorld 키와 등록 도메인이 필요합니다.</p>
+            </section>
             <div class="data-note">
               <strong>지도 해석</strong>
               <p>회색 바탕은 선택 상권, 어두운 회색 면은 도로명주소 실폭도로입니다. 건물 도형은 Figure-Ground 정적 데이터이며, 업종 색상은 선택 상권 내부 점포를 건물 필지에 연결한 결과입니다. 업종 데이터가 있는 건물을 클릭하면 연결 업소명·업종·주소를 확인할 수 있습니다.</p>
@@ -398,6 +412,7 @@
           </aside>
           <section class="outline-map-stage" aria-label="선택 상권 건물 윤곽 지도">
             <div id="buildingOutlineMap"></div>
+            <div id="buildingOutline3DMap" hidden></div>
             <aside class="cluster-panel" id="outlinePanel" aria-labelledby="outlinePanelTitle" hidden>
               <header class="cluster-panel-head">
                 <div>
