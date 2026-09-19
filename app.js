@@ -629,6 +629,9 @@ const LOCAL_3D_METERS_PER_FLOOR = 3;
 const LOCAL_3D_HEIGHT_EXAGGERATION = 1.8;
 const LOCAL_3D_MAX_FLOORS = 40;
 const LOCAL_3D_SLAB_DEPTH = 6;
+const LOCAL_3D_ROTATION_SENSITIVITY = .003;
+const LOCAL_3D_PITCH_SENSITIVITY = .0015;
+const LOCAL_3D_WHEEL_SENSITIVITY = .00035;
 const LOCAL_3D_PURPOSE_COLORS = new Map([
   ["단독주택", "#ead58a"],
   ["공동주택", "#d9bc70"],
@@ -643,7 +646,6 @@ let local3DCanvas = null;
 let local3DContext = null;
 let local3DResizeObserver = null;
 let local3DPointer = null;
-let local3DHitRegions = [];
 let outline3DAllowed = false;
 const local3DCamera = { yaw: -0.62, pitch: 0.58, zoom: 1.2, panX: 0, panY: 0 };
 
@@ -1060,7 +1062,6 @@ function clearOutlineLayers() {
   outlineSceneGeometry = null;
   outlineIndustryById = new Map();
   outlineStoresById = new Map();
-  local3DHitRegions = [];
   $("outlineWorkspace").hidden = true;
   $("outlineLegend").replaceChildren();
   $("outlineLegend").hidden = true;
@@ -1484,23 +1485,6 @@ function local3DGeometryPath(context, rings, height, metrics) {
   }
 }
 
-function local3DPointInPolygon(point, polygon) {
-  let inside = false;
-  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
-    const currentPoint = polygon[index];
-    const previousPoint = polygon[previous];
-    const crosses = currentPoint.y > point.y !== previousPoint.y > point.y;
-    if (crosses && point.x < (previousPoint.x - currentPoint.x) * (point.y - currentPoint.y)
-      / (previousPoint.y - currentPoint.y) + currentPoint.x) inside = !inside;
-  }
-  return inside;
-}
-
-function local3DCanvasPoint(event) {
-  const rect = local3DCanvas.getBoundingClientRect();
-  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-}
-
 function renderLocal3DScene() {
   if (!outline3DAllowed || !local3DCanvas || !local3DContext) return;
   const width = local3DCanvas.clientWidth || local3DCanvas.parentElement?.clientWidth || 0;
@@ -1575,7 +1559,6 @@ function renderLocal3DScene() {
     }
   }
   entries.sort((left, right) => right.depth - left.depth);
-  local3DHitRegions = [];
 
   for (const entry of entries) {
     for (let index = 0; index < entry.groundPoints.length - 1; index += 1) {
@@ -1597,8 +1580,6 @@ function renderLocal3DScene() {
     context.strokeStyle = "rgba(105, 94, 63, .5)";
     context.lineWidth = .6;
     context.stroke();
-    const stores = outlineStoresById.get(String(entry.feature.id)) || [];
-    if (stores.length) local3DHitRegions.push({ polygon: entry.topPoints, stores });
   }
 }
 
@@ -1629,7 +1610,6 @@ function initializeLocal3DRenderer() {
       id: event.pointerId,
       x: event.clientX,
       y: event.clientY,
-      moved: false,
       yaw: local3DCamera.yaw,
       pitch: local3DCamera.pitch
     };
@@ -1639,23 +1619,12 @@ function initializeLocal3DRenderer() {
     if (!local3DPointer || local3DPointer.id !== event.pointerId) return;
     const deltaX = event.clientX - local3DPointer.x;
     const deltaY = event.clientY - local3DPointer.y;
-    if (Math.hypot(deltaX, deltaY) > 4) local3DPointer.moved = true;
-    local3DCamera.yaw = local3DPointer.yaw + deltaX * .008;
-    local3DCamera.pitch = Math.max(.32, Math.min(.92, local3DPointer.pitch + deltaY * .004));
+    local3DCamera.yaw = local3DPointer.yaw + deltaX * LOCAL_3D_ROTATION_SENSITIVITY;
+    local3DCamera.pitch = Math.max(.32, Math.min(.92, local3DPointer.pitch + deltaY * LOCAL_3D_PITCH_SENSITIVITY));
     renderLocal3DScene();
   });
   const finishPointer = (event) => {
     if (!local3DPointer || local3DPointer.id !== event.pointerId) return;
-    if (!local3DPointer.moved) {
-      const point = local3DCanvasPoint(event);
-      for (let index = local3DHitRegions.length - 1; index >= 0; index -= 1) {
-        const region = local3DHitRegions[index];
-        if (local3DPointInPolygon(point, region.polygon)) {
-          renderOutlinePanel(region.stores);
-          break;
-        }
-      }
-    }
     local3DPointer = null;
     if (local3DCanvas.hasPointerCapture(event.pointerId)) local3DCanvas.releasePointerCapture(event.pointerId);
   };
@@ -1663,7 +1632,7 @@ function initializeLocal3DRenderer() {
   local3DCanvas.addEventListener("pointercancel", finishPointer);
   local3DCanvas.addEventListener("wheel", (event) => {
     event.preventDefault();
-    local3DCamera.zoom = Math.max(.55, Math.min(4, local3DCamera.zoom * Math.exp(-event.deltaY * .001)));
+    local3DCamera.zoom = Math.max(.55, Math.min(4, local3DCamera.zoom * Math.exp(-event.deltaY * LOCAL_3D_WHEEL_SENSITIVITY)));
     renderLocal3DScene();
   }, { passive: false });
   if (typeof ResizeObserver === "function") {
