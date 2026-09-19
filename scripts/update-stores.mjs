@@ -19,6 +19,7 @@ import { createLicenseAdminDongResolver } from "../lib/license-admin-dong.js";
 import { createAdminDongLookup } from "../lib/admin-dong.js";
 import { enrichStoreAddresses } from "../lib/kakao-local.js";
 import {
+  BROKER_OFFICES_URL,
   BROKER_STATUS_ACTIVE,
   fetchAddressCoordinate,
   fetchBrokerOffices,
