@@ -560,6 +560,13 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(app, /function initializeLocal3DRenderer\(\)/);
   assert.match(app, /LOCAL_3D_HEIGHT_EXAGGERATION/);
   assert.match(app, /LOCAL_3D_PURPOSE_COLORS/);
+  assert.match(app, /const LOCAL_3D_ROTATION_SENSITIVITY = \.003/);
+  assert.match(app, /const LOCAL_3D_PITCH_SENSITIVITY = \.0015/);
+  assert.match(app, /const LOCAL_3D_WHEEL_SENSITIVITY = \.00035/);
+  assert.match(app, /local3DCamera\.yaw = local3DPointer\.yaw \+ deltaX \* LOCAL_3D_ROTATION_SENSITIVITY/);
+  assert.match(app, /local3DCamera\.pitch = Math\.max\(\.32, Math\.min\(\.92, local3DPointer\.pitch \+ deltaY \* LOCAL_3D_PITCH_SENSITIVITY\)\)/);
+  assert.match(app, /Math\.exp\(-event\.deltaY \* LOCAL_3D_WHEEL_SENSITIVITY\)/);
+  assert.doesNotMatch(app, /local3DHitRegions|local3DPointInPolygon|renderOutlinePanel\(region\.stores\)/);
   assert.match(app, /context\.fillStyle = "#f0f1ef"/);
   assert.match(app, /for \(const feature of outlineRoadFeatures\)/);
   assert.match(app, /entries\.sort\(\(left, right\) => right\.depth - left\.depth\)/);
