@@ -626,15 +626,25 @@ let outlineLoadId = 0;
 const outlineCellCache = new Map();
 let outlineRoadFeaturesCache = null;
 const LOCAL_3D_METERS_PER_FLOOR = 3;
-const LOCAL_3D_HEIGHT_EXAGGERATION = 2.2;
+const LOCAL_3D_HEIGHT_EXAGGERATION = 1.8;
 const LOCAL_3D_MAX_FLOORS = 40;
+const LOCAL_3D_SLAB_DEPTH = 6;
+const LOCAL_3D_PURPOSE_COLORS = new Map([
+  ["단독주택", "#ead58a"],
+  ["공동주택", "#d9bc70"],
+  ["제1종 근린생활시설", "#e8a16f"],
+  ["제2종 근린생활시설", "#df8964"],
+  ["숙박시설", "#d95b7c"],
+  ["기타", "#c5c9cd"]
+]);
 let outlineMode = "2d";
+let outlineSceneGeometry = null;
 let local3DCanvas = null;
 let local3DContext = null;
 let local3DResizeObserver = null;
 let local3DPointer = null;
 let local3DHitRegions = [];
-const local3DCamera = { yaw: -0.62, pitch: 0.58, zoom: 1, panX: 0, panY: 0 };
+const local3DCamera = { yaw: -0.62, pitch: 0.58, zoom: 1.2, panX: 0, panY: 0 };
 
 function outlineIndustryColor(industry) {
   if (industry === "점포 미연결") return OUTLINE_UNMATCHED_COLOR;
@@ -1046,6 +1056,7 @@ function clearOutlineLayers() {
   outlineBuildingLayer = null;
   outlineFeatures = [];
   outlineRoadFeatures = [];
+  outlineSceneGeometry = null;
   outlineIndustryById = new Map();
   outlineStoresById = new Map();
   local3DHitRegions = [];
@@ -1133,7 +1144,7 @@ function bindOutlineFeature(feature, layer) {
 
 function renderOutlineLegend() {
   const legend = $("outlineLegend");
-  legend.hidden = false;
+  legend.hidden = outlineMode === "3d";
   const counts = new Map();
   for (const feature of outlineFeatures) {
     const industry = outlineIndustryById.get(String(feature.id)) || "점포 미연결";
@@ -1239,6 +1250,7 @@ async function loadBuildingOutline(view = null) {
       ] : bounds, isDong ? dongStoreBounds : zoneBounds);
     const roadClipBounds = expandBoundsMeters(buildingBounds, OUTLINE_ROAD_CLIP_BUFFER_METERS);
     const clipArea = isDong ? boundsPolygon(buildingBounds) : zone.geometry;
+    outlineSceneGeometry = clipArea;
     outlineRoadFeatures = roadFeatures
       .filter((feature) => geometryIntersects(feature.geometry, clipArea))
       .map((feature) => {
@@ -1364,6 +1376,7 @@ function local3DSceneBounds() {
       ]
       : [...box];
   };
+  extend(geometryBounds(outlineSceneGeometry));
   for (const feature of outlineFeatures) extend(geometryBounds(feature.geometry));
   if (!bounds) extend(geometryBounds(selectedZone()?.geometry));
   return bounds || [DONGGU_CENTER[1] - .01, DONGGU_CENTER[0] - .01, DONGGU_CENTER[1] + .01, DONGGU_CENTER[0] + .01];
@@ -1371,7 +1384,8 @@ function local3DSceneBounds() {
 
 function local3DColor(feature) {
   const industry = outlineIndustryById.get(String(feature?.id));
-  return industry ? outlineIndustryColor(industry) : OUTLINE_UNMATCHED_COLOR;
+  if (industry) return local3DShade(outlineIndustryColor(industry), .12);
+  return LOCAL_3D_PURPOSE_COLORS.get(feature?.properties?.purpose) || LOCAL_3D_PURPOSE_COLORS.get("단독주택");
 }
 
 function local3DShade(color, amount) {
@@ -1439,7 +1453,7 @@ function local3DProject(point, height, metrics) {
   const view = local3DViewPoint(point, height, metrics.centerLongitude, metrics.centerLatitude);
   return {
     x: metrics.width / 2 + local3DCamera.panX + (view.x - (metrics.minX + metrics.maxX) / 2) * metrics.scale,
-    y: metrics.height / 2 + 24 + local3DCamera.panY + (view.y - (metrics.minY + metrics.maxY) / 2) * metrics.scale,
+    y: metrics.height / 2 + local3DCamera.panY + (view.y - (metrics.minY + metrics.maxY) / 2) * metrics.scale,
     depth: view.depth
   };
 }
@@ -1450,6 +1464,17 @@ function local3DPath(context, points) {
   context.moveTo(points[0].x, points[0].y);
   for (const point of points.slice(1)) context.lineTo(point.x, point.y);
   context.closePath();
+}
+
+function local3DGeometryPath(context, rings, height, metrics) {
+  context.beginPath();
+  for (const ring of rings) {
+    const points = ring.map((point) => local3DProject(point, height, metrics));
+    if (!points.length) continue;
+    context.moveTo(points[0].x, points[0].y);
+    for (const point of points.slice(1)) context.lineTo(point.x, point.y);
+    context.closePath();
+  }
 }
 
 function local3DPointInPolygon(point, polygon) {
@@ -1478,22 +1503,59 @@ function renderLocal3DScene() {
   const context = local3DContext;
   const metrics = local3DMetrics(width, height);
   context.clearRect(0, 0, width, height);
-  context.fillStyle = "#0b1020";
+  context.fillStyle = "#030303";
   context.fillRect(0, 0, width, height);
   context.lineJoin = "round";
   context.lineCap = "round";
 
   const bounds = local3DSceneBounds();
-  const ground = [
-    [bounds[0], bounds[1]], [bounds[2], bounds[1]],
-    [bounds[2], bounds[3]], [bounds[0], bounds[3]]
-  ].map((point) => local3DProject(point, 0, metrics));
-  local3DPath(context, ground);
-  context.fillStyle = "#172333";
+  const groundGeometry = outlineSceneGeometry || boundsPolygon(bounds);
+  const groundRings = local3DGeometryRings({ geometry: groundGeometry });
+
+  // 상권 경계를 얕은 지형 모형처럼 내려 검은 배경에서 실루엣을 분리한다.
+  context.save();
+  context.shadowColor = "rgba(0, 0, 0, .9)";
+  context.shadowBlur = 26;
+  context.shadowOffsetY = 18;
+  local3DGeometryPath(context, groundRings, -LOCAL_3D_SLAB_DEPTH, metrics);
+  context.fillStyle = "#73777d";
   context.fill();
-  context.strokeStyle = "rgba(140, 174, 205, .3)";
-  context.lineWidth = 1;
+  context.restore();
+  for (const ring of groundRings) {
+    const topPoints = ring.map((point) => local3DProject(point, 0, metrics));
+    const bottomPoints = ring.map((point) => local3DProject(point, -LOCAL_3D_SLAB_DEPTH, metrics));
+    for (let index = 0; index < topPoints.length - 1; index += 1) {
+      local3DPath(context, [topPoints[index], topPoints[index + 1], bottomPoints[index + 1], bottomPoints[index]]);
+      context.fillStyle = index % 2 ? "#8f949a" : "#a2a7ad";
+      context.fill();
+      context.strokeStyle = "rgba(48, 52, 57, .5)";
+      context.lineWidth = .7;
+      context.stroke();
+    }
+  }
+  local3DGeometryPath(context, groundRings, 0, metrics);
+  context.fillStyle = "#f0f1ef";
+  context.fill();
+  context.strokeStyle = "#aeb3b8";
+  context.lineWidth = 1.4;
   context.stroke();
+
+  // 실폭도로는 밝은 필지 바닥 위에 중성 회색으로 깔아 건물 사이 공간을 읽기 쉽게 한다.
+  context.save();
+  local3DGeometryPath(context, groundRings, 0, metrics);
+  context.clip();
+  for (const feature of outlineRoadFeatures) {
+    for (const ring of local3DGeometryRings(feature)) {
+      const road = ring.map((point) => local3DProject(point, .2, metrics));
+      local3DPath(context, road);
+      context.fillStyle = "#969ca2";
+      context.fill();
+      context.strokeStyle = "rgba(93, 99, 105, .72)";
+      context.lineWidth = .45;
+      context.stroke();
+    }
+  }
+  context.restore();
 
   const entries = [];
   for (const feature of outlineFeatures) {
@@ -1505,7 +1567,7 @@ function renderLocal3DScene() {
       entries.push({ feature, height, groundPoints, topPoints, depth, color: local3DColor(feature) });
     }
   }
-  entries.sort((left, right) => left.depth - right.depth);
+  entries.sort((left, right) => right.depth - left.depth);
   local3DHitRegions = [];
 
   for (const entry of entries) {
@@ -1515,17 +1577,18 @@ function renderLocal3DScene() {
         entry.topPoints[index + 1], entry.topPoints[index]
       ];
       local3DPath(context, side);
-      context.fillStyle = local3DShade(entry.color, index % 2 ? -.42 : -.3);
+      const edgeFacesLight = entry.groundPoints[index + 1].x >= entry.groundPoints[index].x;
+      context.fillStyle = local3DShade(entry.color, edgeFacesLight ? -.18 : -.32);
       context.fill();
-      context.strokeStyle = "rgba(3, 9, 18, .35)";
-      context.lineWidth = .5;
+      context.strokeStyle = "rgba(82, 75, 57, .38)";
+      context.lineWidth = .55;
       context.stroke();
     }
     local3DPath(context, entry.topPoints);
-    context.fillStyle = local3DShade(entry.color, -.08);
+    context.fillStyle = local3DShade(entry.color, .1);
     context.fill();
-    context.strokeStyle = "rgba(225, 238, 250, .32)";
-    context.lineWidth = .65;
+    context.strokeStyle = "rgba(105, 94, 63, .5)";
+    context.lineWidth = .6;
     context.stroke();
     const stores = outlineStoresById.get(String(entry.feature.id)) || [];
     if (stores.length) local3DHitRegions.push({ polygon: entry.topPoints, stores });
@@ -1619,6 +1682,7 @@ function syncOutlineModeUI() {
   }
   $("buildingOutlineMap").hidden = outlineMode === "3d";
   $("buildingOutline3DMap").hidden = outlineMode !== "3d";
+  $("outlineLegend").hidden = outlineMode === "3d" || !outlineFeatures.length;
   if (outlineMode === "3d") setTimeout(() => {
     initializeLocal3DRenderer();
     resizeLocal3DCanvas();
