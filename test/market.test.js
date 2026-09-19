@@ -501,6 +501,7 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(html, /id="outlineMode3DBtn"/);
   assert.match(html, /id="outline3DStatus"/);
   assert.doesNotMatch(html, /vworld3DKeyInput/);
+  assert.match(html, /밝은 상권 바닥 위에 실폭도로를 회색으로 표시/);
   assert.match(html, /id="outlineStatistics"[^>]*hidden/);
   assert.match(html, /id="outlineLargePie"/);
   assert.match(html, /id="outlineSmallPie"/);
@@ -513,7 +514,7 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(html, /leaflet\.heat\/0\.2\.0\/leaflet-heat\.js/);
   assert.match(html, /id="outlinePanel"[\s\S]*id="outlinePanelClose"/);
   assert.match(html, /aria-label="건물 연결 업소 목록 닫기"/);
-  assert.match(html, /업종 데이터가 있는 건물을 클릭하면/);
+  assert.match(html, /건물을 클릭하면 연결 업소명/);
   assert.doesNotMatch(html, /업종 데이터가 있는 건물에 마우스를 올리면/);
   // 업종 분류는 토글 없이 항상 켜져 있다.
   assert.doesNotMatch(html, /id="outlineIndustryToggle"/);
@@ -550,6 +551,10 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(app, /function renderLocal3DScene\(\)/);
   assert.match(app, /function initializeLocal3DRenderer\(\)/);
   assert.match(app, /LOCAL_3D_HEIGHT_EXAGGERATION/);
+  assert.match(app, /LOCAL_3D_PURPOSE_COLORS/);
+  assert.match(app, /context\.fillStyle = "#f0f1ef"/);
+  assert.match(app, /for \(const feature of outlineRoadFeatures\)/);
+  assert.match(app, /entries\.sort\(\(left, right\) => right\.depth - left\.depth\)/);
   assert.match(app, /키 없이 정적 건물 데이터/);
   assert.doesNotMatch(app, /loadVworld3DScript|webglMapInit\.js\.do|vworld3DApiKey/);
   assert.doesNotMatch(app, /[0-9A-F]{8}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{12}/);
