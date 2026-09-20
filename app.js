@@ -623,6 +623,7 @@ let outlineRoadFeatures = [];
 let outlineIndustryById = new Map();
 let outlineStoresById = new Map();
 let outlineLoadId = 0;
+let outlinePendingFit = false;
 const outlineCellCache = new Map();
 let outlineRoadFeaturesCache = null;
 const LOCAL_3D_METERS_PER_FLOOR = 3;
@@ -1179,6 +1180,24 @@ function renderOutlineZoneMeta(zone, stores, matchedStoreIds) {
   ].filter(Boolean).join(" · ");
 }
 
+// 행정동 뷰는 건물 레이어가, 주요상권·주소 반경 뷰는 상권 바닥 레이어가 화면 기준이다.
+function outlineSceneLeafletBounds() {
+  const layer = outlineGroundLayer || outlineBuildingLayer;
+  return layer ? layer.getBounds() : null;
+}
+
+// 줌아웃 하한은 상권이 꽉 차게 보이는 줌에서 두 단계 위까지다. 이보다 나가면
+// 건물 윤곽을 읽을 수 없어 min/max 줌을 fit 기준으로 다시 세운다.
+function applyOutlineFit(bounds) {
+  if (!outlineMap || !bounds || !bounds.isValid()) return;
+  const fitZoom = Math.round(outlineMap.getBoundsZoom(bounds, false));
+  const minZoom = Math.max(OUTLINE_MAP_MIN_ZOOM, fitZoom - OUTLINE_MAP_ZOOM_MARGIN);
+  const maxZoom = Math.max(minZoom, Math.min(OUTLINE_MAP_MAX_ZOOM, fitZoom + OUTLINE_MAP_ZOOM_MARGIN));
+  outlineMap.setMinZoom(minZoom);
+  outlineMap.setMaxZoom(Math.max(minZoom, maxZoom));
+  outlineMap.fitBounds(bounds, { padding: [28, 28], maxZoom });
+}
+
 // 주요상권(기본)·주소 반경(customAreaFeature)·행정동(dongName) 세 가지 뷰가 같은
 // 파이프라인(셀 로딩 → 건물 필터 → 업종 연결 → 통계)을 탄다.
 async function loadBuildingOutline(view = null) {
@@ -1304,21 +1323,17 @@ async function loadBuildingOutline(view = null) {
       }).addTo(outlineMap);
     }
 
-    const leafletBounds = isDong
-      ? outlineBuildingLayer.getBounds()
-      : outlineGroundLayer.getBounds();
-    if (!leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
+    const leafletBounds = outlineSceneLeafletBounds();
+    if (!leafletBounds || !leafletBounds.isValid()) throw new Error("선택 상권의 지도 경계가 유효하지 않습니다.");
     const movementBounds = L.latLngBounds(
       [roadClipBounds[1], roadClipBounds[0]],
       [roadClipBounds[3], roadClipBounds[2]]
     ).pad(OUTLINE_MAP_BOUNDS_PADDING);
     outlineMap.setMaxBounds(movementBounds);
-    const fitZoom = Math.round(outlineMap.getBoundsZoom(leafletBounds, false));
-    const minZoom = Math.max(OUTLINE_MAP_MIN_ZOOM, fitZoom - OUTLINE_MAP_ZOOM_MARGIN);
-    const maxZoom = Math.max(minZoom, Math.min(OUTLINE_MAP_MAX_ZOOM, fitZoom + OUTLINE_MAP_ZOOM_MARGIN));
-    outlineMap.setMinZoom(minZoom);
-    outlineMap.setMaxZoom(Math.max(minZoom, maxZoom));
-    outlineMap.fitBounds(leafletBounds, { padding: [28, 28], maxZoom });
+    // 3D 매스 모드에서는 지도 컨테이너가 숨어 있어(크기 0) getBoundsZoom이
+    // 최저 줌로 무너지고 줌 한계가 12~14에 갇힌다. 이때는 fit을 2D 복귀 시로 미룬다.
+    outlinePendingFit = outlineMode === "3d";
+    if (!outlinePendingFit) applyOutlineFit(leafletBounds);
 
     renderOutlineZoneMeta(isDong ? { properties: { name: zoneName } } : zone, stores, industryMatches.matchedStoreIds);
     renderOutlineLegend();
@@ -1680,7 +1695,15 @@ function setOutlineMode(mode) {
   syncOutlineModeUI();
   if (outlineMode === "2d") {
     setOutline3DStatus("2D 윤곽 모드입니다. 3D 매스는 키 없이 정적 건물 데이터로 주요상권 조회에서만 표시합니다.");
-    setTimeout(() => outlineMap?.invalidateSize(), 0);
+    setTimeout(() => {
+      if (!outlineMap) return;
+      outlineMap.invalidateSize();
+      // 3D를 보는 동안 상권이 바뀌면 숨은 지도에 fit을 못 돌렸으므로 되살아난 뒤 다시 맞춘다.
+      if (outlinePendingFit) {
+        outlinePendingFit = false;
+        applyOutlineFit(outlineSceneLeafletBounds());
+      }
+    }, 0);
     return;
   }
   initializeLocal3DRenderer();

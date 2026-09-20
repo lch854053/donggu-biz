@@ -528,7 +528,7 @@ test("keeps building-outline analysis under the market service", async () => {
   assert.match(app, /\$\("marketTableNameInput"\)\.addEventListener\("keydown"[\s\S]*event\.key !== "Enter"[\s\S]*runMarketTableSearch\(\)/);
   assert.doesNotMatch(app, /outlineZoneLayer/);
   assert.doesNotMatch(app, /function initializeBuildingOutline\(\)[\s\S]*?tileLayer/);
-  assert.match(app, /outlineMap\.fitBounds\(leafletBounds/);
+  assert.match(app, /outlineMap\.fitBounds\(bounds, \{ padding: \[28, 28\], maxZoom \}\)/);
   assert.match(app, /outlineMap\.on\("click", closeOutlinePanel\)/);
   assert.match(app, /function renderOutlinePanel\(stores\)/);
   assert.match(app, /click\(event\)[\s\S]*renderOutlinePanel\(stores\)/);
@@ -718,14 +718,26 @@ test("limits the commercial analysis map to the selected zone", async () => {
   assert.match(appSource, /const OUTLINE_ROAD_CLIP_BUFFER_METERS = 80/);
   assert.match(appSource, /expandBoundsMeters\(buildingBounds, OUTLINE_ROAD_CLIP_BUFFER_METERS\)/);
   assert.match(appSource, /outlineMap\.setMaxBounds\(movementBounds\)/);
-  assert.match(appSource, /const fitZoom = Math\.round\(outlineMap\.getBoundsZoom\(leafletBounds, false\)\)/);
+  assert.match(appSource, /function outlineSceneLeafletBounds\(\)/);
+  assert.match(appSource, /function applyOutlineFit\(bounds\)/);
+  assert.match(appSource, /const fitZoom = Math\.round\(outlineMap\.getBoundsZoom\(bounds, false\)\)/);
   assert.match(appSource, /const minZoom = Math\.max\(OUTLINE_MAP_MIN_ZOOM, fitZoom - OUTLINE_MAP_ZOOM_MARGIN\)/);
   assert.match(appSource, /const maxZoom = Math\.max\(minZoom, Math\.min\(OUTLINE_MAP_MAX_ZOOM, fitZoom \+ OUTLINE_MAP_ZOOM_MARGIN\)\)/);
   assert.match(appSource, /outlineMap\.setMaxZoom\(OUTLINE_MAP_MAX_ZOOM\)/);
   const workspaceVisibleAt = appSource.indexOf('$("outlineWorkspace").hidden = false;');
-  const fitZoomAt = appSource.indexOf("const fitZoom = Math.round");
-  assert.ok(workspaceVisibleAt >= 0 && workspaceVisibleAt < fitZoomAt);
+  const fitCallAt = appSource.indexOf("if (!outlinePendingFit) applyOutlineFit(leafletBounds)");
+  assert.ok(workspaceVisibleAt >= 0 && workspaceVisibleAt < fitCallAt);
   assert.match(appSource, /\$\("outlineWorkspace"\)\.hidden = false;\s*outlineMap\.invalidateSize\(\);/);
+});
+
+test("defers the outline map fit while the 3D mass hides the map", async () => {
+  const appSource = await readFile(new URL("../app.js", import.meta.url), "utf8");
+  // 숨은 지도(크기 0)에서 getBoundsZoom·fitBounds를 돌리면 fit 줌이 최저로 무너져
+  // 줌 한계가 수축하고 2D 복귀 후 줌인이 막힌다. fit은 2D로 돌아온 뒤 다시 세운다.
+  assert.match(appSource, /let outlinePendingFit = false/);
+  assert.match(appSource, /outlinePendingFit = outlineMode === "3d"/);
+  assert.match(appSource, /if \(!outlinePendingFit\) applyOutlineFit\(leafletBounds\)/);
+  assert.match(appSource, /if \(outlinePendingFit\) \{\s*outlinePendingFit = false;\s*applyOutlineFit\(outlineSceneLeafletBounds\(\)\);/);
 });
 
 test("draws the selected commercial zone as a gray ground behind buildings", async () => {
